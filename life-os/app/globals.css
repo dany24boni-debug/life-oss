@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+@theme {
+  /* ────────────────────────────────────────────────────────────
+   * Base palette (existing — do not change)
+   * ──────────────────────────────────────────────────────────── */
+  --color-bg: #0a0a0a;
+  --color-surface: #141414;
+  --color-border: #262626;
+
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a3a3a3;
+  --color-text-muted: #525252;
+
+  --color-accent-energy: #ffa500;
+  --color-accent-good: #22c55e;
+  --color-accent-warn: #eab308;
+  --color-accent-bad: #ef4444;
+  --color-accent-info: #3b82f6;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* ────────────────────────────────────────────────────────────
+   * Pulse — module accents (additive)
+   * ──────────────────────────────────────────────────────────── */
+
+  /* New violet for chameleon_os; aligns with the rest of the chroma family. */
+  --color-module-violet: #a78bfa;
+  --color-module-violet-bg: #a78bfa1a;
+  --color-module-violet-border: #a78bfa40;
+
+  /* Tints — used for badge backgrounds, stripe-bg, tile glow */
+  --color-energy-tint: #ffa5001a;
+  --color-good-tint: #22c55e1a;
+  --color-warn-tint: #eab3081a;
+  --color-bad-tint: #ef44441a;
+  --color-info-tint: #3b82f61a;
+
+  /* Edges — used for badge / pill outlines */
+  --color-energy-edge: #ffa50040;
+  --color-good-edge: #22c55e40;
+  --color-warn-edge: #eab30840;
+  --color-bad-edge: #ef444440;
+  --color-info-edge: #3b82f640;
+
+  /* ────────────────────────────────────────────────────────────
+   * Pulse — gradients
+   * ──────────────────────────────────────────────────────────── */
+
+  /* Primary energy CTA — used on Pulse buttons / hero stripes */
+  --grad-energy: linear-gradient(135deg, #ffa500 0%, #ff6a00 100%);
+
+  /* Tile top-stripe (horizontal fade per tone) */
+  --grad-tile-stripe-energy: linear-gradient(90deg, #ffa500, #ffa50040);
+  --grad-tile-stripe-good:   linear-gradient(90deg, #22c55e, #22c55e40);
+  --grad-tile-stripe-warn:   linear-gradient(90deg, #eab308, #eab30840);
+  --grad-tile-stripe-bad:    linear-gradient(90deg, #ef4444, #ef444440);
+  --grad-tile-stripe-info:   linear-gradient(90deg, #3b82f6, #3b82f640);
+
+  /* Today's Call banner backgrounds (vertical fade into surface) */
+  --grad-call-green:  linear-gradient(180deg, #22c55e1a 0%, #141414 70%);
+  --grad-call-yellow: linear-gradient(180deg, #eab3081a 0%, #141414 70%);
+  --grad-call-red:    linear-gradient(180deg, #ef44441a 0%, #141414 70%);
+
+  /* ────────────────────────────────────────────────────────────
+   * Pulse — shadow recipes
+   * ──────────────────────────────────────────────────────────── */
+
+  /* Glow per tone — for live dots, stripe edges, banner accents */
+  --shadow-glow-energy: 0 0 12px #ffa500, 0 0 0 3px #ffa50030;
+  --shadow-glow-good:   0 0 12px #22c55e, 0 0 0 3px #22c55e30;
+  --shadow-glow-warn:   0 0 12px #eab308, 0 0 0 3px #eab30830;
+  --shadow-glow-bad:    0 0 12px #ef4444, 0 0 0 3px #ef444430;
+  --shadow-glow-info:   0 0 12px #3b82f6, 0 0 0 3px #3b82f630;
+
+  /* Card lift — used by Today's Call banner per tone */
+  --shadow-card-lift-good:   0 18px 36px -16px #22c55e60;
+  --shadow-card-lift-warn:   0 18px 36px -16px #eab30860;
+  --shadow-card-lift-bad:    0 18px 36px -16px #ef444460;
+  --shadow-card-lift-energy: 0 18px 36px -16px #ffa50060;
+
+  /* ────────────────────────────────────────────────────────────
+   * Pulse — typography scale (display heros + mono tracking)
+   * ──────────────────────────────────────────────────────────── */
+
+  --fs-display-xl: 76px;   /* hero ring score */
+  --fs-display-lg: 38px;   /* insight metric hero */
+  --fs-display-md: 32px;   /* insight metric standard */
+  --fs-display-sm: 26px;   /* metric tile value */
+
+  --tracking-mono-xs: 0.04em;  /* time, sub-meta */
+  --tracking-mono-sm: 0.06em;  /* sub-labels */
+  --tracking-mono-md: 0.12em;  /* MODULE tag */
+  --tracking-mono-lg: 0.16em;  /* RECORD ASSOLUTO, FINE 7 GIORNI */
+
+  /* ────────────────────────────────────────────────────────────
+   * Pulse — animation tokens
+   * ──────────────────────────────────────────────────────────── */
+
+  --ease-pulse-out: cubic-bezier(0.22, 1, 0.36, 1);   /* spring-snappy */
+  --ease-pulse-in:  cubic-bezier(0.4, 0, 0.2, 1);     /* standard */
+  --ease-pulse-glow: cubic-bezier(0.45, 0, 0.55, 1);  /* breathing */
+
+  --dur-tap: 120ms;
+  --dur-card: 220ms;
+  --dur-screen: 320ms;
+  --dur-glow-loop: 2400ms;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* WCAG 2.4.7: keyboard focus must be visible. Many form fields use
+ * `focus:outline-none focus:border-accent-info` which alone is not enough
+ * (border-only signal, behind opaque chrome). This rule adds a visible ring
+ * for any keyboard-focused interactive element. Mouse clicks (no `:focus-visible`)
+ * still get the silent treatment so the design isn't noisy. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-info);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * Pulse — keyframes (consumed by components in step 14)
+ * ────────────────────────────────────────────────────────────── */
+
+/* Existing skeleton shimmer used by app/loading.tsx */
+@keyframes lifeos-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Live-dot breath — used on streak chips, metric-tile dots, banner pill dot. */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.65; transform: scale(0.92); }
+}
+
+/* MetricTile staggered entry — applied via animation-delay per index. */
+@keyframes tile-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Generic Pulse element entry — used by HeroRing, TodaysCallBanner, and
+ * any other component that wants a soft fade-in + 8px lift on mount.
+ * Replaces the older "today-call-enter" name which was being reused
+ * outside its component (reviewer feedback). The banner-specific
+ * pulse-todays-call class still hooks the reduced-motion crossfade. */
+@keyframes pulse-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Insight hero card stripe shimmer — only applied on hero=true. */
+@keyframes stripe-shine {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Timeline new-event notch pop. */
+@keyframes notch-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* App Router page transition — light, transform/opacity only. */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced-motion — kill decorative loops, keep critical UX (banner) crossfades.
+ * Per WCAG 2.3.3 / spec §10 "no shame messaging" we still want the user to
+ * feel responsiveness on tap, so we shorten rather than disable transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Preserve banner cross-fade (fast UX feedback when Today's Call updates). */
+  .pulse-todays-call {
+    transition: opacity 160ms linear !important;
+  }
+}

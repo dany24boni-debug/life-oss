@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, shared]
+  pull_request:
+    branches: [master, main, shared]
+
+jobs:
+  verify:
+    name: lint · types · sentinels · tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Sentinel grep: blocks reintroduction of any personal-data string
+      # that was scrubbed during the share-prep refactor. See
+      # scripts/check-sentinels.mjs for the pattern list.
+      - name: Sentinel grep
+        run: npm run lint:sentinels
+
+      - name: Tests
+        run: npm test

@@ -1,0 +1,20 @@
+# Cross-branch merge rules.
+#
+# lib/modules/private-boot.ts varies by branch:
+#   - on the owner branches, it re-exports from
+#     `./private-boot.personal` (boots owner-private modules).
+#   - on the shared branch, it re-exports from
+#     `./private-boot.shared` (no-op stub).
+#
+# `merge=ours` tells git to KEEP the current branch's version
+# of this file on a cross-branch merge, instead of producing a
+# conflict every time the two branches diverge. Without this,
+# merging the owner branch into shared (or vice versa) would
+# always flag private-boot.ts as a conflict on a file whose
+# contents are SUPPOSED to differ per branch.
+#
+# This applies only to private-boot.ts (the dispatch file).
+# The .personal and .shared variants are themselves regular
+# files: they merge normally — useful when you want to evolve
+# both branches' boot logic in parallel.
+lib/modules/private-boot.ts merge=ours
