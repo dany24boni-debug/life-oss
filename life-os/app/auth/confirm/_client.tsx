@@ -10,13 +10,10 @@ import { createClient } from "@/lib/supabase/client";
 //   #access_token=...&refresh_token=...&expires_in=3600&token_type=bearer&type=magiclink
 //
 // Hash fragments are never sent to the server, so the server-side
-// page.tsx can't see them. This component reads them in the browser,
-// calls supabase.auth.setSession() to install the session into the
-// HTTP-only cookies via the SSR client, then redirects to `next`.
-//
-// Mounted ONLY when the server-side handler had no `?code=` query
-// parameter — so the hot path (PKCE flow) is server-side and fast,
-// and this client work runs only for the implicit-flow fallback.
+// Route Handler (app/auth/callback/route.ts) can't see them — it
+// redirects here when there's no ?code=. This component reads them in
+// the browser, calls supabase.auth.setSession() to install the session
+// into the HTTP-only cookies via the SSR client, then redirects to `next`.
 
 export function CallbackHashHandler({ next }: { next: string }) {
   const router = useRouter();
