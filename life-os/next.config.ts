@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 // Defence-in-depth HTTP security headers.
 // Applied to every response. Tightening the CSP is intentional: the
@@ -41,6 +42,9 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async headers() {
     return [
       {
