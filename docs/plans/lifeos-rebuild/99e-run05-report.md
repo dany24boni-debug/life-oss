@@ -336,3 +336,45 @@ Fetch RLS-scoped di `evening_checkins` → mappatura pura (id = **id del giorno*
 **Commit:** `feat(comfort): command palette, shortcuts, theme switcher, polish audit`
 
 ---
+
+## Chiusura
+
+**Test: 624 → 656** (−22 morti col codice morto al prompt 1: 14 voglia + 8 commute; +54 nuovi: 5 importer agenda, 11 pwa-logic, 11 esami, 16 spese, 11 sera). Lint, `tsc --noEmit`, `next build --webpack` verdi a ogni checkpoint (con tre bonifiche di tipi GENERATI stantii in `.next/` dopo le cancellazioni di rotte — artefatti, mai codice). Zero dipendenze nuove (`package.json` intatto — il service worker è a mano). Nessuno script Management API eseguito, nessuna migrazione applicata, nessun push/merge — tutto su `feat/run-05`, 116 file toccati.
+
+**Commit del branch:**
+```
+806829b feat(comfort): command palette, shortcuts, theme switcher, polish audit
+c7ee6ed feat(sera): evening journal on ports with sync, Drive export kept, legacy importer
+404ad16 feat(spese): expenses module on ports with sync and legacy importer
+784f7fd feat(esami): exams module on ports with sync, pacing, legacy importer
+aa1149a feat(pwa): hand-rolled service worker with offline fallback, update toast, install UX
+8b93e02 feat(retire): delete mock dashboard world, redirect legacy routes, coherent auth landings
+```
+
+**Dal run-05 il mondo mock non esiste più**: /dashboard e /agenda sono redirect, /commute è morta, `lib/mock-data.ts` e `lib/voglia/` non esistono, e ogni atterraggio auth (login, proxy, safeNext, /auth/confirm) punta alla Oggi nuova. La shell ha NOVE superfici vive (Oggi, Task, Calendario, Palestra, Statistiche, Esami, Spese, Sera, Impostazioni), tutte guest-first, tutte sincronizzate (11 tabelle `lo_*` a migrazioni applicate), con QUATTRO importer legacy idempotenti, PWA installabile con offline reale e update-safe, palette comandi, scorciatoie e due temi.
+
+**Fence, riassunto onesto**: `git diff main` su `app/business app/custom app/health app/body app/timeline app/insights app/settings app/onboarding app/finance lib/google lib/crypto lib/anthropic lib/insights lib/fitness.ts app/api` → **vuoto** (D4 intatte, byte per byte). Fuori fence dichiarati nei prompt: import ricollocati in /more e /recap (prompt 1, sanciti dal build item 1), `app/icon-512/` (prompt 2, richiesto dal build item 5), le righe `/esami` e `/sera` di proxy.ts (prompt 3/5, precedente run-04). Residui morti fuori fence documentati per il cleanup (16): `components/ui/todays-call-banner.tsx`, sezione diary di `lib/validation/local-storage.ts` (+test), `EveningCheckinSchema`/`ToggleCarryoverSchema` in `form-inputs.ts`, doppione `deriveId`/`deriveUuidV8`, `.maybeSingle()` interno di `drive-journal` (limite pre-esistente multi-account dell'export Drive).
+
+## Gate 3 — checklist per Davide (in ordine)
+
+1. **Review + merge**: leggi il diff di `feat/run-05`, poi `git merge --no-ff feat/run-05` su `main`.
+2. **PRIMA di pushare main: applica le migrazioni** (rete di sicurezza: export JSON da Impostazioni su ogni dispositivo con dati). Dalla cartella `life-os/`, sul progetto/i scelto/i con D6:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0021_lo_esami.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0022_lo_spese.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0023_lo_sera.sql
+   ```
+   (Ognuna ridichiara `lo_push` con l'allowlist estesa: applicale IN ORDINE. Verifica prima la firma del runner — la sessione non l'ha mai eseguito, regola 1.)
+3. **Build di produzione + deploy.** Poi su iPhone: installa la PWA (Impostazioni → "Installa LifeOS", coaching Condividi→Aggiungi a Home), **cold start in aereo** → Oggi coi dati locali; al deploy SUCCESSIVO verifica il ciclo d'aggiornamento (toast "Nuova versione disponibile — Aggiorna" → reload con asset nuovi). Lighthouse PWA pass sul deploy. Se mai servisse: kill-switch = deployare `public/sw-kill.js.txt` come `sw.js` (procedura nel prompt 2).
+4. **I quattro importer sul tuo account** (Impostazioni): vecchia Agenda → eventi nel Calendario; vecchi Esami → /esami con pacing; vecchie Spese → /spese col mese giusto; vecchie Sere → /sera nello storico. Rilancia ciascuno: "Già tutto importato". Verifica che le righe importate SINCRONIZZINO sul secondo dispositivo.
+5. **Redirect spot-check**: `/dashboard` → Oggi (da autenticato), `/agenda` → `/calendar`; connetti/disconnetti Google da /calendar (con due account: se ne stacca UNO solo); il ritorno OAuth atterra su /calendar col banner verde.
+6. **Tema + palette su desktop**: cmd+K (naviga, "Nuovo task…", tema), `g t`, `n`, `?`; Impostazioni → Tema → Chiaro/Sistema (barra di stato inclusa, reload senza flash). Tour da tastiera completo nel prompt 6.
+7. **Spot-check touch sul device**: chip categorie /spese (44px), energia /sera, i chip compatti h-8 documentati (parse chips, filtri gym) — decidi se la famiglia compatta ti va bene dal vivo.
+
+## Deliberatamente NON fatto (per disegno)
+
+- **16 repo-root move + CI** (la short run Opus dedicata) e **17 push notifications** (opzionale; `lo_push_subscriptions` resta scritta e inutilizzata).
+- Qualsiasi tocco a Business/Custom/Overseer/Health/Body/Timeline/Insights/Recap oltre le ricollocazioni d'import documentate (D4: intatti finché non li ritiri o porti esplicitamente).
+- Import dei diari da Drive verso il locale (i testi restano su Drive, leggibili; il modulo Sera nuovo parte locale-first da oggi in poi).
+- NL parsing su /spese (esplicitamente fuori brief), recurrence task, push, CalDAV — tutto il "later" del blueprint resta later.
+
