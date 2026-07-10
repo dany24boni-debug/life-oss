@@ -1,0 +1,344 @@
+/* ============================================================================
+ * Ember design system — tokens + base recipes
+ * ----------------------------------------------------------------------------
+ * Additive and inert by design:
+ *   - Tokens live on :root but are namespaced --em-* — nothing existing
+ *     references them.
+ *   - Every element-level rule is scoped under .em-scope, so legacy screens
+ *     are untouched. New surfaces opt in by wrapping in .em-scope.
+ *   - Dark is the default theme; light activates via
+ *     [data-ember-theme="light"] on <html> (or any ancestor of .em-scope).
+ * Source of truth: docs/plans/lifeos-rebuild/01-blueprint.md section B4.
+ * ========================================================================== */
+
+:root {
+  /* ── Core palette ─────────────────────────────────────────────────── */
+  --em-ink: #15171c;
+  --em-calce: #f4f3ef;
+  --em-ember: #ff6b35;
+  --em-ember-deep: #c24914;
+  --em-salvia: #6fa96f;
+  --em-segnale: #e5484d;
+
+  /* ── Dark theme (default) ─────────────────────────────────────────── */
+  --em-bg: var(--em-ink);
+  --em-surface: #1c1f26;
+  --em-surface-2: #232730;
+  --em-hairline: #2e323b;
+  --em-hairline-strong: #3c414d;
+  --em-text: var(--em-calce);
+  --em-text-2: #aab0bc;
+  --em-text-3: #858b99;
+  --em-text-disabled: #5c616d;
+
+  --em-ember-text: #ff8557; /* accent used AS text on dark: lifted for contrast */
+  --em-on-ember: #1a0e08;
+  --em-ember-tint: color-mix(in srgb, var(--em-ember) 14%, transparent);
+  --em-ember-edge: color-mix(in srgb, var(--em-ember) 36%, transparent);
+
+  --em-salvia-text: #8fc48f;
+  --em-salvia-tint: color-mix(in srgb, var(--em-salvia) 14%, transparent);
+  --em-salvia-edge: color-mix(in srgb, var(--em-salvia) 36%, transparent);
+
+  --em-segnale-text: #f2777b;
+  --em-segnale-tint: color-mix(in srgb, var(--em-segnale) 14%, transparent);
+  --em-segnale-edge: color-mix(in srgb, var(--em-segnale) 36%, transparent);
+
+  --em-overlay: rgba(8, 9, 12, 0.62);
+  --em-focus-ring: var(--em-calce);
+
+  /* Elevation — dark elevates with hairlines + soft depth, not big shadows */
+  --em-e1: 0 0 0 1px var(--em-hairline);
+  --em-e2: 0 0 0 1px var(--em-hairline), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --em-e3: 0 0 0 1px var(--em-hairline-strong), 0 20px 56px rgba(0, 0, 0, 0.6);
+
+  /* The one glow in the system — reserved for the ember dot */
+  --em-glow: 0 0 8px color-mix(in srgb, var(--em-ember) 80%, transparent),
+    0 0 2px var(--em-ember);
+
+  /* ── Type ─────────────────────────────────────────────────────────── */
+  --em-font-display: var(--font-em-display, var(--font-geist-sans, ui-sans-serif));
+  --em-font-body: var(--font-geist-sans, ui-sans-serif, system-ui);
+  --em-font-mono: var(--font-geist-mono, ui-monospace, monospace);
+
+  --em-fs-display-xl: 4rem;      /* 64 / 68 */
+  --em-lh-display-xl: 4.25rem;
+  --em-fs-display: 2.5rem;       /* 40 / 44 */
+  --em-lh-display: 2.75rem;
+  --em-fs-title-lg: 1.75rem;     /* 28 / 34 */
+  --em-lh-title-lg: 2.125rem;
+  --em-fs-title: 1.25rem;        /* 20 / 26 */
+  --em-lh-title: 1.625rem;
+  --em-fs-body: 1rem;            /* 16 / 24 */
+  --em-lh-body: 1.5rem;
+  --em-fs-body-sm: 0.875rem;     /* 14 / 20 */
+  --em-lh-body-sm: 1.25rem;
+  --em-fs-label: 0.75rem;        /* 12 / 16 — the floor. Nothing smaller. */
+  --em-lh-label: 1rem;
+  --em-tracking-label: 0.08em;
+
+  /* ── Radius ───────────────────────────────────────────────────────── */
+  --em-r-sm: 8px;
+  --em-r-md: 12px;
+  --em-r-lg: 16px;
+  --em-r-xl: 24px;
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --em-dur-tap: 120ms;
+  --em-dur-control: 180ms;
+  --em-dur-card: 240ms;
+  --em-dur-screen: 320ms;
+  --em-dur-glow: 2400ms;
+  --em-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --em-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Control metrics ──────────────────────────────────────────────── */
+  --em-tap-min: 44px;
+  --em-control-h-sm: 36px;
+  --em-control-h-md: 44px;
+  --em-control-h-lg: 52px;
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────
+ * Activates on any ancestor carrying data-ember-theme="light".         */
+[data-ember-theme="light"] {
+  --em-bg: var(--em-calce);
+  --em-surface: #ffffff;
+  --em-surface-2: #ffffff;
+  --em-hairline: #e4e2da;
+  --em-hairline-strong: #cfcdc4;
+  --em-text: #1b1d23;
+  --em-text-2: #4c505b;
+  --em-text-3: #71757f;
+  --em-text-disabled: #a6aab2;
+
+  --em-ember-text: var(--em-ember-deep);
+  --em-on-ember: #24100a;
+
+  --em-salvia-text: #3e7a3e;
+  --em-segnale-text: #c13438;
+
+  --em-overlay: rgba(27, 29, 35, 0.4);
+  --em-focus-ring: #1b1d23;
+
+  --em-e1: 0 1px 2px rgba(20, 22, 30, 0.05), 0 0 0 1px var(--em-hairline);
+  --em-e2: 0 1px 2px rgba(20, 22, 30, 0.06), 0 8px 24px rgba(20, 22, 30, 0.1),
+    0 0 0 1px var(--em-hairline);
+  --em-e3: 0 2px 4px rgba(20, 22, 30, 0.08), 0 20px 48px rgba(20, 22, 30, 0.16),
+    0 0 0 1px var(--em-hairline);
+}
+
+/* ============================================================================
+ * Scoped base — everything below applies only inside .em-scope
+ * ========================================================================== */
+
+.em-scope {
+  background-color: var(--em-bg);
+  color: var(--em-text);
+  font-family: var(--em-font-body);
+  font-size: var(--em-fs-body);
+  line-height: var(--em-lh-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Quiet, always-visible keyboard focus — monochrome so it reads on every
+ * surface including ember fills. Overrides the app-global blue ring inside
+ * Ember surfaces only. */
+.em-scope :focus-visible {
+  outline: 2px solid var(--em-focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.em-scope ::selection {
+  background: var(--em-ember-edge);
+}
+
+/* ── Type recipes ─────────────────────────────────────────────────────── */
+.em-display-xl {
+  font-family: var(--em-font-display);
+  font-size: var(--em-fs-display-xl);
+  line-height: var(--em-lh-display-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.em-display {
+  font-family: var(--em-font-display);
+  font-size: var(--em-fs-display);
+  line-height: var(--em-lh-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.em-title-lg {
+  font-family: var(--em-font-display);
+  font-size: var(--em-fs-title-lg);
+  line-height: var(--em-lh-title-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.em-title {
+  font-size: var(--em-fs-title);
+  line-height: var(--em-lh-title);
+  font-weight: 600;
+}
+.em-body {
+  font-size: var(--em-fs-body);
+  line-height: var(--em-lh-body);
+}
+.em-body-sm {
+  font-size: var(--em-fs-body-sm);
+  line-height: var(--em-lh-body-sm);
+}
+/* The mono eyebrow — instrument-panel identity. Never below 12px. */
+.em-eyebrow {
+  font-family: var(--em-font-mono);
+  font-size: var(--em-fs-label);
+  line-height: var(--em-lh-label);
+  font-weight: 500;
+  letter-spacing: var(--em-tracking-label);
+  text-transform: uppercase;
+  color: var(--em-text-3);
+}
+.em-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Surfaces ─────────────────────────────────────────────────────────── */
+.em-card {
+  background: var(--em-surface);
+  border-radius: var(--em-r-lg);
+  box-shadow: var(--em-e1);
+}
+.em-card-raised {
+  background: var(--em-surface-2);
+  border-radius: var(--em-r-lg);
+  box-shadow: var(--em-e2);
+}
+
+/* ── The signature: the ember dot ─────────────────────────────────────
+ * The only element allowed to glow or loop. Means "alive / now".       */
+.em-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--em-ember);
+  box-shadow: var(--em-glow);
+  flex: none;
+}
+.em-dot--live {
+  animation: em-breathe var(--em-dur-glow) var(--em-ease-in-out) infinite;
+}
+.em-dot--idle {
+  background: var(--em-text-3);
+  box-shadow: none;
+}
+@keyframes em-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.88);
+  }
+}
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────── */
+.em-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--em-text) 7%, transparent);
+  border-radius: var(--em-r-sm);
+}
+.em-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--em-text) 6%, transparent) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: em-shimmer 1.6s linear infinite;
+}
+@keyframes em-shimmer {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+/* ── Entry animations (used by popovers, sheets, toasts, modals) ─────── */
+@keyframes em-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes em-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes em-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes em-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes em-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes em-indeterminate {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 110%;
+  }
+}
+
+/* ── Reduced motion: collapse to crossfades, keep feedback ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  .em-scope *,
+  .em-scope *::before,
+  .em-scope *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .em-skeleton::after {
+    animation: none;
+  }
+  .em-dot--live {
+    animation: none;
+  }
+}
