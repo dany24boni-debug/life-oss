@@ -207,6 +207,53 @@ export const ExamPatchSchema = z.object(examEditable).partial();
 export type ExamPatch = z.infer<typeof ExamPatchSchema>;
 
 // ============================================================
+// Spese (run-05 prompt 4, stub 15) — la forma della tabella legacy
+// `personal_expenses` (0017): importo in EURO decimali numeric(10,2)
+// (scelta del brief: combaciare col tipo legacy per un import
+// lossless), categoria, giorno, nota. Differenza deliberata: la
+// categoria è testo libero 1..40 (i chip propongono le 10 legacy) —
+// il closed enum era una scelta della vecchia UI, non del dominio.
+// ============================================================
+
+/** Euro con al massimo due decimali, positivi, tetto legacy 0017. */
+export const EuroAmountSchema = z
+  .number()
+  .positive()
+  .max(99_999_999.99)
+  .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, {
+    message: "L'importo può avere al massimo due decimali.",
+  });
+
+export const ExpenseCategorySchema = z.string().trim().min(1).max(40);
+
+export const ExpenseSchema = z.object({
+  id: UuidSchema,
+  amount: EuroAmountSchema,
+  category: ExpenseCategorySchema,
+  /** Giorno della spesa. */
+  date: IsoDaySchema,
+  note: NotesSchema.nullable(),
+  ...audit,
+});
+export type Expense = z.infer<typeof ExpenseSchema>;
+
+const expenseEditable = {
+  amount: EuroAmountSchema,
+  category: ExpenseCategorySchema,
+  date: IsoDaySchema,
+  note: NotesSchema.nullable(),
+};
+
+export const ExpenseCreateSchema = z
+  .object(expenseEditable)
+  .partial()
+  .required({ amount: true, category: true, date: true });
+export type ExpenseCreate = z.infer<typeof ExpenseCreateSchema>;
+
+export const ExpensePatchSchema = z.object(expenseEditable).partial();
+export type ExpensePatch = z.infer<typeof ExpensePatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

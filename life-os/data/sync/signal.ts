@@ -60,6 +60,7 @@ export function withMutationSignal(repos: Repos): Repos {
     tasks: wrapRepo(repos.tasks),
     events: wrapRepo(repos.events),
     esami: wrapRepo(repos.esami),
+    spese: wrapRepo(repos.spese),
     gym: wrapRepo(repos.gym),
     stats: repos.stats,
     reminders: wrapRepo(repos.reminders),

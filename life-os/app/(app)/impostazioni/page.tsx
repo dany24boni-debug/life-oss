@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { IconChevronRight, IconExam } from "../_components/icons";
+import { IconChevronRight, IconExam, IconWallet } from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
 import { EsamiImportButton } from "../esami/import-button";
 import { GymImportButton } from "../gym/import-button";
+import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
 
@@ -24,6 +25,12 @@ const MODULE_LINKS: Array<{
     label: "Esami",
     desc: "Countdown e ritmo di studio per capitolo",
     icon: IconExam,
+  },
+  {
+    href: "/spese",
+    label: "Spese",
+    desc: "Uscite del mese per categoria",
+    icon: IconWallet,
   },
 ];
 
@@ -183,6 +190,21 @@ export default async function ImpostazioniPage() {
           </p>
           <div className="mt-3">
             <EsamiImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import delle vecchie spese (run-05 prompt 4, B3.6). */}
+      {user ? (
+        <section aria-label="Importa le vecchie spese" className="em-card p-5">
+          <p className="em-eyebrow">Vecchie spese</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta nel modulo Spese le uscite registrate nella vecchia
+            pagina Finance. Rilanciarlo non crea doppioni; l&apos;archivio
+            resta dov&apos;è.
+          </p>
+          <div className="mt-3">
+            <SpeseImportButton />
           </div>
         </section>
       ) : null}

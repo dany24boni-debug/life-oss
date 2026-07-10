@@ -218,3 +218,37 @@ app/esami/page.tsx                    (pagina legacy, cancellata)
 **Commit:** `feat(esami): exams module on ports with sync, pacing, legacy importer`
 
 ---
+
+## Prompt 4 — Modulo Spese sui port (stub 15)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ (`ƒ /spese`) · test **645/645** (+16: 4 `data/local/spese.test.ts`, 7 `logic.test.ts`, 4 `importer.test.ts`, 1 round-trip lo_spese in `engine-modules.test.ts`; un rosso intermedio sul formato euro — il CLDR italiano raggruppa solo da 10.000, corretto con `useGrouping: "always"`, la STESSA lezione di formatKg al run-04). Dev server DA OSPITE: `/spese` 200 (form "Nuova spesa", chip categorie, link "Archivio movimenti (vecchia pagina)"), zero controlli nativi. **`git diff HEAD --stat -- app/finance` → vuoto** (l'archivio D4 è intatto, byte per byte).
+
+### Scelte di dominio (documentate)
+
+1. **Importo in euro decimali** (`EuroAmountSchema`: >0, ≤99.999.999,99, max 2 decimali): combacia col `numeric(10,2)` legacy come chiede il brief — import LOSSLESS per costruzione. I **totali** però si calcolano in **centesimi interi** (`logic.ts`, testato: 0,10+0,20 = 30 centesimi esatti, mai somme di float).
+2. **Categoria = testo libero 1..40**: il closed enum di 0017 era una scelta della vecchia UI; i chip del quick-add propongono le stesse dieci (riusate READ-ONLY da `lib/finance/auto-classify.ts` — `CATEGORIES`) più "altra…" col campo libero, come da brief.
+3. Niente parsing NL (esplicitamente non richiesto qui).
+
+### Data layer
+
+Stesso pattern additivo del prompt 3: sezione Spese in `schemas.ts`; `SpeseRepo` in ports (listMonth("YYYY-MM") con confronto lessicale sicuro sui giorni zero-padded); `data/local/spese.ts` (+test: CRUD, dominio importi, mese/tombstone/undo, mese malformato → lista vuota); **Dexie v4** additiva (`spese: "id, date, updated_at"`, test verno 4); registro `spese ↔ lo_spese`; segnale mutazioni; hook `useSpeseMonth`/`useExpense`. Round-trip FakeRemote: importo decimale identico su B, LWW sulla correzione, tombstone.
+
+### Migrazione SCRITTA, NON applicata
+
+`supabase/migrations/0022_lo_spese.sql` — `lo_spese` con `amount numeric(10,2)` (check >0 e tetto legacy), `category text` con check lunghezza 1..40 (il dominio nuovo, NON l'enum chiuso), convenzioni 0019 complete, e `lo_push` ridichiarata con allowlist `… + lo_esami + lo_spese`. `personal_expenses` e `finance_entries` INTATTE.
+
+### UI (`app/(app)/spese/`)
+
+Vista mese con frecce ‹ › (`shiftMonth` puro, testato a cavallo d'anno), due StatCard (totale mese formattato `1.250,50 €`, numero movimenti), **barre per categoria fatte a mano** (div + width%, ordinate per spesa decrescente, quota %); quick-add (importo `inputMode="decimal"` con `parseEuroAmount` che accetta virgola E punto — testato, DatePicker default oggi, nota); lista del mese (giorno decrescente) con scheda `expense-detail.tsx` (commit-on-blur, elimina + toast Annulla); link quieto all'archivio `/finance`. L'aggiunta con data in un altro mese SPOSTA la vista su quel mese (la spesa non "sparisce").
+
+### Importer
+
+Pattern consolidato: fetch RLS-scoped di `personal_expenses` → mappatura pura (id `deriveId("lifeos-import:personal_expenses:<id>")`, importo normalizzato al centesimo, **numeric accettato anche come STRINGA** — PostgREST può renderlo così, testato; categoria minuscola/trim; `updated_at` legacy preservato) → inserimento solo-assenti + notifica sync. Card "Vecchie spese" in Impostazioni + prompt inline su /spese a mese vuoto (authed).
+
+### Case dei moduli
+
+`IconWallet` nuova; Rail "Moduli" → Esami, Spese; card "Moduli" di Impostazioni idem. Nessun edit a proxy.ts (nessuna rotta legacy /spese esisteva; /finance resta protetta com'era).
+
+**Commit:** `feat(spese): expenses module on ports with sync and legacy importer`
+
+---

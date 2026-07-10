@@ -167,3 +167,14 @@ export function IconExam({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Spese: un portafoglio essenziale (run-05 prompt 4). */
+export function IconWallet({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="3.5" y="6" width="17" height="13" rx="3" />
+      <path d="M3.5 10h17" />
+      <path d="M15.5 14.5h2" />
+    </svg>
+  );
+}

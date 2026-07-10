@@ -66,6 +66,37 @@ describe("SyncEngine — round-trip lo_esami", () => {
     expect(remote.rowsOf("lo_esami")).toHaveLength(1);
   });
 
+  it("round-trip lo_spese: importo decimale identico su B, LWW e tombstone", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const spesa = must(
+      await a.repos.spese.create({
+        amount: 12.5,
+        category: "cibo",
+        date: "2026-07-10",
+        note: "Pranzo",
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.db.spese.get(spesa.id)).toEqual(spesa);
+    expect(remote.rowsOf("lo_spese")).toHaveLength(1);
+
+    // B corregge l'importo DOPO: vince al round-trip.
+    must(await b.repos.spese.update(spesa.id, { amount: 13.9 }));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    expect((await a.repos.spese.getById(spesa.id))?.amount).toBe(13.9);
+
+    // A elimina: la tombstone arriva su B.
+    must(await a.repos.spese.softDelete(spesa.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.spese.listMonth("2026-07")).toHaveLength(0);
+  });
+
   it("LWW: il progresso segnato dopo vince; la tombstone viaggia", async () => {
     const remote = new FakeRemote();
     const a = makeDevice(remote);

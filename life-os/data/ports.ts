@@ -22,6 +22,9 @@ import type {
   ExamPatch,
   ExerciseCreate,
   ExercisePatch,
+  Expense,
+  ExpenseCreate,
+  ExpensePatch,
   GymExercise,
   GymPlan,
   GymSession,
@@ -135,6 +138,24 @@ export interface EsamiRepo {
   getById(id: string): Promise<Exam | null>;
   /** Tutti gli esami vivi, per data crescente (poi titolo). */
   listAll(): Promise<Exam[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Spese (run-05 prompt 4, stub 15)
+// ============================================================
+
+export interface SpeseRepo {
+  create(input: ExpenseCreate): Promise<Result<Expense>>;
+  update(id: string, patch: ExpensePatch): Promise<Result<Expense>>;
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restore(id: string): Promise<Result<Expense>>;
+
+  getById(id: string): Promise<Expense | null>;
+  /** Spese vive del mese "YYYY-MM", per giorno decrescente (poi id). */
+  listMonth(month: string): Promise<Expense[]>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -278,6 +299,7 @@ export interface Repos {
   tasks: TasksRepo;
   events: EventsRepo;
   esami: EsamiRepo;
+  spese: SpeseRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

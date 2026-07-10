@@ -25,6 +25,7 @@ import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
   Exam,
+  Expense,
   GymExercise,
   GymPlan,
   GymSession,
@@ -121,6 +122,19 @@ export function useEvent(id: string | null): LocalEvent | null | undefined {
 /** Tutti gli esami vivi, per data crescente (run-05 prompt 3). */
 export function useEsami(): Exam[] | undefined {
   return useLiveQuery(() => appRepos().esami.listAll(), []);
+}
+
+/** Spese vive del mese "YYYY-MM", giorno decrescente (run-05 prompt 4). */
+export function useSpeseMonth(month: string): Expense[] | undefined {
+  return useLiveQuery(() => appRepos().spese.listMonth(month), [month]);
+}
+
+/** Singola spesa per id (scheda dettaglio); null se assente o tombstone. */
+export function useExpense(id: string | null): Expense | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().spese.getById(id) : Promise.resolve(null)),
+    [id],
+  );
 }
 
 /** Singolo esame per id (scheda dettaglio); null se assente o tombstone. */

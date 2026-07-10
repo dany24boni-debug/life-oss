@@ -65,11 +65,11 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 3 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 4 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
-    // v3 (run-05, prompt 3): + esami, nient'altro cambia.
-    expect(dbTest.verno).toBe(3);
+    // v3 (run-05, prompt 3): + esami. v4 (prompt 4): + spese.
+    expect(dbTest.verno).toBe(4);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "esami",
       "events",
@@ -79,6 +79,7 @@ describe("schema bump v1 -> v2", () => {
       "gym_sets",
       "reminders",
       "settings",
+      "spese",
       "sync_meta",
       "tasks",
     ]);
@@ -113,10 +114,10 @@ describe("schema bump v1 -> v2", () => {
     await v1.table("tasks").add(row);
     v1.close();
 
-    // Apertura con la classe reale (v1 + v2 + v3): upgrade additivo.
+    // Apertura con la classe reale (v1..v4): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(3);
+    expect(current.verno).toBe(4);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

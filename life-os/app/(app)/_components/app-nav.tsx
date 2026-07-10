@@ -23,6 +23,7 @@ import {
   IconStats,
   IconTasks,
   IconToday,
+  IconWallet,
 } from "./icons";
 import { SyncDot } from "./sync-dot";
 
@@ -47,6 +48,7 @@ const TABS: NavItem[] = [
  */
 const MODULES: NavItem[] = [
   { href: "/esami", label: "Esami", icon: IconExam },
+  { href: "/spese", label: "Spese", icon: IconWallet },
 ];
 
 function isActive(pathname: string, href: string): boolean {

@@ -31,6 +31,7 @@
 import Dexie, { type Table } from "dexie";
 import type {
   Exam,
+  Expense,
   GymExercise,
   GymPlan,
   GymSession,
@@ -66,6 +67,12 @@ export const SCHEMA_V3 = {
   esami: "id, date, updated_at",
 } as const;
 
+/** v4 = v3 + spese (run-05 prompt 4, stub 15). Solo additiva. */
+export const SCHEMA_V4 = {
+  ...SCHEMA_V3,
+  spese: "id, date, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -73,6 +80,7 @@ export class LifeosDb extends Dexie {
   tasks!: Table<Task, string>;
   events!: Table<LocalEvent, string>;
   esami!: Table<Exam, string>;
+  spese!: Table<Expense, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
   gym_sessions!: Table<GymSession, string>;
@@ -86,6 +94,7 @@ export class LifeosDb extends Dexie {
     this.version(1).stores(SCHEMA_V1);
     this.version(2).stores(SCHEMA_V2);
     this.version(3).stores(SCHEMA_V3);
+    this.version(4).stores(SCHEMA_V4);
   }
 }
 

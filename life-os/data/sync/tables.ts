@@ -18,6 +18,7 @@ import type { Table } from "dexie";
 import type { LifeosDb } from "../db";
 import {
   ExamSchema,
+  ExpenseSchema,
   GymExerciseSchema,
   GymPlanSchema,
   GymSessionSchema,
@@ -40,6 +41,7 @@ export type LocalTableName =
   | "tasks"
   | "events"
   | "esami"
+  | "spese"
   | "gym_exercises"
   | "gym_plans"
   | "gym_sessions"
@@ -87,6 +89,12 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     local: "esami",
     remote: "lo_esami",
     parse: parserFor(ExamSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "spese",
+    remote: "lo_spese",
+    parse: parserFor(ExpenseSchema),
     instantColumns: AUDIT,
   },
   {
