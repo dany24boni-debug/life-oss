@@ -103,3 +103,47 @@ After:
 **Checks** (all green): lint / tsc / build / test — suite **467 -> 492** (23 logic + 2 restore), 35 files. Dev-server pass: `GET /tasks` 200 with `em-scope`, quick-add, tablist and SSR skeletons in the served HTML, ZERO `<select`/`type="date"`/`type="time"`; `GET /` 307 -> `/login` (proxy untouched); `GET /login` 200. `grep -ri MOCK` over the new/edited surfaces: 0. Fence audit: only fenced paths + the flagged vitest include line + this report.
 
 **Commit:** `feat(tasks): tasks module v1 with NL quick-add, views, swipe/undo/reorder`
+
+---
+
+## Prompt 2 — Guest mode: DONE (checkpoint green, committed)
+
+**What was built**
+
+- `proxy.ts` — the flip (anchored quote below): `/` is no longer protected; ALL legacy prefixes byte-identical; logged-in redirect away from `/login` untouched.
+- `app/(app)/page.tsx` (Today) — guest-renders: the `if (!user) redirect("/login")` guard is gone; profile lookup happens only with a user; the guest header carries the quiet line "I tuoi dati vivono su questo dispositivo" linking to the account section (`/impostazioni`); the "Vecchia dashboard" bridge link is now shown to signed-in users only (for a guest it would only bounce off the proxy).
+- `app/(app)/impostazioni/page.tsx` (NEW) — the new settings surface (see pre-flight delta 2 for why not `/settings`):
+  - guest variant: "Stai usando LifeOS come ospite" + local-data explanation + CTA "Crea un account per sincronizzare" -> `/login`. The sync promise is worded as future ("servirà a"), not as an existing feature.
+  - authed variant: email, Esci (REUSES the existing `signOut` server action from `app/dashboard/actions.ts` — no new auth code), and the bridge "Vecchie impostazioni (obiettivi e target)" -> legacy `/settings` so nothing users could reach before is stranded. Nothing fake, no placeholder toggles.
+- `app/(app)/_components/app-nav.tsx` — the Rail "Impostazioni" item and the MobileHeader gear now point to `/impostazioni` (active state wired); collision comment updated. The Palestra tab still points to legacy `/gym` (protected): a guest tapping it reaches the login screen — honest until prompt 10 rebuilds gym on the ports.
+- `app/login/page.tsx` — one additive escape hatch under the form: "Continua senza account" -> `/` ("i dati restano su questo dispositivo"), styled with the page's own legacy tokens. Nothing else touched on the login surface.
+
+**Anchored edit — `life-os/proxy.ts`**
+
+Before:
+```ts
+  const path = request.nextUrl.pathname;
+  // "/" ora è Oggi (gruppo (app)) e resta protetta fino al guest mode
+  // (prompt 07). Match esatto, non prefisso: ogni path inizia con "/".
+  const isProtected =
+    path === "/" || PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+```
+After:
+```ts
+  const path = request.nextUrl.pathname;
+  // Guest mode (prompt 07, run-03): le superfici del gruppo (app) — "/",
+  // /tasks, /calendar, /stats, /impostazioni — sono pubbliche, coi dati
+  // locali al dispositivo. Le rotte legacy restano protette com'erano.
+  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+```
+`PROTECTED_PREFIXES`, `AUTH_ONLY_PREFIXES`, both redirect blocks and the matcher are byte-identical to before.
+
+**Decisions taken**
+
+1. **New settings path = `/impostazioni`** (Italian-first, matches the nav label): `app/(app)/settings/page.tsx` would collide with legacy `/settings` (App Router duplicate-path error), and deleting the legacy page is outside every fence. Prompts 4/5 will add their settings sections here.
+2. **Guest hitting Palestra tab -> login** is accepted and documented rather than exposing the legacy Supabase-backed `/gym` page (which the brief forbids: "ALL legacy prefixes stay protected exactly as-is").
+3. Signed-in users on legacy routes: zero change (grep-verifiable — no legacy file touched except the additive login link).
+
+**Checks** (all green): lint / tsc / build / test — suite unchanged at **492** (this prompt is routing + two server pages; runtime pass is the verification). Dev-server pass with NO auth cookie: `/` 200 (guest line present, "Vecchia dashboard" ABSENT, task section SSR-skeletons present), `/tasks` 200, `/impostazioni` 200 (guest variant + CTA), `/login` 200 (guest link present); legacy `/finance`, `/settings`, `/dashboard`, `/gym` all 307 -> `/login` (the brief's "302" is Next's 307 in practice, same semantics). Fence audit: proxy.ts + `(app)` + the one additive login-page link + report.
+
+**Commit:** `feat(guest): public (app) surfaces with local-only guest mode`

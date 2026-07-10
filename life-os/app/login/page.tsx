@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StatusPill } from "@/components/ui/status-pill";
 import { signIn } from "./actions";
 
@@ -100,6 +101,13 @@ export default async function LoginPage({
             Aprendo il link da iPhone, aggiungi Life OS alla home per usarlo come app.
           </p>
         </form>
+
+        <p className="text-center text-xs text-text-secondary">
+          <Link href="/" className="underline underline-offset-4 hover:text-text-primary">
+            Continua senza account
+          </Link>{" "}
+          — i dati restano su questo dispositivo.
+        </p>
 
         <footer className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.18em] text-text-muted">
           <StatusPill label="Beta" variant="live" />

@@ -5,11 +5,11 @@
  * safe-area), rail a sinistra da md in su (la cura del deserto desktop).
  * Tab attiva marcata dall'ember dot — l'unico elemento che respira.
  *
- * Nota collisioni rotte (regola conservativa del prompt): le voci
- * Palestra e Impostazioni puntano alle pagine LEGACY /gym e /settings,
- * che restano intatte e raggiungibili; i loro skeleton nuovi arriveranno
- * quando i moduli (prompt 10, B2.6) potranno sostituirle senza rompere
- * schermate funzionanti.
+ * Nota collisioni rotte: la voce Palestra punta ancora alla pagina LEGACY
+ * /gym (intatta, protetta) finché il prompt 10 non la sostituirà senza
+ * rompere una schermata funzionante. Impostazioni invece punta alla
+ * superficie NUOVA /impostazioni (run-03): la legacy /settings resta
+ * raggiungibile e protetta al suo indirizzo.
  */
 
 import Link from "next/link";
@@ -103,12 +103,11 @@ export function Rail() {
         <div className="mt-auto pb-5">
           <RailLink
             item={{
-              href: "/settings",
+              href: "/impostazioni",
               label: "Impostazioni",
               icon: IconSettings,
-              legacy: true,
             }}
-            active={isActive(pathname, "/settings")}
+            active={isActive(pathname, "/impostazioni")}
           />
         </div>
       </nav>
@@ -144,7 +143,7 @@ export function MobileHeader() {
     <header className="flex items-center justify-between px-5 pt-[env(safe-area-inset-top)] md:hidden">
       <span className="em-eyebrow py-4">LifeOS</span>
       <Link
-        href="/settings"
+        href="/impostazioni"
         aria-label="Impostazioni"
         className="grid h-11 w-11 place-items-center rounded-[var(--em-r-md)] text-[var(--em-text-2)] transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
       >

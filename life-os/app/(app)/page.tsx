@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/ui";
 import { TodayTasks } from "./_components/tasks/today-section";
@@ -44,18 +43,21 @@ export default async function TodayPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  // Il proxy protegge "/": arrivare qui senza utente significa proxy
-  // mal configurato — stessa difesa in profondità delle pagine legacy.
-  if (!user) redirect("/login");
+  // Oggi è pubblica (guest mode, prompt 07): senza utente si rende la
+  // variante ospite — i dati vivono in IndexedDB sul dispositivo, il
+  // profilo server semplicemente non esiste.
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, timezone")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const timeZone = profile?.timezone ?? "Europe/Rome";
-  const displayName = profile?.display_name?.trim() || null;
+  let displayName: string | null = null;
+  let timeZone = "Europe/Rome";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name, timezone")
+      .eq("id", user.id)
+      .maybeSingle();
+    timeZone = profile?.timezone ?? "Europe/Rome";
+    displayName = profile?.display_name?.trim() || null;
+  }
   const dateLabel = formatTodayIt(new Date(), timeZone);
 
   return (
@@ -66,12 +68,24 @@ export default async function TodayPage() {
           {displayName ? `Ciao, ${displayName}` : "Ciao"}
         </h1>
         <p className="mt-2">
-          <Link
-            href="/dashboard"
-            className="em-body-sm text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
-          >
-            Vecchia dashboard
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="em-body-sm text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
+            >
+              Vecchia dashboard
+            </Link>
+          ) : (
+            <span className="em-body-sm text-[var(--em-text-3)]">
+              I tuoi dati vivono su questo dispositivo.{" "}
+              <Link
+                href="/impostazioni"
+                className="underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
+              >
+                Account e sincronizzazione
+              </Link>
+            </span>
+          )}
         </p>
       </header>
 
