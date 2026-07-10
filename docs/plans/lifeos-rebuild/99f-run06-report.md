@@ -212,6 +212,94 @@ fence + zero-scope-creep rule).
 8 modifications (ids ×2, gym importer ×2, calendar importer, form-inputs ×2, proxy), 2 new
 (`.gitignore`, this report). `diff --stat`: 14 files, +70 / −421.
 
-**Commit:** `chore(cleanup): unify id derivation with golden tests, delete dead residue, tidy proxy prefixes`
+**Commit:** `chore(cleanup): unify id derivation with golden tests, delete dead residue, tidy proxy prefixes` → `a3ebfc8`
+
+---
+
+## Prompt 2 — The move: `life-os/` → repository root
+
+**Checkpoint (from ROOT):** lint ✓ · tsc ✓ · build ✓ · test **648 passed (54 files)** — unchanged from Prompt 1.
+
+### 1. Collision plan
+Root before move (post-P1): `.gitignore`, `docs/`, `life-os/`. `comm -12` of the two
+top-level sets found exactly **one** collision — `.gitignore` (expected; merged). `life-os/`
+has no `docs/` → no clash with root `docs/`. No STOP.
+
+### 2. Tracked entries moved (`git mv`, history-preserving)
+24 tracked top-level entries `git mv`'d to root (dotfiles included): `.env.local.example`,
+`.gitattributes`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `PARTNER-SETUP.md`,
+`README-START-HERE.md`, `README.md`, `app/`, `components/`, `data/`, `eslint.config.mjs`,
+`lib/`, `next.config.ts`, `package-lock.json`, `package.json`, `postcss.config.mjs`,
+`proxy.ts`, `public/`, `scripts/`, `supabase/`, `tsconfig.json`, `ui/`, `vitest.config.ts`.
+Result: **387 rename (R) entries** in `git status`.
+
+**`.gitignore` merge (union, quoted).** Root `.gitignore` (only `.DS_Store`) was overwritten
+with the union of both — which is the app's comprehensive Next ruleset (already a superset
+containing `.DS_Store`): `/node_modules`, `/.next/`, `/out/`, `/coverage`, `/build`,
+`.DS_Store`, `*.pem`, debug logs, `.env*` (+ `!.env*.example`), `.vercel`, `*.tsbuildinfo`,
+`next-env.d.ts`, `.claude/`. Deduped the source's doubled `.vercel`. Then `git rm
+life-os/.gitignore`. (+44 / −1 on root `.gitignore`; −47 on the deleted app copy.)
+
+### 3. Untracked essentials
+- `mv life-os/.env.local .env.local` (Davide's live secrets — kept working).
+- `mv life-os/node_modules node_modules` (rename on same FS; avoids reinstall; `npm ci` is the fallback).
+- `mv life-os/next-env.d.ts next-env.d.ts` (gitignored, but tsc reads it; content is path-independent).
+- `rm -rf life-os/.next` (regenerated; kills the known stale-`.next/dev`-types phantom-error ritual).
+- `rm life-os/tsconfig.tsbuildinfo` (stale tsc incremental cache referencing old paths → clean typecheck).
+- `rm life-os/.DS_Store` (untracked junk). Then `rmdir life-os` (verified empty).
+- Post-move: `git ls-files life-os/` → EMPTY; `life-os/` dir gone.
+
+### 4. Config fixes
+**`next.config.ts` — `turbopack.root` removed (doc-based).** Consulted
+`node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/turbopack.md`
+§"Root directory": Next auto-detects the root via the lockfile (`package-lock.json`); the
+manual `root` override is for "a different project structure … if you don't use workspaces".
+Pre-move the app was nested (lockfile at `life-os/`, `.git` at the parent) and `root` was
+pinned to `__dirname`. Post-move `next.config.ts` + `package-lock.json` + `.git` are co-located
+at the repo root → auto-detection is correct → the override is redundant. Removed it and the
+now-unused `import path`:
+```
+- import path from "path";
+  const nextConfig: NextConfig = {
+-   turbopack: { root: path.join(__dirname) },
++   // turbopack.root non serve più (run-06): l'app ora vive nella radice del repo … (doc-based)
+    async headers() { … }
+```
+The build story is unchanged (`next build --webpack`).
+
+**Verified (read, no fix needed — all relative, confirmed by the green build/test):**
+`tsconfig.json` (`@/*` → `["./*"]`), `vitest.config.ts` (`path.resolve(__dirname,".")` +
+`node_modules/server-only/empty.js`), `eslint.config.mjs`, `postcss.config.mjs`, `package.json`
+scripts, `scripts/*.mjs` (no hardcoded roots; `run-migration.mjs` takes a cwd-relative arg),
+`public/sw.js` (root-relative URLs), `manifest.webmanifest`.
+A full `grep -rn "life-os"` over code/config/scripts found **no broken path references** — only
+the npm package `name`, log labels (`app/error.tsx`, `setup-git.mjs`), prose comments, and
+`PARTNER-SETUP.md`'s `cd life-os` clone-target (deferred to Prompt 4 per its fence).
+`CLAUDE.md`/`AGENTS.md` had **zero** `life-os/` path refs → nothing to fix here.
+
+### 5. Full verification from ROOT
+- lint ✓ · tsc ✓ · build ✓ · test **648 (54 files)** — identical to Prompt 1.
+- `next start` spot-pass (logged-out): `GET /` **200** · `/tasks` **200** · `/login` **200** ·
+  `/sw.js` **200** (`application/javascript`) · `/manifest.webmanifest` **200**
+  (`application/manifest+json`).
+- `GET /dev/ui` → **200** locally (both `npm run start` and explicit `NODE_ENV=production npx
+  next start`). The route has `if (process.env.NODE_ENV === "production") notFound()`, but this
+  sandbox's local `next build`/`next start` don't reproduce the prod-`NODE_ENV` branch, so it
+  renders the 200 playground — the brief's explicitly-accepted "200 in dev" outcome. This is
+  **move-independent** (`git mv` preserved the route byte-for-byte, similarity 100%); on Vercel
+  (`NODE_ENV=production` at build+runtime) the guard fires and 404s as documented. `/dev/components`
+  behaves identically.
+
+### Rename audit
+```
+$ git status --porcelain: 387 R · 1 D (life-os/.gitignore) · 2 content-M (.gitignore, next.config.ts)
+$ git diff --stat --find-renames HEAD | tail -1
+  389 files changed, 48 insertions(+), 52 deletions(-)
+```
+Only content changes: root `.gitignore` (+44/−1), `life-os/.gitignore` (−47 del), `next.config.ts`
+(+4/−4). Everything else is a pure 0-line rename → "overwhelmingly R", consistent with the move
+plus the two sanctioned config edits.
+
+**Commit:** `chore(repo): move app from life-os/ to repository root`
 
 ---

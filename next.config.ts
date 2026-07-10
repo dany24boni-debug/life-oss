@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 // Defence-in-depth HTTP security headers.
 // Applied to every response. Tightening the CSP is intentional: the
@@ -42,9 +41,10 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.join(__dirname),
-  },
+  // turbopack.root non serve più (run-06): l'app ora vive nella radice del
+  // repo, co-locata con package-lock.json e .git — Turbopack rileva la root
+  // da sé (docs: next-config-js/turbopack → "Root directory"). Prima era
+  // pinnata a life-os/ perché l'app era annidata sotto il .git del repo.
   async headers() {
     return [
       {
