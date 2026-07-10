@@ -147,3 +147,42 @@ After:
 **Checks** (all green): lint / tsc / build / test — suite unchanged at **492** (this prompt is routing + two server pages; runtime pass is the verification). Dev-server pass with NO auth cookie: `/` 200 (guest line present, "Vecchia dashboard" ABSENT, task section SSR-skeletons present), `/tasks` 200, `/impostazioni` 200 (guest variant + CTA), `/login` 200 (guest link present); legacy `/finance`, `/settings`, `/dashboard`, `/gym` all 307 -> `/login` (the brief's "302" is Next's 307 in practice, same semantics). Fence audit: proxy.ts + `(app)` + the one additive login-page link + report.
 
 **Commit:** `feat(guest): public (app) surfaces with local-only guest mode`
+
+---
+
+## Prompt 3 — Auth OTP, code only: DONE (checkpoint green, committed)
+
+**What was built** (code + docs only; the Supabase template flip is Davide's, per `03-activation-checklist.md`)
+
+- `app/login/actions.ts` — rewritten around the same wire contract:
+  - `signIn`: the `signInWithOtp` call is UNCHANGED (same `emailRedirectTo` -> `/auth/callback`, so today's magic-link template keeps working end to end). What changed: zod email validation (`z.email()`, replacing the manual non-empty check), rate limit via the existing in-memory limiter (`otp_send:<email>`, 4 per 10 min — aligned with the 60s UI cooldown), success now redirects to the code-entry screen `/login/verify?email=...&sent=1`, and Supabase error strings are replaced by our own Italian copy (audit A4 note: raw `error.message` used to be rendered in the banner).
+  - `verifyCode` (NEW): zod-validates email + token (6 digits, whitespace stripped first so "123 456" pasted from the email works), rate limit `otp_verify:<email>` 5 per 15 min, then `supabase.auth.verifyOtp({ email, token, type: "email" })`; success redirects to `/dashboard` (same destination as today's callback); failure redirects back to the verify screen with friendly copy and an attempts-remaining tail when <= 2 remain ("Ti restano N tentativi"), turning into a gentle pause message at the limit. No raw Supabase strings anywhere.
+- `app/login/verify/page.tsx` (NEW) — stepped state as a separate URL (state lives in the query string via action redirects: works without JS, survives reload): heading, sent/error banners, hidden email + ONE 6-char code input, "Accedi", the same-device link note, resend, "Torna indietro" -> `/login`.
+  - **Input-shape decision (documented per brief):** one single 6-char field with `inputMode="numeric"` + `autocomplete="one-time-code"`, NOT six single-glyph boxes — on iOS a single field is the robust choice (native paste, no focus juggling, system autofill when available). No `maxLength`, so a paste with spaces isn't truncated; the server normalizes.
+  - Styled with the login surface's existing legacy tokens (NOT Ember): `/login` is outside the `(app)`/`em-scope` world and visual coherence of the auth flow wins; the flow migrates to Ember when the whole login surface does.
+- `app/login/verify/resend-button.tsx` (NEW, client) — visible 60s cooldown; the last-send instant lives in sessionStorage per email so a reload or a failed attempt does NOT reset the countdown; submit reuses the `signIn` action (client cooldown is courtesy, the server rate limit is the enforcement). Renders without seconds until mounted (no hydration text mismatch).
+- `app/auth/callback/route.ts` — token_hash branch added BEFORE the existing `code` branch (quoted below); `/auth/confirm` untouched; PKCE and implicit paths byte-identical.
+- `app/login/page.tsx` — copy only: subtitle "Sign-in via magic link. Niente password, niente fronzoli." -> "Accesso via email, senza password." and button "Invia magic link" -> "Continua" (both honest BEFORE and AFTER the template flip); `sent`/`error` banner branches left in place (no behavior removed).
+- `docs/plans/lifeos-rebuild/03-activation-checklist.md` (NEW) — Davide's dashboard steps: Magic Link template with `{{ .Token }}` ALONGSIDE the link (wording suggestion included, plus the optional `{{ .TokenHash }}` link variant the callback now supports), Redirect URLs + `NEXT_PUBLIC_APP_URL` verification (audit H3/H4), local + prod smoke scripts (cross-device code entry, 60s cooldown, wrong-code x5 gentle lockout, stale-link same-device), and an honest not-included list.
+
+**Anchored edit — `app/auth/callback/route.ts`** (the ONLY change to the file, verified via `git diff`: zod import + schema + this branch):
+```ts
+  const tokenHash = searchParams.get("token_hash");
+  const otpType = OtpTypeSchema.safeParse(searchParams.get("type"));
+  if (tokenHash && otpType.success) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: otpType.data,
+    });
+    if (error) { /* redirect a /login con copy amichevole */ }
+    return NextResponse.redirect(new URL(next, origin));
+  }
+```
+inserted between `const next = safeNext(...)` and the existing `if (!code)` fallthrough. `type` is zod-validated against the Supabase `EmailOtpType` enum before use.
+
+**Pre-flip behavior (important):** with the CURRENT link-only template, submitting an email lands on the code screen but the email carries only the link — the screen says exactly that ("Nell'email c'è anche un link: aprirlo da questo dispositivo ti fa entrare direttamente") and the link path is untouched, so nothing regresses before Davide flips the template.
+
+**Checks** (all green): lint / tsc / build / test — suite unchanged at **492** (auth flow is redirect-driven server actions against live Supabase; per session rule 8 no live-project scripting — verification is the checklist's smoke). Dev-server pass: `/login` 200 ("Continua" button), `/login/verify?email=...` 200 (one-time-code input, cooldown button, sent banner, torna indietro), `/login/verify` without email -> streamed `NEXT_REDIRECT;replace;/login;307` + `url=/login` meta fallback (Next 16 in-band redirect for dynamic pages — functionally a redirect for browsers and no-JS clients). Callback diff = ONLY the added branch. Fence audit: `app/login/**`, `app/auth/callback/route.ts`, checklist doc, report.
+
+**Commit:** `feat(auth): email OTP verify flow + token_hash callback support (template flip pending)`

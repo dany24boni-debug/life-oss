@@ -29,7 +29,7 @@ export default async function LoginPage({
           <div className="space-y-1.5">
             <h1 className="text-4xl font-semibold leading-none tracking-tight">Life OS</h1>
             <p className="text-sm text-text-secondary">
-              Sign-in via magic link. Niente password, niente fronzoli.
+              Accesso via email, senza password.
             </p>
           </div>
         </header>
@@ -95,7 +95,7 @@ export default async function LoginPage({
             type="submit"
             className="w-full rounded-xl bg-text-primary px-4 py-3.5 text-base font-medium text-bg transition-opacity hover:opacity-90 active:opacity-80"
           >
-            Invia magic link
+            Continua
           </button>
           <p className="text-center text-[11px] text-text-muted">
             Aprendo il link da iPhone, aggiungi Life OS alla home per usarlo come app.
