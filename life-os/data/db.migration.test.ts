@@ -65,10 +65,11 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 1 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 2 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
-    expect(dbTest.verno).toBe(1);
+    // v2 (run-04, prompt 08): + sync_meta, nient'altro cambia.
+    expect(dbTest.verno).toBe(2);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "events",
       "gym_exercises",
@@ -77,10 +78,48 @@ describe("schema bump v1 -> v2", () => {
       "gym_sets",
       "reminders",
       "settings",
+      "sync_meta",
       "tasks",
     ]);
     expect(DB_NAME).toBe("lifeos");
     dbTest.close();
     await Dexie.delete("schema-shape-test");
+  });
+
+  it("un database scritto a v1 si apre a v2 coi dati intatti", async () => {
+    const name = "v1-to-v2-real-schema";
+    // Simula un dispositivo run-03: db creato con SOLO la v1 reale.
+    const v1 = new Dexie(name);
+    v1.version(1).stores(SCHEMA_V1);
+    await v1.open();
+    const row = {
+      id: "01980000-0000-7000-8000-00000000000a",
+      title: "Riga di run-03",
+      notes: null,
+      date: null,
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "open" as const,
+      completed_at: null,
+      sort_order: 0,
+      subtasks: [],
+      created_at: "2026-07-01T08:00:00.000Z",
+      updated_at: "2026-07-01T08:00:00.000Z",
+      deleted_at: null,
+    };
+    await v1.table("tasks").add(row);
+    v1.close();
+
+    // Apertura con la classe reale (v1 + v2): upgrade additivo.
+    const v2 = new LifeosDb(name);
+    await v2.open();
+    expect(v2.verno).toBe(2);
+    expect(await v2.tasks.get(row.id)).toEqual(row);
+    await v2.sync_meta.put({ key: "prova", value: "1" });
+    expect((await v2.sync_meta.get("prova"))?.value).toBe("1");
+    v2.close();
+    await Dexie.delete(name);
   });
 });

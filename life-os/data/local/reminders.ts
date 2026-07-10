@@ -12,7 +12,14 @@ import {
   type ReminderPatch,
 } from "../schemas";
 import type { RemindersRepo } from "../ports";
-import { alive, monotonicClock, purgeTable, validate, type Clock } from "./util";
+import {
+  alive,
+  bumpFrom,
+  monotonicClock,
+  purgeTable,
+  validate,
+  type Clock,
+} from "./util";
 
 const PROMEMORIA_NON_TROVATO = "Promemoria non trovato (o già eliminato).";
 
@@ -57,7 +64,7 @@ export class LocalRemindersRepo implements RemindersRepo {
           fired_at: null,
           dismissed_at: null,
         }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.reminders.put(next);
       return ok(next);
@@ -69,7 +76,7 @@ export class LocalRemindersRepo implements RemindersRepo {
       const row = await this.db.reminders.get(id);
       if (!row) return err("not_found", PROMEMORIA_NON_TROVATO);
       if (row.deleted_at !== null) return ok(undefined);
-      const now = this.clock();
+      const now = bumpFrom(this.clock, row.updated_at);
       await this.db.reminders.put({ ...row, deleted_at: now, updated_at: now });
       return ok(undefined);
     });
@@ -143,7 +150,7 @@ export class LocalRemindersRepo implements RemindersRepo {
       const next: Reminder = {
         ...current,
         ...fields,
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.reminders.put(next);
       return ok(next);

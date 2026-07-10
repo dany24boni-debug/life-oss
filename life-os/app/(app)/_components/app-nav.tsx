@@ -23,6 +23,7 @@ import {
   IconTasks,
   IconToday,
 } from "./icons";
+import { SyncDot } from "./sync-dot";
 
 type NavItem = {
   href: string;
@@ -89,8 +90,10 @@ export function Rail() {
   const pathname = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-[var(--em-hairline)] bg-[var(--em-surface)] md:flex">
-      <div className="px-5 pb-2 pt-6">
+      <div className="flex items-center gap-2 px-5 pb-2 pt-6">
         <span className="em-eyebrow">LifeOS</span>
+        {/* Dot di sync (prompt 08): respira solo durante un ciclo. */}
+        <SyncDot />
       </div>
       <nav aria-label="Principale" className="flex flex-1 flex-col px-3">
         <ul className="flex flex-col gap-1">
@@ -141,7 +144,11 @@ function RailLink({ item, active }: { item: NavItem; active: boolean }) {
 export function MobileHeader() {
   return (
     <header className="flex items-center justify-between px-5 pt-[env(safe-area-inset-top)] md:hidden">
-      <span className="em-eyebrow py-4">LifeOS</span>
+      <span className="flex items-center gap-2 py-4">
+        <span className="em-eyebrow">LifeOS</span>
+        {/* Dot di sync (prompt 08): respira solo durante un ciclo. */}
+        <SyncDot />
+      </span>
       <Link
         href="/impostazioni"
         aria-label="Impostazioni"

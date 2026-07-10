@@ -19,6 +19,7 @@
  */
 
 import { useLiveQuery } from "dexie-react-hooks";
+import { useSyncExternalStore } from "react";
 import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
@@ -32,15 +33,25 @@ import type {
   Task,
 } from "./schemas";
 import type { StreakSummary } from "./streak";
+import type { SyncState } from "./sync/engine";
+import { META_LAST_ERROR, META_LAST_SYNC_AT, getMeta } from "./sync/meta";
+import { withMutationSignal } from "./sync/signal";
+import {
+  getServerSyncState,
+  getSyncState,
+  subscribeSyncState,
+} from "./sync/status";
 
 let repos: Repos | null = null;
 
 /**
  * Fascio di repos dell'app (client-only: la prima chiamata istanzia il
- * database). Punto unico da cui — in futuro — uscirà l'adapter synced.
+ * database). Punto unico dello swap previsto da B3.1: da run-04 il fascio
+ * locale è decorato dal segnale di mutazione — ogni scrittura riuscita
+ * sveglia (debounced) il sync engine, quando c'è. La UI non se ne accorge.
  */
 export function appRepos(): Repos {
-  if (!repos) repos = createLocalRepos(getDb());
+  if (!repos) repos = withMutationSignal(createLocalRepos(getDb()));
   return repos;
 }
 
@@ -199,4 +210,33 @@ export function useUpcomingReminders(
     () => appRepos().reminders.listUpcoming(from, to).then(withTasks),
     [from, to],
   );
+}
+
+/* ── Sync (prompt 08, run-04): dot della shell e riga in Impostazioni ── */
+
+/** Stato vivo dell'engine (guest: enabled=false). SSR: stato spento. */
+export function useSyncStatus(): SyncState {
+  return useSyncExternalStore(
+    subscribeSyncState,
+    getSyncState,
+    getServerSyncState,
+  );
+}
+
+/**
+ * Ultimo sync riuscito / ultimo errore, LETTI DA sync_meta: durevoli,
+ * quindi giusti anche appena riaperta l'app (l'engine non ha ancora
+ * girato) o da ospiti (entrambi null).
+ */
+export function useSyncInfo():
+  | { lastSyncAt: string | null; lastError: string | null }
+  | undefined {
+  return useLiveQuery(async () => {
+    const db = getDb();
+    const [lastSyncAt, lastError] = await Promise.all([
+      getMeta(db, META_LAST_SYNC_AT),
+      getMeta(db, META_LAST_ERROR),
+    ]);
+    return { lastSyncAt, lastError };
+  }, []);
 }

@@ -31,6 +31,22 @@ export function alive<T extends { deleted_at: string | null }>(row: T): boolean 
 }
 
 /**
+ * Istante di scrittura che DOMINA la versione appena letta (regola di
+ * Lamport, run-04 prompt 08): max(clock(), previous + 1ms). Serve al sync:
+ * una riga arrivata dal pull può portare un updated_at "nel futuro" di
+ * questo dispositivo (clock di un altro device avanti) — se la modifica
+ * locale la timbrasse solo col proprio clock, perderebbe il LWW contro la
+ * versione che ha appena letto e non verrebbe mai né pushata né applicata.
+ * Ogni scrittura su riga esistente passa da qui; le create no (nessun
+ * predecessore da dominare).
+ */
+export function bumpFrom(clock: Clock, previous: IsoInstant): IsoInstant {
+  const next = clock();
+  if (next > previous) return next;
+  return new Date(Date.parse(previous) + 1).toISOString();
+}
+
+/**
  * Valida un input col suo schema; se rifiutato produce `err("validation")`
  * con un messaggio compatto (primo problema, path incluso). Il ramo di
  * fallimento è assegnabile a qualsiasi `Result<T>`, quindi i call site

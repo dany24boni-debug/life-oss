@@ -13,7 +13,14 @@ import {
   type LocalEvent,
 } from "../schemas";
 import type { EventsRepo } from "../ports";
-import { alive, monotonicClock, purgeTable, validate, type Clock } from "./util";
+import {
+  alive,
+  bumpFrom,
+  monotonicClock,
+  purgeTable,
+  validate,
+  type Clock,
+} from "./util";
 
 const EVENTO_NON_TROVATO = "Evento non trovato (o già eliminato).";
 
@@ -61,7 +68,7 @@ export class LocalEventsRepo implements EventsRepo {
         ...(data.end_time !== undefined && { end_time: data.end_time }),
         ...(data.all_day !== undefined && { all_day: data.all_day }),
         ...(data.notes !== undefined && { notes: data.notes }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.events.put(next);
       return ok(next);
@@ -73,7 +80,7 @@ export class LocalEventsRepo implements EventsRepo {
       const row = await this.db.events.get(id);
       if (!row) return err("not_found", EVENTO_NON_TROVATO);
       if (row.deleted_at !== null) return ok(undefined);
-      const now = this.clock();
+      const now = bumpFrom(this.clock, row.updated_at);
       await this.db.events.put({ ...row, deleted_at: now, updated_at: now });
       return ok(undefined);
     });

@@ -20,7 +20,14 @@ import {
   type TaskPatch,
 } from "../schemas";
 import type { TasksRepo } from "../ports";
-import { alive, monotonicClock, purgeTable, validate, type Clock } from "./util";
+import {
+  alive,
+  bumpFrom,
+  monotonicClock,
+  purgeTable,
+  validate,
+  type Clock,
+} from "./util";
 
 const TASK_NON_TROVATO = "Task non trovato (o già eliminato).";
 
@@ -77,7 +84,7 @@ export class LocalTasksRepo implements TasksRepo {
         ...(data.subtasks !== undefined && {
           subtasks: fillSubtaskIds(data.subtasks),
         }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.tasks.put(next);
       return ok(next);
@@ -89,7 +96,7 @@ export class LocalTasksRepo implements TasksRepo {
       const current = await this.getById(id);
       if (!current) return err("not_found", TASK_NON_TROVATO);
       if (current.status === "done") return ok(current); // idempotente
-      const now = this.clock();
+      const now = bumpFrom(this.clock, current.updated_at);
       const next: Task = {
         ...current,
         status: "done",
@@ -110,7 +117,7 @@ export class LocalTasksRepo implements TasksRepo {
         ...current,
         status: "open",
         completed_at: null,
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.tasks.put(next);
       return ok(next);
@@ -122,7 +129,7 @@ export class LocalTasksRepo implements TasksRepo {
       const row = await this.db.tasks.get(id);
       if (!row) return err("not_found", TASK_NON_TROVATO);
       if (row.deleted_at !== null) return ok(undefined); // idempotente
-      const now = this.clock();
+      const now = bumpFrom(this.clock, row.updated_at);
       await this.db.tasks.put({ ...row, deleted_at: now, updated_at: now });
       return ok(undefined);
     });
@@ -133,7 +140,11 @@ export class LocalTasksRepo implements TasksRepo {
       const row = await this.db.tasks.get(id);
       if (!row) return err("not_found", TASK_NON_TROVATO);
       if (row.deleted_at === null) return ok(row); // idempotente
-      const next: Task = { ...row, deleted_at: null, updated_at: this.clock() };
+      const next: Task = {
+        ...row,
+        deleted_at: null,
+        updated_at: bumpFrom(this.clock, row.updated_at),
+      };
       await this.db.tasks.put(next);
       return ok(next);
     });
@@ -148,7 +159,11 @@ export class LocalTasksRepo implements TasksRepo {
           const row = rows[i];
           if (!row || row.deleted_at !== null) continue; // id ignoto: salta
           if (row.sort_order === i) continue;
-          updates.push({ ...row, sort_order: i, updated_at: this.clock() });
+          updates.push({
+            ...row,
+            sort_order: i,
+            updated_at: bumpFrom(this.clock, row.updated_at),
+          });
         }
         if (updates.length > 0) await this.db.tasks.bulkPut(updates);
       });

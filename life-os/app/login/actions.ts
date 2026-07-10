@@ -144,6 +144,8 @@ export async function verifyCode(formData: FormData) {
     );
   }
 
-  // Stessa destinazione del callback del magic link.
-  redirect("/dashboard");
+  // Stessa destinazione del callback del magic link: la Oggi nuova
+  // (run-04, prompt 08 — un account appena verificato atterra sulla shell,
+  // non sulla dashboard legacy).
+  redirect("/");
 }
