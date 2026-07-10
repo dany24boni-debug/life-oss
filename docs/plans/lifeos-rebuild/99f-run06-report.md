@@ -442,7 +442,7 @@ Itemized P1 delta: **+2** `data/ids.test.ts` (deriveUuidV8 golden), **+1**
 a3ebfc8  chore(cleanup): unify id derivation with golden tests, delete dead residue, tidy proxy prefixes
 fd45df3  chore(repo): move app from life-os/ to repository root
 c97f1f3  ci: root workflow with lint, typecheck, sentinels, tests, build
-<P4>     docs: README, CLAUDE.md, AGENTS.md rewritten for the root-level rebuilt app
+e32862f  docs: README, CLAUDE.md, AGENTS.md rewritten for the root-level rebuilt app
 ```
 Never pushed, never merged, `main` untouched.
 
