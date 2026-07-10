@@ -95,19 +95,10 @@ export const SaveDiaryEntrySchema = z.object({
 });
 export type SaveDiaryEntryInput = z.infer<typeof SaveDiaryEntrySchema>;
 
-export const EveningCheckinSchema = z.object({
-  energy_1_5: z.coerce.number().int().min(1).max(5),
-  mood: trimmedOptional(80),
-  notes: trimmedOptional(280),
-});
-export type EveningCheckinInput = z.infer<typeof EveningCheckinSchema>;
-
-export const ToggleCarryoverSchema = z.object({
-  task_id: UuidSchema,
-  // Checkbox-style: "true" / "false" string from hidden input.
-  carryover: z.enum(["true", "false"]),
-});
-export type ToggleCarryoverInput = z.infer<typeof ToggleCarryoverSchema>;
+// EveningCheckinSchema e ToggleCarryoverSchema (server action della vecchia
+// dashboard) rimossi al cleanup 16 (run-06): zero consumatori dopo il ritiro
+// della dashboard mock. Il modulo Sera nuovo salva via Dexie; SaveDiaryEntrySchema
+// sopra resta perché l'export diario su Drive (ricollocato) lo usa ancora.
 
 // ============================================================
 // FormData → object helper

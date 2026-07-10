@@ -64,9 +64,10 @@ export function uuidv7Timestamp(id: string): number {
  * SHA-256 della chiave → primi 16 byte → bit di versione 8 e variant.
  * Stessa chiave = stesso id, su qualsiasi dispositivo — è ciò che rende
  * "una riga per giorno" del modulo Sera vera per costruzione (LWW sulla
- * stessa PK) e gli import rilanciabili. Stesso algoritmo della
- * `deriveId` degli importer in app/(app)/gym/importer.ts (nata lì al
- * run-04, fuori fence in questo prompt): unificazione al cleanup (16).
+ * stessa PK) e gli import rilanciabili. È l'UNICA implementazione della
+ * derivazione (cleanup 16, run-06): app/(app)/gym/importer.ts ri-esporta
+ * questa funzione col nome storico `deriveId`, usato dai quattro importer
+ * legacy (gym, calendar, spese, esami) con le loro chiavi-prefisso.
  */
 export async function deriveUuidV8(key: string): Promise<string> {
   const digest = await crypto.subtle.digest(

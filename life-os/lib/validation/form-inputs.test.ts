@@ -4,8 +4,6 @@ import {
   ExamIdSchema,
   UpdateExamProgressSchema,
   SaveDiaryEntrySchema,
-  EveningCheckinSchema,
-  ToggleCarryoverSchema,
   UuidSchema,
   DateYmdSchema,
   parseFormData,
@@ -161,52 +159,6 @@ describe("SaveDiaryEntrySchema", () => {
       content: "body",
     });
     expect(r.success).toBe(false);
-  });
-});
-
-describe("EveningCheckinSchema", () => {
-  it("coerces energy_1_5 from string to int", () => {
-    const r = EveningCheckinSchema.parse({
-      energy_1_5: "3",
-      mood: "ok",
-      notes: "",
-    });
-    expect(r.energy_1_5).toBe(3);
-    expect(r.notes).toBeNull();
-  });
-
-  it("rejects energy out of [1,5]", () => {
-    expect(
-      EveningCheckinSchema.safeParse({ energy_1_5: "0" }).success,
-    ).toBe(false);
-    expect(
-      EveningCheckinSchema.safeParse({ energy_1_5: "6" }).success,
-    ).toBe(false);
-    expect(
-      EveningCheckinSchema.safeParse({ energy_1_5: "2.5" }).success,
-    ).toBe(false);
-  });
-});
-
-describe("ToggleCarryoverSchema", () => {
-  it("accepts true/false strings", () => {
-    expect(
-      ToggleCarryoverSchema.parse({ task_id: VALID_UUID, carryover: "true" })
-        .carryover,
-    ).toBe("true");
-    expect(
-      ToggleCarryoverSchema.parse({ task_id: VALID_UUID, carryover: "false" })
-        .carryover,
-    ).toBe("false");
-  });
-
-  it("rejects boolean-like impostors", () => {
-    expect(
-      ToggleCarryoverSchema.safeParse({
-        task_id: VALID_UUID,
-        carryover: "yes",
-      }).success,
-    ).toBe(false);
   });
 });
 

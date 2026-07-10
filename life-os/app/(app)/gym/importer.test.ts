@@ -50,6 +50,18 @@ describe("deriveId — UUID deterministico", () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
   });
+
+  it("golden: output esatto per una chiave nota (contratto di idempotenza)", async () => {
+    // Valore FISSATO byte per byte. `deriveId` è un alias della deriveUuidV8
+    // unica (data/ids.ts): lo stesso valore è fissato nel golden test di
+    // data/ids.test.ts. Se questo assert fallisce, l'idempotenza di TUTTI e
+    // quattro gli importer (gym, calendar, spese, esami) è rotta.
+    expect(
+      await deriveId(
+        "lifeos-import:gym_sessions:aaaa1111-0000-4000-8000-000000000001",
+      ),
+    ).toBe("91a203fa-12a1-8068-90be-8ea08215136a");
+  });
 });
 
 describe("normalizeExerciseName", () => {

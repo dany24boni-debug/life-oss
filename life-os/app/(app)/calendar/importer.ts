@@ -13,7 +13,7 @@
  */
 
 import type { LocalEvent } from "@/data/schemas";
-import { deriveId } from "../gym/importer";
+import { deriveUuidV8 as deriveId } from "@/data/ids";
 
 /* ── Righe legacy come arrivano dal server (già RLS-scoped) ──────────── */
 

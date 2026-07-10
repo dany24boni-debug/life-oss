@@ -22,6 +22,7 @@
 
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
 import { GYM_SEED } from "@/data/gym-seed";
+import { deriveUuidV8 as deriveId } from "@/data/ids";
 
 /* ── Righe legacy come arrivano dal server (già RLS-scoped) ──────────── */
 
@@ -45,23 +46,14 @@ export type LegacyWorkoutRow = {
   created_at: string;
 };
 
-/* ── UUID deterministico (v8, RFC 9562) da una chiave testuale ───────── */
+/* ── UUID deterministico (v8, RFC 9562): implementazione condivisa ───── */
 
-/**
- * SHA-256 della chiave → primi 16 byte → bit di versione (8 = custom) e
- * variant. Stessa chiave = stesso id, su qualsiasi dispositivo.
- */
-export async function deriveId(key: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(key),
-  );
-  const b = new Uint8Array(digest).slice(0, 16);
-  b[6] = 0x80 | (b[6] & 0x0f); // versione 8 (custom, RFC 9562 §5.8)
-  b[8] = 0x80 | (b[8] & 0x3f); // variant 10
-  const hex = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
+// `deriveId` è ora un alias della `deriveUuidV8` UNICA in data/ids.ts
+// (cleanup 16, run-06: prima era duplicata qui, nata al run-04). Ri-esportata
+// col nome storico così gli importer sorelli (spese, esami) e i test la
+// importano ancora da qui con le stesse chiavi-prefisso → id byte-identici
+// (fissati nei golden test di importer.test.ts e data/ids.test.ts).
+export { deriveId };
 
 /* ── Normalizzazione nomi esercizio ──────────────────────────────────── */
 

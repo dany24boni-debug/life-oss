@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const PROTECTED_PREFIXES = [
-  "/dashboard",
+  // "/dashboard" e "/agenda" rimossi (cleanup 16, run-06): ora sono redirect
+  // server verso superfici PUBBLICHE (/dashboard → "/", /agenda → /calendar).
+  // Un ospite con un vecchio segnalibro deve atterrarci, non sbattere sul muro
+  // di login. "/commute" rimosso: la rotta non esiste più (404, nessun auth
+  // richiesto). Restano protette solo le superfici legacy ancora vive.
   "/onboarding",
   "/settings",
   "/recap",
@@ -17,11 +21,9 @@ const PROTECTED_PREFIXES = [
   "/custom",
   "/timeline",
   "/insights",
-  "/agenda",
   // "/sera" e "/esami" rimossi (run-05, prompt 5 e 3): le rotte ora
   // servono i moduli NUOVI dentro la shell (app) — guest-first, come
   // /gym al run-04.
-  "/commute",
 ];
 const AUTH_ONLY_PREFIXES = ["/login"];
 
