@@ -1,5 +1,5 @@
 /**
- * Database Dexie (IndexedDB) — schema v1.
+ * Database Dexie (IndexedDB) — schema v2.
  *
  * Guardia client-only (scelta documentata): questo modulo è importabile
  * ovunque, anche in RSC land — l'import non istanzia niente. L'istanza nasce
@@ -18,6 +18,10 @@
  *   - updated_at su OGNI tabella: è l'indice su cui il sync engine
  *     (prompt 08) legge "righe cambiate da X" — previsto da subito per non
  *     dover fare una seconda migrazione.
+ *
+ * v2 (run-04, prompt 08): tabella `sync_meta` — chiave/valore per lo stato
+ * del sync engine (cursori per-tabella, account collegato, ultimo sync).
+ * Solo additiva: le tabelle v1 non cambiano forma né indici.
  *
  * Nota Dexie: chiavi con valore null/undefined non entrano negli indici —
  * i task senza data (Inbox) si leggono con un filtro, non dall'indice date.
@@ -49,6 +53,15 @@ export const SCHEMA_V1 = {
   settings: "id, updated_at",
 } as const;
 
+/** v2 = v1 + sync_meta (stato del sync engine, prompt 08). */
+export const SCHEMA_V2 = {
+  ...SCHEMA_V1,
+  sync_meta: "key",
+} as const;
+
+/** Riga chiave/valore dello stato sync (cursori, account collegato...). */
+export type SyncMetaRow = { key: string; value: string };
+
 export class LifeosDb extends Dexie {
   tasks!: Table<Task, string>;
   events!: Table<LocalEvent, string>;
@@ -58,10 +71,12 @@ export class LifeosDb extends Dexie {
   gym_sets!: Table<GymSet, string>;
   reminders!: Table<Reminder, string>;
   settings!: Table<Settings, string>;
+  sync_meta!: Table<SyncMetaRow, string>;
 
   constructor(name: string = DB_NAME) {
     super(name);
     this.version(1).stores(SCHEMA_V1);
+    this.version(2).stores(SCHEMA_V2);
   }
 }
 

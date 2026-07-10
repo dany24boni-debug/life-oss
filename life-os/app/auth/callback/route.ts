@@ -32,7 +32,11 @@ const OtpTypeSchema = z.enum([
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = safeNext(searchParams.get("next"));
+  // Default post-auth: la Oggi nuova ("/"), non più /dashboard (run-04,
+  // prompt 08). Un ?next= esplicito passa comunque da safeNext, che
+  // continua a sanificare (il SUO fallback interno resta /dashboard).
+  const nextParam = searchParams.get("next");
+  const next = nextParam === null ? "/" : safeNext(nextParam);
 
   //   Token-hash flow (B3.3, chiude l'audit H5): i template email col
   //   formato {{ .TokenHash }} arrivano con ?token_hash=...&type=... —

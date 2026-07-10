@@ -5,9 +5,9 @@
  * safe-area), rail a sinistra da md in su (la cura del deserto desktop).
  * Tab attiva marcata dall'ember dot — l'unico elemento che respira.
  *
- * Nota collisioni rotte: la voce Palestra punta ancora alla pagina LEGACY
- * /gym (intatta, protetta) finché il prompt 10 non la sostituirà senza
- * rompere una schermata funzionante. Impostazioni invece punta alla
+ * Nota collisioni rotte: da run-04 (prompt 10) la voce Palestra punta al
+ * modulo NUOVO dentro la shell — la pagina legacy è stata rimossa dopo il
+ * grep di supersessione (nessun import esterno). Impostazioni punta alla
  * superficie NUOVA /impostazioni (run-03): la legacy /settings resta
  * raggiungibile e protetta al suo indirizzo.
  */
@@ -23,20 +23,19 @@ import {
   IconTasks,
   IconToday,
 } from "./icons";
+import { SyncDot } from "./sync-dot";
 
 type NavItem = {
   href: string;
   label: string;
   icon: (props: { className?: string }) => React.ReactElement;
-  /** true = rotta legacy fuori dalla shell (nessuno stato attivo qui). */
-  legacy?: boolean;
 };
 
 const TABS: NavItem[] = [
   { href: "/", label: "Oggi", icon: IconToday },
   { href: "/tasks", label: "Task", icon: IconTasks },
   { href: "/calendar", label: "Calendario", icon: IconCalendar },
-  { href: "/gym", label: "Palestra", icon: IconGym, legacy: true },
+  { href: "/gym", label: "Palestra", icon: IconGym },
   { href: "/stats", label: "Statistiche", icon: IconStats },
 ];
 
@@ -89,8 +88,10 @@ export function Rail() {
   const pathname = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-[var(--em-hairline)] bg-[var(--em-surface)] md:flex">
-      <div className="px-5 pb-2 pt-6">
+      <div className="flex items-center gap-2 px-5 pb-2 pt-6">
         <span className="em-eyebrow">LifeOS</span>
+        {/* Dot di sync (prompt 08): respira solo durante un ciclo. */}
+        <SyncDot />
       </div>
       <nav aria-label="Principale" className="flex flex-1 flex-col px-3">
         <ul className="flex flex-col gap-1">
@@ -141,7 +142,11 @@ function RailLink({ item, active }: { item: NavItem; active: boolean }) {
 export function MobileHeader() {
   return (
     <header className="flex items-center justify-between px-5 pt-[env(safe-area-inset-top)] md:hidden">
-      <span className="em-eyebrow py-4">LifeOS</span>
+      <span className="flex items-center gap-2 py-4">
+        <span className="em-eyebrow">LifeOS</span>
+        {/* Dot di sync (prompt 08): respira solo durante un ciclo. */}
+        <SyncDot />
+      </span>
       <Link
         href="/impostazioni"
         aria-label="Impostazioni"

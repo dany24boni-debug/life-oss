@@ -34,7 +34,14 @@ import {
   type SetPatch,
 } from "../schemas";
 import type { GymRepo } from "../ports";
-import { alive, monotonicClock, purgeTable, validate, type Clock } from "./util";
+import {
+  alive,
+  bumpFrom,
+  monotonicClock,
+  purgeTable,
+  validate,
+  type Clock,
+} from "./util";
 
 const ESERCIZIO_NON_TROVATO = "Esercizio non trovato (o già eliminato).";
 const PIANO_NON_TROVATO = "Piano non trovato (o già eliminato).";
@@ -89,7 +96,7 @@ export class LocalGymRepo implements GymRepo {
         }),
         ...(d.note !== undefined && { note: d.note }),
         ...(d.is_custom !== undefined && { is_custom: d.is_custom }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.gym_exercises.put(next);
       return ok(next);
@@ -147,7 +154,7 @@ export class LocalGymRepo implements GymRepo {
         ...current,
         ...(v.data.name !== undefined && { name: v.data.name }),
         ...(v.data.entries !== undefined && { entries: v.data.entries }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.gym_plans.put(next);
       return ok(next);
@@ -207,7 +214,7 @@ export class LocalGymRepo implements GymRepo {
         ...(d.started_at !== undefined && { started_at: d.started_at }),
         ...(d.finished_at !== undefined && { finished_at: d.finished_at }),
         ...(d.notes !== undefined && { notes: d.notes }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.gym_sessions.put(next);
       return ok(next);
@@ -224,7 +231,7 @@ export class LocalGymRepo implements GymRepo {
           const row = await this.db.gym_sessions.get(id);
           if (!row) return err<void>("not_found", SESSIONE_NON_TROVATA);
           if (row.deleted_at !== null) return ok(undefined);
-          const now = this.clock();
+          const now = bumpFrom(this.clock, row.updated_at);
           await this.db.gym_sessions.put({
             ...row,
             deleted_at: now,
@@ -236,7 +243,11 @@ export class LocalGymRepo implements GymRepo {
             .toArray();
           const doomed = sets
             .filter(alive)
-            .map((s) => ({ ...s, deleted_at: now, updated_at: now }));
+            .map((s) => ({
+              ...s,
+              deleted_at: now,
+              updated_at: bumpFrom(this.clock, s.updated_at),
+            }));
           if (doomed.length > 0) await this.db.gym_sets.bulkPut(doomed);
           return ok(undefined);
         },
@@ -306,7 +317,7 @@ export class LocalGymRepo implements GymRepo {
         ...(d.weight_kg !== undefined && { weight_kg: d.weight_kg }),
         ...(d.reps !== undefined && { reps: d.reps }),
         ...(d.done_at !== undefined && { done_at: d.done_at }),
-        updated_at: this.clock(),
+        updated_at: bumpFrom(this.clock, row.updated_at),
       };
       await this.db.gym_sets.put(next);
       return ok(next);
@@ -371,7 +382,7 @@ export class LocalGymRepo implements GymRepo {
       const row = await table.get(id);
       if (!row) return err("not_found", missingMessage);
       if (row.deleted_at !== null) return ok(undefined);
-      const now = this.clock();
+      const now = bumpFrom(this.clock, row.updated_at);
       await table.put({ ...row, deleted_at: now, updated_at: now });
       return ok(undefined);
     });

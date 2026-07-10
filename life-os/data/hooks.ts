@@ -19,28 +19,43 @@
  */
 
 import { useLiveQuery } from "dexie-react-hooks";
+import { useSyncExternalStore } from "react";
 import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  GymExercise,
+  GymPlan,
   GymSession,
+  GymSet,
   IsoDay,
   IsoInstant,
   LocalEvent,
+  MuscleGroup,
   Reminder,
   Settings,
   Task,
 } from "./schemas";
 import type { StreakSummary } from "./streak";
+import type { SyncState } from "./sync/engine";
+import { META_LAST_ERROR, META_LAST_SYNC_AT, getMeta } from "./sync/meta";
+import { withMutationSignal } from "./sync/signal";
+import {
+  getServerSyncState,
+  getSyncState,
+  subscribeSyncState,
+} from "./sync/status";
 
 let repos: Repos | null = null;
 
 /**
  * Fascio di repos dell'app (client-only: la prima chiamata istanzia il
- * database). Punto unico da cui — in futuro — uscirà l'adapter synced.
+ * database). Punto unico dello swap previsto da B3.1: da run-04 il fascio
+ * locale è decorato dal segnale di mutazione — ogni scrittura riuscita
+ * sveglia (debounced) il sync engine, quando c'è. La UI non se ne accorge.
  */
 export function appRepos(): Repos {
-  if (!repos) repos = createLocalRepos(getDb());
+  if (!repos) repos = withMutationSignal(createLocalRepos(getDb()));
   return repos;
 }
 
@@ -94,6 +109,14 @@ export function useEventsRange(
   );
 }
 
+/** Singolo evento per id (scheda dettaglio); null se assente o tombstone. */
+export function useEvent(id: string | null): LocalEvent | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().events.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
 /** Sessioni gym nel range di giorni. */
 export function useGymSessionsRange(
   from: IsoDay,
@@ -101,6 +124,77 @@ export function useGymSessionsRange(
 ): GymSession[] | undefined {
   return useLiveQuery(
     () => appRepos().gym.listSessionsRange(from, to),
+    [from, to],
+  );
+}
+
+/* ── Gym (B2.3, run-04 prompt 10) ────────────────────────────────────── */
+
+/** Libreria esercizi ordinata per nome; filtro gruppo opzionale. */
+export function useExercises(group?: MuscleGroup): GymExercise[] | undefined {
+  return useLiveQuery(
+    () => appRepos().gym.listExercises(group ? { group } : undefined),
+    [group],
+  );
+}
+
+/** Piani ordinati per nome. */
+export function usePlans(): GymPlan[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listPlans(), []);
+}
+
+/** Sessioni del giorno (di solito zero o una). */
+export function useGymSessionsByDay(day: IsoDay): GymSession[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listSessionsByDay(day), [day]);
+}
+
+/** Singola sessione per id; null se assente o tombstone. */
+export function useGymSession(
+  id: string | null,
+): GymSession | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().gym.getSessionById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** Set della sessione, ordinati per esercizio e numero. */
+export function useSetsBySession(
+  sessionId: string | null,
+): GymSet[] | undefined {
+  return useLiveQuery(
+    () =>
+      sessionId
+        ? appRepos().gym.listSetsBySession(sessionId)
+        : Promise.resolve([]),
+    [sessionId],
+  );
+}
+
+/** Storico set per esercizio, più recenti prima (PR, sparkline). */
+export function useSetsByExercise(
+  exerciseId: string | null,
+  limit?: number,
+): GymSet[] | undefined {
+  return useLiveQuery(
+    () =>
+      exerciseId
+        ? appRepos().gym.listSetsByExercise(
+            exerciseId,
+            limit !== undefined ? { limit } : undefined,
+          )
+        : Promise.resolve([]),
+    [exerciseId, limit],
+  );
+}
+
+/** Sessioni e volume nel range (tile di Oggi, frame di /stats). */
+export function useGymVolume(
+  from: IsoDay,
+  to: IsoDay,
+): { sessions: number; totalVolumeKg: number } | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.gymVolumeInRange(from, to),
     [from, to],
   );
 }
@@ -199,4 +293,33 @@ export function useUpcomingReminders(
     () => appRepos().reminders.listUpcoming(from, to).then(withTasks),
     [from, to],
   );
+}
+
+/* ── Sync (prompt 08, run-04): dot della shell e riga in Impostazioni ── */
+
+/** Stato vivo dell'engine (guest: enabled=false). SSR: stato spento. */
+export function useSyncStatus(): SyncState {
+  return useSyncExternalStore(
+    subscribeSyncState,
+    getSyncState,
+    getServerSyncState,
+  );
+}
+
+/**
+ * Ultimo sync riuscito / ultimo errore, LETTI DA sync_meta: durevoli,
+ * quindi giusti anche appena riaperta l'app (l'engine non ha ancora
+ * girato) o da ospiti (entrambi null).
+ */
+export function useSyncInfo():
+  | { lastSyncAt: string | null; lastError: string | null }
+  | undefined {
+  return useLiveQuery(async () => {
+    const db = getDb();
+    const [lastSyncAt, lastError] = await Promise.all([
+      getMeta(db, META_LAST_SYNC_AT),
+      getMeta(db, META_LAST_ERROR),
+    ]);
+    return { lastSyncAt, lastError };
+  }, []);
 }

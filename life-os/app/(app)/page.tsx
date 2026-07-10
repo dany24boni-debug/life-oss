@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { EmptyState } from "@/ui";
+import type { GoogleAgendaEvent } from "./calendar/agenda";
+import { readGoogleBlock } from "./calendar/google-read";
 import {
   UpcomingReminders,
   WhileAwayCard,
 } from "./_components/reminders-cards";
+import { APP_TIME_ZONE } from "./_components/tasks/logic";
+import { TodayAgenda } from "./_components/today-agenda";
+import { TodayGym } from "./_components/today-gym";
 import { TodayTasks } from "./_components/tasks/today-section";
 import { TodayTiles } from "./_components/today-tiles";
 
@@ -21,22 +25,8 @@ import { TodayTiles } from "./_components/today-tiles";
  * anche non esserci ancora e la pagina degrada con grazia.
  */
 
-const SECTIONS: Array<{
-  eyebrow: string;
-  heading: string;
-  text: string;
-}> = [
-  {
-    eyebrow: "Agenda",
-    heading: "Nessun evento in agenda",
-    text: "Arriva con il modulo Calendario.",
-  },
-  {
-    eyebrow: "Palestra",
-    heading: "Nessun allenamento qui, per ora",
-    text: "Arriva con il modulo Palestra.",
-  },
-];
+// L'ultimo placeholder (Palestra) è caduto col run-04 prompt 10: da qui
+// in poi ogni sezione di Oggi è un modulo vero.
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -59,6 +49,12 @@ export default async function TodayPage() {
     displayName = profile?.display_name?.trim() || null;
   }
   const dateLabel = formatTodayIt(new Date(), timeZone);
+
+  // Eventi Google per la sezione Agenda (run-04 prompt 09): sola lettura,
+  // già nel fuso dell'app; da ospiti la lista è semplicemente vuota.
+  const googleEvents: GoogleAgendaEvent[] = user
+    ? (await readGoogleBlock(supabase, user.id, APP_TIME_ZONE)).events
+    : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,15 +94,15 @@ export default async function TodayPage() {
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />
 
+      {/* Agenda reale (run-04 prompt 09): strip settimana + merge del
+          giorno — eventi locali, task con orario, Google read-only. */}
+      <TodayAgenda google={googleEvents} />
+
+      {/* Palestra reale (run-04 prompt 10): stato di oggi + CTA. */}
+      <TodayGym />
+
       {/* Rail "Prossimi": cosa suonerà ad app aperta (run-03 prompt 5). */}
       <UpcomingReminders />
-
-      {SECTIONS.map((s) => (
-        <section key={s.eyebrow} aria-label={s.eyebrow} className="em-card p-5">
-          <p className="em-eyebrow">{s.eyebrow}</p>
-          <EmptyState compact heading={s.heading} text={s.text} />
-        </section>
-      ))}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/dashboard/actions";
-import { Button } from "@/ui";
+import { GymImportButton } from "../gym/import-button";
+import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
 
 /**
@@ -10,8 +10,9 @@ import { ProtectedDays } from "./protected-days";
  * /settings/targets) resta intatta e protetta (decisione collisioni di
  * night-01). Due varianti oneste:
  *   - ospite: spiegazione dei dati locali + CTA "Crea un account"
- *   - account: email, esci (riusa la server action esistente), e il ponte
- *     alle vecchie impostazioni — niente di finto, niente feature promesse.
+ *   - account: email, stato del sync (prompt 08), esci con la scelta B3.2
+ *     sui dati locali, e il ponte alle vecchie impostazioni.
+ * Per entrambe: la card "I tuoi dati" con export/import del backup JSON.
  */
 
 export const metadata = { title: "Impostazioni — LifeOS" };
@@ -35,16 +36,12 @@ export default async function ImpostazioniPage() {
           <div className="mt-3 flex flex-col gap-4">
             <div>
               <p className="em-body text-[var(--em-text)]">{user.email}</p>
-              <p className="em-body-sm mt-1 text-[var(--em-text-3)]">
-                Hai un account. I dati dei moduli nuovi vivono per ora su
-                questo dispositivo; la sincronizzazione arriva con una
-                prossima versione.
-              </p>
+              {/* Riga quieta del sync (prompt 08): ultimo sync + errori. */}
+              <SyncStatusLine />
             </div>
             <div className="flex items-center gap-3">
-              <form action={signOut}>
-                <Button type="submit">Esci</Button>
-              </form>
+              {/* Esci con scelta B3.2: mantieni o svuota il dispositivo. */}
+              <SignOutControl />
               <Link
                 href="/settings"
                 className="em-body-sm text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
@@ -75,6 +72,38 @@ export default async function ImpostazioniPage() {
           </div>
         )}
       </section>
+
+      {/* Backup JSON (prompt 08, B2.6): esporta/importa tutti i dati
+          locali. Vale per ospiti E account — la rete di sicurezza che il
+          gate di Davide chiede PRIMA di applicare le migrazioni. */}
+      <section aria-label="I tuoi dati" className="em-card p-5">
+        <p className="em-eyebrow">I tuoi dati</p>
+        <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+          Un file JSON con tutto quello che c&apos;è su questo dispositivo:
+          task, eventi, allenamenti, promemoria, impostazioni.
+          L&apos;import non cancella mai niente — per ogni riga vince la
+          versione più recente.
+        </p>
+        <div className="mt-3">
+          <DataButtons />
+        </div>
+      </section>
+
+      {/* Import dal vecchio Gym (run-04 prompt 10, B3.6): solo account —
+          i dati legacy vivono sul server. Idempotente, rilanciabile. */}
+      {user ? (
+        <section aria-label="Importa dal vecchio Gym" className="em-card p-5">
+          <p className="em-eyebrow">Vecchi allenamenti</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui le sessioni e gli esercizi registrati nel vecchio
+            modulo Gym. Rilanciarlo non crea doppioni: le righe già
+            importate vengono saltate.
+          </p>
+          <div className="mt-3">
+            <GymImportButton />
+          </div>
+        </section>
+      ) : null}
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />

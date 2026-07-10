@@ -15,7 +15,7 @@ import {
   type SettingsPatch,
 } from "../schemas";
 import type { SettingsRepo } from "../ports";
-import { monotonicClock, validate, type Clock } from "./util";
+import { bumpFrom, monotonicClock, validate, type Clock } from "./util";
 
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
@@ -47,7 +47,7 @@ export class LocalSettingsRepo implements SettingsRepo {
       const v = validate(SettingsPatchSchema, patch);
       if (!v.ok) return v;
       const current = await this.get();
-      const now = this.clock();
+      const now = bumpFrom(this.clock, current.updated_at);
       const next: Settings = {
         ...current,
         ...(v.data.display_name !== undefined && {

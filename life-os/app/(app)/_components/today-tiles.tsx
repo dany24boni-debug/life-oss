@@ -4,12 +4,18 @@
  * Tile di Oggi (B2.5): query VERE sul port, mai numeri in cache o finti.
  * Quattro slot: task di oggi, streak (col flame dot vivo solo quando oggi
  * conta già), completamento della settimana in corso (parte trascorsa:
- * lun -> oggi), e il posto del volume palestra dichiarato vuoto finché il
- * modulo Gym non esiste.
+ * lun -> oggi), e il volume palestra della settimana — reale dal run-04
+ * (prompt 10), sul port StatsRepo.gymVolumeInRange che aspettava da lì.
  */
 
 import { StatCard } from "@/ui";
-import { useCompletionByDay, useStreak, useTasksSummary } from "@/data/hooks";
+import {
+  useCompletionByDay,
+  useGymVolume,
+  useStreak,
+  useTasksSummary,
+} from "@/data/hooks";
+import { formatKg } from "../gym/logic";
 import { completionPercent, fillDays, weekBounds } from "../stats/logic";
 import { APP_TIME_ZONE } from "./tasks/logic";
 import { useToday } from "./tasks/screen-hooks";
@@ -27,6 +33,9 @@ export function TodayTiles() {
     weekDays === undefined
       ? undefined
       : completionPercent(fillDays(weekDays, week.from, today));
+
+  // Palestra della settimana in corso (lun -> oggi): sessioni e volume.
+  const gym = useGymVolume(week.from, today);
 
   return (
     <section aria-label="Statistiche di oggi" className="grid grid-cols-2 gap-3">
@@ -83,8 +92,30 @@ export function TodayTiles() {
       />
       <StatCard
         label="Palestra"
-        value="—"
-        hint="Arriva con il modulo Palestra."
+        loading={gym === undefined}
+        value={
+          gym === undefined
+            ? undefined
+            : gym.sessions === 0
+              ? "—"
+              : gym.sessions
+        }
+        unit={
+          gym === undefined || gym.sessions === 0
+            ? undefined
+            : gym.sessions === 1
+              ? "sessione"
+              : "sessioni"
+        }
+        hint={
+          gym === undefined
+            ? undefined
+            : gym.sessions === 0
+              ? "Nessun allenamento questa settimana."
+              : gym.totalVolumeKg > 0
+                ? `${formatKg(gym.totalVolumeKg)} da lunedì.`
+                : "Da lunedì a oggi."
+        }
       />
     </section>
   );

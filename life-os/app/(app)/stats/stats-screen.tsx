@@ -2,9 +2,9 @@
 
 /**
  * Schermata /stats (B2.5): numeri onesti dal port — streak con giorni
- * protetti, barre della settimana, strip mensile dei giorni attivi. Il
- * volume palestra resta un posto vuoto DICHIARATO finché il modulo Gym
- * (prompt 10) non esiste: mai numeri finti.
+ * protetti, barre della settimana, strip mensile dei giorni attivi, e il
+ * volume palestra della settimana (reale dal run-04, prompt 10 — il
+ * riquadro che era rimasto dichiaratamente vuoto).
  */
 
 import Link from "next/link";
@@ -12,11 +12,13 @@ import { ChartFrame, StatCard } from "@/ui";
 import {
   useActivityDays,
   useCompletionByDay,
+  useGymVolume,
   useSettings,
   useStreak,
 } from "@/data/hooks";
 import { APP_TIME_ZONE } from "../_components/tasks/logic";
 import { useToday } from "../_components/tasks/screen-hooks";
+import { formatKg } from "../gym/logic";
 import { fillDays, monthBounds, weekBounds } from "./logic";
 import { MonthHeat } from "./month-heat";
 import { WeekBars } from "./week-bars";
@@ -31,6 +33,9 @@ export function StatsScreen() {
   const month = monthBounds(today);
   const activeDays = useActivityDays(month.from, month.to, APP_TIME_ZONE);
   const settings = useSettings();
+
+  // Volume palestra della settimana (run-04 prompt 10): port reale.
+  const gym = useGymVolume(week.from, week.to);
 
   const weekFilled =
     weekDays === undefined ? undefined : fillDays(weekDays, week.from, week.to);
@@ -129,10 +134,30 @@ export function StatsScreen() {
       <ChartFrame
         label="Palestra"
         title="Volume settimanale"
-        state="empty"
-        emptyText="Arriva con il modulo Palestra: qui niente numeri finti."
+        state={
+          gym === undefined ? "loading" : gym.sessions === 0 ? "empty" : "ready"
+        }
+        emptyText="Nessun allenamento questa settimana. Il primo accende questo riquadro."
         minHeight={120}
-      />
+        caption="Settimana in corso (lun -> dom): sessioni registrate e volume totale sollevato."
+      >
+        {gym !== undefined && gym.sessions > 0 ? (
+          <dl className="grid grid-cols-2 gap-3">
+            <div>
+              <dt className="em-eyebrow">Sessioni</dt>
+              <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+                {gym.sessions}
+              </dd>
+            </div>
+            <div>
+              <dt className="em-eyebrow">Volume</dt>
+              <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+                {formatKg(gym.totalVolumeKg)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+      </ChartFrame>
     </div>
   );
 }

@@ -97,6 +97,12 @@ export interface EventsRepo {
   create(input: EventCreate): Promise<Result<LocalEvent>>;
   update(id: string, patch: EventPatch): Promise<Result<LocalEvent>>;
   softDelete(id: string): Promise<Result<void>>;
+  /**
+   * Annulla un soft delete (undo del toast, run-04 prompt 09) — stessa
+   * semantica di TasksRepo.restore: idempotente su righe vive, err
+   * not_found se la riga non esiste proprio.
+   */
+  restore(id: string): Promise<Result<LocalEvent>>;
 
   getById(id: string): Promise<LocalEvent | null>;
   /** Eventi del giorno: all-day prima, poi per start_time. */

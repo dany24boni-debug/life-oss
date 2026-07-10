@@ -2,6 +2,7 @@ import { Bricolage_Grotesque } from "next/font/google";
 import { ToastProvider } from "@/ui";
 import { MobileHeader, Rail, TabBar } from "./_components/app-nav";
 import { RemindersHost } from "./_components/reminders-host";
+import { SyncHost } from "./_components/sync-host";
 
 /**
  * Layout del gruppo (app) — la shell nuova (B3.5). Tutto dentro em-scope:
@@ -34,6 +35,8 @@ export default function AppShellLayout({
         <TabBar />
         {/* Scheduler in-app dei promemoria: vive finché la shell è aperta. */}
         <RemindersHost />
+        {/* Sync engine (prompt 08): parte solo per utenti autenticati. */}
+        <SyncHost />
       </ToastProvider>
     </div>
   );
