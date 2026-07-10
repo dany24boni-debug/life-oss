@@ -182,4 +182,42 @@ dopo: stato loading/empty/ready da `useGymVolume(week)`, con sessioni e volume f
 
 **Commit:** `feat(gym): training log with library, plans, set logging, rest timer, PRs, legacy importers`
 
-_(Chiusura e checklist Gate 2 in coda al report.)_
+---
+
+## Chiusura
+
+**Test: 558 → 624** (+66: sync 21, calendario 21, palestra 24). Lint, `tsc --noEmit` e `next build` verdi a ogni checkpoint. Zero dipendenze nuove (`package.json` intatto). Nessuno script Management API eseguito, nessuna migrazione applicata, nessun push/merge — tutto su `feat/run-04`.
+
+**Commit del branch:**
+```
+f14502d feat(gym): training log with library, plans, set logging, rest timer, PRs, legacy importers
+3376163 feat(calendar): month/week calendar with NL events, unified agenda, Google read-only port
+f697842 feat(sync): LWW sync engine with guest->account migration and JSON export/import (migrations to apply)
+```
+
+**Da run-04 ogni sezione di Oggi è vera**: tile (con Palestra reale), Mentre-eri-via, Task, Agenda (strip + merge con Google), Palestra, Prossimi. La shell ha il dot di sync; Impostazioni ha account/sync, backup JSON, import Gym, giorni protetti, pannello notifiche.
+
+**Fuori fence, riassunto onesto** (dettagli nelle sezioni): `proxy.ts` una riga (protezione `/gym` caduta con la pagina legacy — richiesta dall'acceptance guest); `app/(app)/stats/stats-screen.tsx` (flip richiesto dal build item 7). Tutto il resto è nelle fence dichiarate; `lib/auth/safe-next.ts`, `/auth/confirm`, `app/agenda/**`, `app/api/auth/google/**`, `lib/google/**`, `lib/nlp-it/**`, `app/body/**`, `lib/insights/**`, `lib/fitness.ts` e ogni tabella legacy: intatti.
+
+## Gate 2 — checklist per Davide (in ordine)
+
+1. **Review + merge**: leggi il diff di `feat/run-04`, poi `git merge --no-ff feat/run-04` su `main`.
+2. **PRIMA DI TUTTO, la rete di sicurezza**: su ogni dispositivo con dati, Impostazioni → "I tuoi dati" → **Esporta backup JSON** (funziona anche da ospite). Conserva i file.
+3. **Decidi D6** (un progetto Supabase o due). Poi applica le migrazioni al/ai progetto/i scelti col runner esistente:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0019_sync_tables.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0020_push_subscriptions.sql
+   ```
+   (dalla cartella `life-os/`; il runner usa la Management API col tuo `SUPABASE_ACCESS_TOKEN` — la sessione non l'ha mai eseguito, regola 1). File: `0019_sync_tables.sql` (8 tabelle `lo_*` + RPC `lo_push`), `0020_push_subscriptions.sql` (riservata al prompt 17).
+4. **Smoke sync (due dispositivi/browser)**: accedi su entrambi con lo stesso account; al primo sync su ciascuno compare il toast "Importati…". Crea/modifica/cancella task ed eventi da entrambe le parti → convergenza (il dot respira durante i cicli; Impostazioni mostra l'ultima sincronizzazione). Poi "Esci → Svuota questo dispositivo" su UNO: quello torna vergine, l'altro conserva tutto; rientra e verifica che i dati tornino dal pull.
+5. **Google**: `/calendar` da account → "Connetti Google" (il ritorno atterra su /agenda finché il prompt 15 non la reindirizza — normale), poi "Sincronizza" su /calendar: eventi visibili nel mese (badge Google) e nell'agenda del giorno + sezione Agenda di Oggi. Se hai DUE account Google collegati: la pagina nuova li elenca entrambi senza rompersi (l'azzardo `.maybeSingle()` è morto qui).
+6. **Palestra sul telefono**: sessione vera con serie e timer di recupero (blocca lo schermo tra i set: al risveglio il tempo è giusto); concludi e guarda il riepilogo. Poi Impostazioni → "Importa dal vecchio Gym": controlla storico, PR nella scheda esercizio, giorno attivo nella streak, frame volume su /stats. Rilancia l'import: deve dire che non c'è niente di nuovo.
+7. **OTP smoke** se nel frattempo hai flippato il template email ({{ .TokenHash }}): codice a 6 cifre cross-device; l'atterraggio post-verifica ora è la Oggi nuova.
+
+## Deliberatamente NON fatto (il set del Run 05)
+
+- **13 PWA/offline** (manifest/installabilità; il local-first c'è già).
+- **14 Comfort wave** (tema light switcher, rifiniture).
+- **15 Legacy wave**: redirect `/agenda`→`/calendar`, porting/pensionamento rotte vecchie, cancellazione del mock-world, disconnect Google sulla pagina nuova, eventuale importer degli eventi locali legacy (`custom_module_entries` — gap noto dei doc).
+- **16 Repo root/CI**, **17 Push** (la tabella `lo_push_subscriptions` è già scritta, mai usata).
+- Il redirect `/login`→`/dashboard` del proxy per utenti GIÀ autenticati è rimasto com'era (fuori fence): chi è loggato e visita /login finisce ancora sulla dashboard legacy — da rivedere al prompt 15.
