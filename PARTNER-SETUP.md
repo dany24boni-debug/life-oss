@@ -86,7 +86,18 @@ node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0015_di
 node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0016_gym_sessions.sql
 node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0016_remove_hardcoded_owner_email.sql
 node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0017_personal_expenses.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0018_grant_profiles_to_authenticated.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0019_sync_tables.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0020_push_subscriptions.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0021_lo_esami.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0022_lo_spese.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0023_lo_sera.sql
 ```
+
+Two gotchas: **both 0016 files** (`0016_gym_sessions.sql` **and**
+`0016_remove_hardcoded_owner_email.sql`) share the number — apply both. And **`lo_push` is
+redeclared** by 0021 / 0022 / 0023 with a growing allowlist — apply them **in order** (0023 is
+the final version). Migrations 0019-0023 add the local-first sync layer (`lo_*` mirror tables).
 
 Verify the schema is intact:
 
@@ -132,7 +143,7 @@ Open <http://localhost:3000>. The first visit redirects you to `/login` — ente
 
 ```bash
 # Type-check
-npx tsc --noEmit
+npm run typecheck
 
 # Lint
 npm run lint
@@ -147,7 +158,8 @@ npm test
 npm run build
 ```
 
-All five should pass clean. CI runs the same checks on every push to `master` / `main` / `shared`.
+All five should pass clean. CI (`.github/workflows/ci.yml`) runs the same checks
+(lint · typecheck · sentinels · tests · build) on every push/PR to `main`.
 
 ---
 

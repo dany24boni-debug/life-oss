@@ -1,223 +1,143 @@
-# Life OS
+# LifeOS
 
-Personal productivity Progressive Web App. Multi-user, adaptive task management.
+Dashboard personale della vita, **guest-first e local-first**: nove superfici che
+funzionano subito e offline coi dati sul dispositivo. Chi si autentica ottiene in
+più la **sincronizzazione multi-dispositivo** (motore Last-Writer-Wins verso tabelle
+mirror `lo_*` su Supabase). PWA installabile con offline reale.
 
-> **Shared-branch variant.** This is the partner-facing fork. The owner-private business modules
-> (registered via `lib/modules/private-boot.personal.ts`) are not present in this tree. The
-> dispatch file (`lib/modules/private-boot.ts`) re-exports the no-op `.shared` stub. Only
-> Chameleon OS appears under `/business`. See `PARTNER-SETUP.md` for clone-and-run instructions.
+## Cos'è adesso
 
-## Stato attuale
+- **Guest-first.** Tutte e nove le superfici sono pubbliche e usabili **senza login**,
+  coi dati locali (IndexedDB via Dexie). Nessun muro d'autenticazione per usare l'app.
+- **Local-first + sync.** Ogni modulo scrive prima in locale (`data/local/`) — l'UI è
+  istantanea; se sei loggato, il motore di sync (`data/sync/`) replica in Last-Writer-Wins
+  verso le tabelle `lo_*` e converge tra dispositivi.
+- **Nove moduli vivi:** Oggi (`/`), Task (`/tasks`), Calendario (`/calendar`, con import
+  read-only da Google), Palestra (`/gym`, con rest timer), Statistiche (`/stats`), Esami
+  (`/esami`), Spese (`/spese`), Sera (`/sera`, diario serale), Impostazioni (`/impostazioni`).
+- **Quattro importer legacy** (in Impostazioni): vecchia Agenda → Calendario, vecchi Esami
+  → /esami, vecchie Spese → /spese, vecchie Sere → /sera. Idempotenti (id derivati
+  deterministicamente da `data/ids.ts`): rilanciarli non duplica.
+- **PWA** installabile: `public/sw.js` con offline reale e ciclo d'aggiornamento sicuro;
+  palette comandi, scorciatoie da tastiera, due temi.
 
-Le 7 fasi del prodotto sono code-complete su questo branch:
+> **Superfici legacy.** Dietro il login restano, intatte, alcune rotte dell'app
+> pre-rebuild (`/dashboard` e `/agenda` sono redirect verso `/` e `/calendar`; `/business`,
+> `/health`, `/body`, `/timeline`, `/insights`, `/recap`, `/custom`, Overseer esistono
+> ancora nel tree, non ritirate). Non fanno parte delle nove superfici nuove.
 
-- ✅ **Phase 1 — Skeleton** (auth + dashboard shell)
-- ✅ **Phase 2 — Core Engine** (6-step onboarding, State Engine, daily task generator, streak con protezione Recupero/Vacanza per iron rule §10.2, recap, rollover, adaptive load §10.4)
-- ✅ **Phase 3 — Default modules** (Gym, Health, Finance + bottom nav 5 tab)
-- ✅ **Phase 4 — Voglia Engine** (Layer B detection + Layer C intervention + mood slider + Today's Call gated da `ANTHROPIC_API_KEY`)
-- ✅ **Phase 5 — Overseer AI** (scaffolding completo: `lib/overseer/context.ts` + streaming `/api/overseer` + chat overlay full-screen con focus trap; gated da `ANTHROPIC_API_KEY`)
-- ✅ **Phase 6 — Private modules** (registry-driven; only `chameleon_os` is registered on this branch.)
-- ✅ **Phase 7 — Custom modules + PWA polish** (counter / streak / numeric / calendar; icone PNG via Next 16 `app/icon.tsx` convention; manifest)
-- ✅ **Phase 1.5 — Visual Polish Pass** (10 componenti in `components/ui/`, dashboard mock per design review, vocabolario applicato a tutte le altre rotte cablate ai dati Supabase)
-- ✅ **A11y WCAG 2.2 AA**: focus-visible globale, viewport pinch-zoom, aria-label sui form, fieldset/legend sui radio/checkbox, tap target ≥36×36, dialog focus trap su Overseer, copy in italiano
-- ✅ **Security hardening**: open-redirect callback chiuso, deny policies su admin tables, payload caps sull'API Overseer, timezone validation, no error disclosure
+## Requisiti
 
-I dati di **Phase 5 (Overseer)** e **Today's Call (Haiku 4.5)** si attivano automaticamente al primo avvio dopo che hai messo `ANTHROPIC_API_KEY` in `.env.local` e riavviato il dev server.
+- **Node.js 20+** (il CI usa Node 20)
+- **npm** (incluso con Node)
+- *(opzionale)* progetto **Supabase** — serve solo per login + sync
+- *(opzionale)* `ANTHROPIC_API_KEY` — moduli legacy Overseer / Today's Call
+- *(opzionale)* progetto **Google Cloud** — import Google Calendar in `/calendar`
 
-## Stack
+## Setup da clone pulito
 
-- Next.js 16 (App Router, Turbopack) + React 19 + TypeScript
-- Tailwind CSS v4 — dark theme via `@theme` block in `app/globals.css`
-- Supabase (Postgres + Auth + RLS) via `@supabase/ssr`
-- Anthropic Claude SDK — usato in Phase 4+ (Today's Call, Overseer)
-
-## Setup
-
-### 1. Environment
-
-```powershell
-Copy-Item .env.local.example .env.local
+```bash
+git clone <repo-url> lifeos
+cd lifeos
+npm install
+cp .env.local.example .env.local     # poi riempi i valori (vedi tabella)
+npm run dev                          # http://localhost:3000
 ```
 
-Variabili richieste:
+**Guest mode:** senza toccare Supabase l'app parte e le nove superfici funzionano coi dati
+locali. Le variabili d'ambiente servono per login + sync, gli importer legacy e le integrazioni.
 
-| Variabile | Note |
+### Variabili d'ambiente (`.env.local`)
+
+| Variabile | A cosa serve |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del progetto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | server only |
-| `SUPABASE_ACCESS_TOKEN` | PAT — usato dagli script in `scripts/` per applicare migrazioni via Management API |
-| `ANTHROPIC_API_KEY` | richiesta da Phase 4 (Today's Call vero, non stub) e Phase 5 |
+| `NEXT_PUBLIC_SUPABASE_URL` | progetto Supabase — login + sync |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/public key — login + sync |
+| `SUPABASE_SERVICE_ROLE_KEY` | server-only (query privilegiate lato server) |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` in dev |
+| `ANTHROPIC_API_KEY` | *opzionale* — moduli legacy Overseer / Today's Call |
+| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` · `GOOGLE_REDIRECT_URI` | *opzionale* — Google Calendar in `/calendar` |
+| `TOKEN_ENCRYPTION_KEY` | AES-256-GCM per i token Google a riposo (`openssl rand -base64 32`) |
+| `SUPABASE_ACCESS_TOKEN` | **ops-only** (non serve a runtime) — PAT usato dagli script in `scripts/` per applicare le migrazioni via Management API |
 
-### 2. Supabase
+## Supabase — migrazioni
 
-Apply every migration in `supabase/migrations/` in sorted-filename order via the Management API. For the canonical sequence (all 18 migrations, including the idempotent rescue migrations 0003 + 0004), see [`PARTNER-SETUP.md`](PARTNER-SETUP.md#5-run-migrations). Quick example for the first three:
+Servono solo se vuoi login + sync. Applica **tutte le migrazioni in ordine** col runner
+(usa `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_ACCESS_TOKEN`, niente `psql` in locale):
 
-```powershell
+```bash
 node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0001_init.sql
 node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0002_fix_profile_trigger.sql
-node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0003_drop_legacy_email_check.sql
-# ... continue with 0004 through 0017 per PARTNER-SETUP.md
+#  … 0003 → 0015 in ordine …
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0016_gym_sessions.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0016_remove_hardcoded_owner_email.sql
+#  … 0017 → 0020 in ordine …
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0021_lo_esami.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0022_lo_spese.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0023_lo_sera.sql
 ```
 
-Verify schema:
+Due trappole da conoscere:
+- **Doppio 0016.** Esistono *due* file numerati 0016 (`0016_gym_sessions.sql` **e**
+  `0016_remove_hardcoded_owner_email.sql`, numero duplicato storico). Applicali entrambi.
+- **`lo_push` ridichiarato.** Le migrazioni 0021, 0022 e 0023 **ridichiarano** la tabella
+  `lo_push_subscriptions` con l'allowlist via via estesa: **l'ordine conta** (0023 ha la
+  versione finale). Applicale in sequenza.
 
-```powershell
-node --env-file=.env.local scripts/verify-schema.mjs
+Verifica lo schema: `node --env-file=.env.local scripts/verify-schema.mjs`.
+
+## Comandi
+
+```bash
+npm run dev            # dev server → http://localhost:3000
+npm run build          # build di produzione (next build --webpack)
+npm start              # serve la build di produzione
+npm test               # vitest run (suite completa)
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint
+npm run lint:sentinels # grep sentinelle (igiene share-prep)
 ```
 
-Auth: aggiungi `http://localhost:3000/auth/callback` ai Redirect URLs in **Authentication → URL Configuration**. Lo script `scripts/swap-project.mjs` lo fa automatico.
+## Architettura (mappa in dieci righe)
 
-### 3. Run
+- `app/(app)/` — la **shell** delle nove superfici (guest-first); `app/(app)/offline/` è il fallback PWA.
+- `data/ports.ts` — i **ports**: l'unica interfaccia con cui l'UI parla ai dati (astrae il locale).
+- `data/db.ts` + `data/local/` — store **Dexie** (IndexedDB) e gli adapter per modulo (tasks, events, gym, esami, spese, sera, reminders).
+- `data/sync/` — motore **Last-Writer-Wins**: `engine.ts` + `remote-supabase.ts` replicano il locale verso le mirror `lo_*` e riconciliano tra dispositivi; `export.ts` fa il backup JSON, `wipe.ts` l'"Esci → Svuota".
+- **`lo_*`** (migrazioni 0019-0023) — tabelle specchio su Supabase, una per store: `lo_tasks`, `lo_events`, `lo_gym_*`, `lo_settings`, `lo_reminders`, `lo_esami`, `lo_spese`, `lo_sera`, più `lo_push_subscriptions`.
+- `lib/nlp-it/` — parsing in **italiano** (date, quantità, chip) per l'input rapido.
+- `lib/reminders/` — logica **promemoria** (toast "Mentre eri via", export `.ics`).
+- `public/sw.js` — **service worker** (offline reale, update-safe). Kill-switch: deploya `public/sw-kill.js.txt` come `sw.js` per disinnescarlo (procedura in `docs/plans/lifeos-rebuild/99e-run05-report.md`).
+- **Importer legacy** — in Impostazioni (`app/(app)/impostazioni/`): mappature pure e idempotenti, id derivati deterministicamente.
+- `data/ids.ts` — `uuidv7` (chiavi ordinabili) + `deriveUuidV8` (id deterministici: una riga per giorno in Sera, import rilanciabili).
 
-```powershell
-npm install
-npm run dev
-```
+## Deploy (Vercel)
 
-Apri http://localhost:3000.
+> ### ⚠️ Root Directory = `.`
+> Da **run-06** l'app vive nella **radice del repo** (non più in `life-os/`). Su Vercel,
+> **Project Settings → Build & Deployment → Root Directory** deve essere la radice
+> (`.`, cioè vuoto). Se era puntato a `life-os/`, **cambialo prima/subito dopo il push di
+> `main`**, altrimenti il deploy non trova `package.json`.
 
-## Routes
+1. Push su GitHub.
+2. Import su <https://vercel.com/new> con **Root Directory = `.`**.
+3. Copia le env da `.env.local` nel progetto Vercel (marca come *Sensitive*:
+   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`, `ANTHROPIC_API_KEY`,
+   `GOOGLE_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`).
+4. Dopo il primo deploy, aggiungi `<url-produzione>/auth/callback` ai Redirect URLs di
+   Supabase (**Authentication → URL Configuration**).
+5. iPhone Safari: apri l'URL → **Condividi → Aggiungi a Home** per la PWA.
 
-| Route | Cosa fa |
-| --- | --- |
-| `/login` | magic-link signup |
-| `/auth/callback` | OAuth code exchange |
-| `/onboarding?step=1..6` | wizard 6 step (profilo, energia, goals, moduli, stato, targets) |
-| `/dashboard` | Today's Call banner + mood slider + intervention menu (se slip) o tasks + targets + streak + Why Panel |
-| `/gym` | log workout, est. 1RM Brzycki, volume settimana/mese, ultime 10 sessioni |
-| `/health` | water counter (target 2.5 L), daily stack 3 slot, sleep log |
-| `/finance` | income/expense, savings rate, ultime 15 voci |
-| `/business` (whitelisted only) | overview of registered private modules (this branch: Chameleon OS) |
-| `/business/chameleon-os` | milestones + partner sync log |
-| `/settings` | switch stato (5 stati), riapri onboarding |
-| `/recap` | bilancio della giornata |
-| `/more` | hub: recap, settings, edit goals/moduli/targets, sign out |
+## Limiti onesti di piattaforma
 
-## Project structure
-
-```
-app/
-  _components/bottom-nav.tsx         # 5 (o 6 con whitelist) tabs, condizionale
-  icon.tsx                           # PWA 192×192 (Next 16 convention)
-  apple-icon.tsx                     # iOS 180×180
-  layout.tsx                         # dark theme, PWA meta
-  page.tsx                           # redirect → /dashboard
-  login/, auth/callback/             # auth surface
-  onboarding/{page,actions}.tsx      # wizard controller + 6 step components in _steps/
-  dashboard/                         # main UI: Today's Call, intervention menu, tasks, mood, targets, streak, why panel
-  gym/, health/, finance/            # default modules (Phase 3)
-  business/, business/chameleon-os/  # registered private modules on this branch (Phase 6)
-  settings/                          # state switch + onboarding edit
-  recap/                             # end-of-day summary
-  more/                              # hub
-lib/
-  supabase/{client,server}.ts        # Supabase clients
-  modules/                           # module registry + dispatch (S1–S5 share-prep refactor)
-  tasks/generator.ts                 # daily task generator (state-aware) + streak helpers
-  voglia/{detection,compute,today-call}.ts  # Voglia Engine + Today's Call
-  auth/whitelist.ts                  # private modules whitelist helper
-  fitness.ts                         # Brzycki est. 1RM
-proxy.ts                             # session refresh + protected routes (Next 16 convention)
-supabase/migrations/                 # idempotent SQL migrations
-scripts/                             # Management API helpers (run-migration, verify-schema, swap-project)
-```
-
-## Iron rules (spec §10)
-
-1. No minute-precise scheduling — blocks are containers (Morning/Afternoon/Evening).
-2. **Streak NEVER breaks during intervention** (Recupero / Vacanza protect it; Voglia Layer C preserves it explicitly).
-3. No shame messaging — practical tone always.
-4. Adaptive load: under-completion 5+ days reduces base task count.
-5. LIGHT tasks are the chain — designed to be near-impossible to skip.
-6. **Private modules invisibly gated** — non-whitelisted users never see private modules in any UI surface.
-7. The "Why" is one tap away (Why Panel on dashboard).
-
-## Deploying to Vercel
-
-1. Push to GitHub.
-2. Import on https://vercel.com/new.
-3. Add the env vars from `.env.local` (mark service role + PAT + anthropic as secrets).
-4. After deploy, add `<production-url>/auth/callback` to Supabase Redirect URLs.
-5. iPhone Safari: open URL → Share → **Add to Home Screen**.
-
-## Owner bootstrap
-
-Run `scripts/promote-to-owner.mjs <email>` after the owner has signed up. The script:
-
-- Looks up the user row in `auth.users` by lowercased + NFC-normalized email.
-- Sets `is_owner = true` on `public.profiles`.
-- Seeds `public.private_modules_whitelist` with `chameleon_os` (the only private module registered on this branch) — idempotent via `ON CONFLICT DO NOTHING`.
-
-Both updates run in a single CTE so the operation is atomic. Re-running is safe (no-op on already-owner accounts). Required env vars: `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_ACCESS_TOKEN` (a Supabase Personal Access Token).
-
-```
-node --env-file=.env.local scripts/promote-to-owner.mjs you@example.com
-```
-
-Historical note: migration 0007 originally contained a trigger that auto-promoted a hardcoded owner email on signup. Migration 0016 (`0016_remove_hardcoded_owner_email.sql`) drops that trigger; the script above replaces the auto-promotion logic at the application layer so a fresh clone is owner-agnostic.
-
-## Notes
-
-- Service worker / offline shell ancora deferred. Manifest + iOS meta + icon convention bastano per "Add to Home Screen".
-- `next-pwa@5` rimosso (2026-05-10) perché abbandonato dal maintainer e portava 5 CVE HIGH in build-toolchain (`workbox-build` → `serialize-javascript` <7.0.5). Quando serve PWA passare a `@ducanh2912/next-pwa` (fork mantenuto) compatibile Next 16. Manifest + iOS meta + icon convention restano e bastano per "Add to Home Screen".
-- ANTHROPIC: senza chiave, `Today's Call` mostra una frase deterministica costruita da stato + completion + detection. Mettendo la chiave + swap del path in `lib/voglia/today-call.ts`, parte la generazione vera con Haiku 4.5 cachata in `daily_calls`.
+- **Notifiche.** Niente push server-side attivo: le `lo_push_subscriptions` sono scritte ma
+  inutilizzate (prompt 17, opzionale). I promemoria sono **toast in-app** + **export `.ics`**
+  da importare nel Calendario iOS — non suonano a app chiusa.
+- **PWA su iOS.** Install via "Aggiungi a Home"; l'offline reale funziona, ma le limitazioni
+  iOS su background e notifiche restano quelle di Safari.
+- **Google Calendar.** Import **read-only** (V0): niente sync bidirezionale né CalDAV.
 
 ---
 
-## Phase 8 — Agenda + Google Calendar (V0, read-only)
-
-Nuova rotta `/agenda` (linkata da `/more`) che unifica eventi locali (kind=`calendar` di un custom module auto-creato `Agenda principale`) con eventi importati in sola lettura da Google Calendar. Branch: `feat/google-calendar-v0`.
-
-### Componenti
-
-| Layer | File | Cosa fa |
-| --- | --- | --- |
-| DB | `supabase/migrations/0011_phase8_external_calendar.sql` | tabelle `external_calendar_accounts` (token cifrati AES-256-GCM) + `external_calendar_events` (cache eventi importati con UNIQUE su `(account_id, external_id)` per dedup) — RLS `auth.uid() = user_id` |
-| Crypto | `lib/crypto/token-cipher.ts` | AES-256-GCM su `node:crypto`, payload `iv.ciphertext.tag` base64url, chiave master da `TOKEN_ENCRYPTION_KEY` |
-| Google client | `lib/google/calendar-client.ts` | fetch diretto agli endpoint REST pubblici Google (no SDK): `buildAuthorizationUrl`, `exchangeCodeForTokens`, `refreshAccessToken`, `getUserEmail`, `listEvents` (paginato, max 5 pagine), `revokeToken` |
-| Token store | `lib/google/token-store.ts` | `getValidAccessToken(supabase, accountId)` — refresh automatico a 60s dalla scadenza, ri-cifra e persiste |
-| Upsert helper | `lib/google/upsert-events.ts` | mapping puro `NormalizedEvent` → row DB; `EXTERNAL_EVENTS_CONFLICT_TARGET` allineato alla UNIQUE INDEX |
-| Merge | `lib/agenda/merge.ts` | `mergeAgendaEvents(local, external)` + `partitionByCutoff(events, cutoffIso)` — sort lessicografico su ISO-8601 UTC, drop di eventi `cancelled`, fallback title `(senza titolo)` |
-| OAuth route | `app/api/auth/google/start/route.ts` | genera state CSRF (32 byte hex) → cookie httpOnly+sameSite=lax (10 min TTL) → redirect a Google con scope `calendar.events.readonly + openid + email`, `access_type=offline + prompt=consent` |
-| OAuth callback | `app/api/auth/google/callback/route.ts` | verifica state, exchange code → tokens, fetch email Google, encrypt + upsert → redirect `/agenda?connected=google`. Failure path → `/agenda?error=<slug>` |
-| Server actions | `app/agenda/actions.ts` | `refreshGoogleCalendar()` (window [-7d, +30d]), `disconnectGoogleCalendar()` (revoke best-effort + delete cascade) |
-| UI | `app/agenda/page.tsx` + `components/ui/agenda-event-row.tsx` | feed unificato split in "Prossimi 7 giorni" / "Più avanti", status pill 4 stati (not connected / connected unsynced / synced ok / sync error), source badge L/G, link al Google Calendar via `htmlLink` |
-
-### Test (Vitest)
-
-- `lib/crypto/token-cipher.test.ts` — 14 cases (roundtrip ASCII + Unicode, IV freschi, tamper resistance su ciphertext/tag/IV, key rotation, env validation, base64url accettato)
-- `lib/google/upsert-events.test.ts` — 7 cases (field mapping, dedup-key consistency, isolamento per account, conflict-target allineato a migration)
-- `lib/agenda/merge.test.ts` — 11 cases (sort interleaved cross-source, drop cancelled, fallback title, namespace id-collision-safe, partitionByCutoff)
-
-Totale: 32 nuovi test, tutti green.
-
-### Setup (one-time)
-
-1. **Google Cloud Console**: crea progetto, abilita Google Calendar API, crea OAuth Client ID di tipo "Web application" su <https://console.cloud.google.com/apis/credentials>. Authorized redirect URI: `http://localhost:3000/api/auth/google/callback` (in prod aggiungi quello Vercel).
-2. **Migration 0011**:
-   ```powershell
-   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0011_phase8_external_calendar.sql
-   ```
-3. **`.env.local`**: copia da `.env.local.example` le 4 nuove righe e riempi.
-   ```bash
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
-   TOKEN_ENCRYPTION_KEY=$(openssl rand -base64 32)
-   ```
-4. Riavvia il dev server. Apri `/agenda` → "Connetti Google" → autorizza → torna su `/agenda` → "Sincronizza Google".
-
-### Sicurezza
-
-- I token Google (access + refresh) **non** sono mai in plaintext nel DB: cifrati AES-256-GCM con chiave da env. Ruotare `TOKEN_ENCRYPTION_KEY` invalida tutti i token e forza il re-link.
-- State CSRF da 256 bit, single-use (cookie cancellato su ogni exit path del callback).
-- `prompt=consent` forza Google a restituire un nuovo `refresh_token` ad ogni link, evitando half-account sets se l'utente revoca e ri-collega.
-- Errori OAuth → slug stabile in URL (`?error=state_mismatch` ecc.), mai body Google leakato.
-- Disconnect: revoke best-effort lato Google → delete locale (cascata sugli eventi cached).
-
-### V1 / V2 (non in V0)
-
-- V1: Apple iCloud via CalDAV (app-specific password).
-- V2: sync bidirezionale, scelta granulare di quali calendari importare/esportare, conflict resolution.
+Contesto architetturale e cronologia del rebuild: `docs/plans/lifeos-rebuild/` (audit,
+blueprint e i report `99*` per run). Convenzioni di lavoro per gli agenti: `AGENTS.md`.

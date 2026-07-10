@@ -360,6 +360,151 @@ After merge + push of `main`: open the repo **Actions** tab and confirm this `CI
 and goes **green** (lint · types · sentinels · tests · build). Only then is the audit's "dead CI"
 finding (A9 #3) closed.
 
-**Commit:** `ci: root workflow with lint, typecheck, sentinels, tests, build`
+**Commit:** `ci: root workflow with lint, typecheck, sentinels, tests, build` → `c97f1f3`
 
 ---
+
+## Prompt 4 — Docs that match reality
+
+**Checkpoint:** lint ✓ · typecheck ✓ · sentinels ✓ (README scanned clean) · test **648** · build ✓.
+Git diff is **docs-only** (`README.md`, `AGENTS.md`, `PARTNER-SETUP.md`, `.env.local.example`) —
+no code touched.
+
+### `README.md` — full rewrite (Italian)
+The old README described the pre-rebuild app (Phases 1-8, dashboard mock, Voglia Engine,
+legacy `/gym`/`/health`/`/finance`, `/agenda`). Replaced with the current reality:
+- **What LifeOS is now**: guest-first, local-first; nine surfaces; sync for accounts.
+- **Clean-clone setup**: `git clone`, `npm install`, `cp .env.local.example .env.local`, `npm run dev`;
+  guest-mode works with zero Supabase config.
+- **Env-var table** (what each does), incl. `SUPABASE_ACCESS_TOKEN` flagged **ops-only**.
+- **Supabase migrations 0001→0023 IN ORDER** with `run-migration.mjs`, calling out the **duplicate
+  0016** and the **`lo_push` redeclaration in 0021/0022/0023 (order matters)**.
+- **Commands** (dev/build/start/test/typecheck/lint/lint:sentinels) — cross-checked against
+  `package.json` scripts.
+- **Architecture map** (~10 lines): `(app)` shell · `data/ports.ts` · `data/db.ts`+`data/local/`
+  (Dexie) · `data/sync/` (LWW → `lo_*`) · `lo_*` tables · `lib/nlp-it` · `lib/reminders` ·
+  `public/sw.js` + kill-switch pointer · importers in Impostazioni · `data/ids.ts`.
+- **Deploy (Vercel)** with a **prominent ⚠️ Root Directory = `.`** callout.
+- **Honest platform limits**: no active server push (`lo_push_*` written-but-unused), iOS PWA
+  caveats, Google Calendar read-only V0.
+- Honest note that the legacy D4 surfaces (`/business`, `/health`, `/insights`, … + Overseer)
+  remain behind auth, untouched.
+
+### `AGENTS.md` — house style added (Next.js docs block kept)
+Kept the `nextjs-agent-rules` block verbatim; appended: the command set; working conventions
+(scope fences, anchored edits, grep-gated deletion, golden tests for derived ids,
+commit-per-prompt on run branches, never push/merge/touch-live-Supabase); and the landmine list
+(stale `.next/dev` types ritual, Italian CLDR grouping `useGrouping:"always"` under 10.000, SW
+never caches redirected responses, `lo_push` allowlist redeclaration, duplicate 0016, Next-16
+docs-in-`node_modules`).
+
+### `CLAUDE.md` — unchanged (by design)
+`CLAUDE.md` is a one-line `@AGENTS.md` import (Claude Code convention). Enriching `AGENTS.md`
+updates what `CLAUDE.md` delivers, with a single source of truth and no duplication. Left as-is.
+
+### `PARTNER-SETUP.md` — targeted (per its narrow fence)
+- Migration list extended `0017` → `0023` (adds 0018-0020 sync/push + 0021-0023 `lo_*`), with the
+  duplicate-0016 + `lo_push`-order note.
+- `# Type-check` command `npx tsc --noEmit` → `npm run typecheck`.
+- CI line "push to `master`/`main`/`shared`" → "push/PR to `main`" (+ the 5 checks) — corrected
+  the staleness Prompt 3 introduced.
+- Its `git clone … life-os; cd life-os` (section 2) is now **correct** post-move (app at clone
+  root) — left as-is. Its pre-rebuild app-description prose is out of this narrow fence and left
+  untouched (candidate for a later refresh).
+
+### `.env.local.example` — comment accuracy
+Added an **ops-only comment** documenting `SUPABASE_ACCESS_TOKEN` (needed by the migration
+scripts, previously undocumented in the template). Comment only — no new var line (fence).
+
+### Out of fence, deliberately untouched
+`README-START-HERE.md` (not in the Prompt-4 fence) still carries pre-rebuild prose — flagged for
+a later pass; not edited here.
+
+**Commit:** `docs: README, CLAUDE.md, AGENTS.md rewritten for the root-level rebuilt app`
+
+---
+
+## Final summary
+
+### Test counts (baseline → final)
+| Stage | Files | Tests | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main`) | 55 | **656** | — |
+| After Prompt 1 | 54 | **648** | +3 golden, −7 local-storage, −4 form-inputs = **−8** |
+| After Prompts 2·3·4 | 54 | **648** | 0 (move/CI/docs don't change tests) |
+
+Itemized P1 delta: **+2** `data/ids.test.ts` (deriveUuidV8 golden), **+1**
+`app/(app)/gym/importer.test.ts` (deriveId golden); **−7** `lib/validation/local-storage.test.ts`
+(deleted), **−4** `lib/validation/form-inputs.test.ts` (2 EveningCheckin + 2 ToggleCarryover).
+
+### Commit log (`feat/run-06`, off `main` @ `d6bc83d`)
+```
+a3ebfc8  chore(cleanup): unify id derivation with golden tests, delete dead residue, tidy proxy prefixes
+fd45df3  chore(repo): move app from life-os/ to repository root
+c97f1f3  ci: root workflow with lint, typecheck, sentinels, tests, build
+<P4>     docs: README, CLAUDE.md, AGENTS.md rewritten for the root-level rebuilt app
+```
+Never pushed, never merged, `main` untouched.
+
+### Deltas vs brief (all documented above, recap)
+1. **spese/esami also consumed `deriveId`** (brief named only gym+calendar) → kept a one-line
+   re-export shim in `gym/importer.ts` so the two out-of-fence importers + all importer tests stay
+   untouched and byte-identical.
+2. **`scripts/setup-git.mjs` KEPT** (brief listed it for deletion) — it's a live ops script
+   (registers the `merge=ours` driver) referenced in `lib/modules/README.md`; the brief's own
+   keep-rule ("any others referenced anywhere") wins.
+3. **CI branches narrowed** `[master, main, shared]` → `[main]` per the brief's "push to main"
+   (documented; `shared` re-addable).
+4. **CI build needs placeholder public Supabase env** (env-less build fails at `/offline`
+   prerender) — added inline placeholders (public anon values, not secrets).
+5. **`/dev/ui` = 200 locally** (not the brief's expected prod-404) — move-independent
+   (byte-identical route); 404s on real Vercel prod.
+6. Minor deliberate non-edits (fence): `app/dashboard/page.tsx` stale proxy comment;
+   `README-START-HERE.md` pre-rebuild prose.
+
+---
+
+## Davide's FINAL GATE — consolidated checklist (Gates 2-3 merged, in order)
+
+Do these on your machine — the session never touches live Supabase/Vercel/GitHub (session rule 1).
+
+1. **Review + merge.** Read the `feat/run-06` diff, then `git merge --no-ff feat/run-06` into `main`.
+2. **Backup first.** JSON export from Impostazioni on **every device that has data** (safety net
+   before migrations).
+3. **Apply migrations 0019 → 0023 IN ORDER** with the runner, on your project (D6: your project
+   now; consolidate via JSON export/import later). From the repo root:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0019_sync_tables.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0020_push_subscriptions.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0021_lo_esami.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0022_lo_spese.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0023_lo_sera.sql
+   ```
+   (0021/0022/0023 each redeclare `lo_push` — order matters; verify the runner signature first,
+   the session never ran it. `scripts/verify-schema.mjs` to confirm.)
+4. **Vercel: set project Root Directory to the repo root (`.`)** — BEFORE/immediately after pushing
+   `main`. Then push and watch BOTH: the **Actions** tab (first CI run green = the audit's "dead CI"
+   finding A9 #3 is closed) AND the Vercel deploy.
+5. **OTP.** Flip the Supabase email template per `03-activation-checklist.md`, then run the
+   cross-device code smoke.
+6. **Device session (~60-90 min, the accumulated one):**
+   - PWA install + **airplane cold start** (Oggi with local data) + update cycle on the next deploy.
+   - Two-device **sync convergence** + "Esci → Svuota" test.
+   - The **four importers** + second-device verification (imported rows sync).
+   - Google connect/sync/disconnect on `/calendar` (two-account: detaches only one).
+   - Real gym session with rest timer.
+   - Tasks swipe/undo/reorder/chips.
+   - Reminders toast + "Mentre eri via" + `.ics` into iOS Calendar.
+   - Theme/palette/keyboard tour (cmd+K, `g t`, `n`, `?`; Impostazioni → Tema).
+   - Touch spot-checks from 99e item 7 (compact h-8 chip family, /spese 44px chips, /sera energy).
+
+### Optional afterwards
+- **Prompt 17** — push notifications (`lo_push_subscriptions` is ready, unused).
+- The blueprint's "later" backlog (recurrence tasks, NL on /spese, CalDAV, Google bidirectional).
+- **D4 leftovers** (Business/Custom/Overseer/Health/Body/Timeline/Insights/Recap) — untouched by
+  design; retire or port explicitly when you decide.
+- Trivial doc follow-ups: `app/dashboard/page.tsx` stale proxy comment; `README-START-HERE.md`
+  refresh; point `spese`/`esami` importers directly at `@/data/ids` and drop the re-export shim.
+
+**Run 06 complete.** Repository is root-level, dead residue gone, CI revived at the root, docs
+match reality. Four checks green throughout; every commit on green; `main` untouched.
