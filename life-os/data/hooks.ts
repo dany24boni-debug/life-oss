@@ -46,6 +46,22 @@ export function useTasks(day: IsoDay): Task[] | undefined {
   return useLiveQuery(() => appRepos().tasks.listByDay(day), [day]);
 }
 
+/** Singolo task per id (scheda dettaglio); null se assente o tombstone. */
+export function useTask(id: string | null): Task | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().tasks.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/**
+ * Archivio Fatti, più recenti prima. La paginazione UI è "carica altri":
+ * il chiamante alza `limit` e la live query si riesegue.
+ */
+export function useDoneTasks(limit: number): Task[] | undefined {
+  return useLiveQuery(() => appRepos().tasks.listDone({ limit }), [limit]);
+}
+
 /** Task aperti in ritardo rispetto a `today`. */
 export function useOverdueTasks(today: IsoDay): Task[] | undefined {
   return useLiveQuery(() => appRepos().tasks.listOverdue(today), [today]);

@@ -128,6 +128,17 @@ export class LocalTasksRepo implements TasksRepo {
     });
   }
 
+  restore(id: string): Promise<Result<Task>> {
+    return attempt(async () => {
+      const row = await this.db.tasks.get(id);
+      if (!row) return err("not_found", TASK_NON_TROVATO);
+      if (row.deleted_at === null) return ok(row); // idempotente
+      const next: Task = { ...row, deleted_at: null, updated_at: this.clock() };
+      await this.db.tasks.put(next);
+      return ok(next);
+    });
+  }
+
   reorder(orderedIds: string[]): Promise<Result<void>> {
     return attempt(async () => {
       await this.db.transaction("rw", this.db.tasks, async () => {

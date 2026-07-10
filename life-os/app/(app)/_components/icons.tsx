@@ -71,3 +71,71 @@ export function IconSettings({ className }: IconProps) {
     </svg>
   );
 }
+
+/* ── Icone del modulo Task (aggiunte run-03, stesso stile a tratto) ────── */
+
+export function IconPlus({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 5.5v13M5.5 12h13" />
+    </svg>
+  );
+}
+
+export function IconCheck({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="m5.5 12.5 4 4L18.5 7" />
+    </svg>
+  );
+}
+
+export function IconClock({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+export function IconTrash({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M5 7h14M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7" />
+      <path d="M6.5 7l.8 11a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-11" />
+      <path d="M10 11v5M14 11v5" />
+    </svg>
+  );
+}
+
+export function IconDots({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconGrip({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="9" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="17.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="17.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconChevronRight({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="m9.5 6 6 6-6 6" />
+    </svg>
+  );
+}

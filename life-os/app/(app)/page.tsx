@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/ui";
+import { TodayTasks } from "./_components/tasks/today-section";
 
 /**
  * Oggi — la home della shell nuova (stub 05). Tutto ciò che è a schermo è
@@ -21,11 +22,6 @@ const SECTIONS: Array<{
   heading: string;
   text: string;
 }> = [
-  {
-    eyebrow: "Task",
-    heading: "Nessun task da mostrare",
-    text: "Arriva con il modulo Task.",
-  },
   {
     eyebrow: "Agenda",
     heading: "Nessun evento in agenda",
@@ -78,6 +74,9 @@ export default async function TodayPage() {
           </Link>
         </p>
       </header>
+
+      {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
+      <TodayTasks />
 
       {SECTIONS.map((s) => (
         <section key={s.eyebrow} aria-label={s.eyebrow} className="em-card p-5">

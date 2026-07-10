@@ -55,6 +55,12 @@ export interface TasksRepo {
   /** Tombstone: la riga resta fisicamente, sparisce da ogni lettura. */
   softDelete(id: string): Promise<Result<void>>;
   /**
+   * Annulla un soft delete (pattern undo del toast): rimuove la tombstone
+   * e bumpa updated_at, così l'undo vince il LWW sul delete. Idempotente
+   * su righe vive; err not_found se la riga non esiste proprio.
+   */
+  restore(id: string): Promise<Result<Task>>;
+  /**
    * Riordino manuale: assegna sort_order = indice nell'array. Id ignoti o
    * cancellati vengono saltati senza errore (gesto UI, non transazione di
    * dominio).
