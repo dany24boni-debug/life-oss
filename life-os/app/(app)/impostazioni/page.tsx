@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { IconChevronRight, IconExam, IconWallet } from "../_components/icons";
+import {
+  IconChevronRight,
+  IconExam,
+  IconMoon,
+  IconWallet,
+} from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
 import { EsamiImportButton } from "../esami/import-button";
 import { GymImportButton } from "../gym/import-button";
+import { SeraImportButton } from "../sera/import-button";
 import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
@@ -31,6 +37,12 @@ const MODULE_LINKS: Array<{
     label: "Spese",
     desc: "Uscite del mese per categoria",
     icon: IconWallet,
+  },
+  {
+    href: "/sera",
+    label: "Sera",
+    desc: "Check-in serale e diario",
+    icon: IconMoon,
   },
 ];
 
@@ -205,6 +217,24 @@ export default async function ImpostazioniPage() {
           </p>
           <div className="mt-3">
             <SpeseImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import dei vecchi check-in serali (run-05 prompt 5, B3.6). */}
+      {user ? (
+        <section
+          aria-label="Importa i vecchi check-in"
+          className="em-card p-5"
+        >
+          <p className="em-eyebrow">Vecchie sere</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui i check-in della vecchia Sera (energia, umore,
+            note). I diari già esportati restano su Drive. Un giorno già
+            scritto qui non viene mai toccato.
+          </p>
+          <div className="mt-3">
+            <SeraImportButton />
           </div>
         </section>
       ) : null}

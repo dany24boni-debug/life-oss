@@ -19,6 +19,7 @@ import {
   IconCalendar,
   IconExam,
   IconGym,
+  IconMoon,
   IconSettings,
   IconStats,
   IconTasks,
@@ -49,6 +50,7 @@ const TABS: NavItem[] = [
 const MODULES: NavItem[] = [
   { href: "/esami", label: "Esami", icon: IconExam },
   { href: "/spese", label: "Spese", icon: IconWallet },
+  { href: "/sera", label: "Sera", icon: IconMoon },
 ];
 
 function isActive(pathname: string, href: string): boolean {

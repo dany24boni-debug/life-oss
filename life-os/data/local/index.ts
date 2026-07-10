@@ -12,6 +12,7 @@ import { LocalEsamiRepo } from "./esami";
 import { LocalEventsRepo } from "./events";
 import { LocalGymRepo } from "./gym";
 import { LocalRemindersRepo } from "./reminders";
+import { LocalSeraRepo } from "./sera";
 import { LocalSettingsRepo } from "./settings";
 import { LocalSpeseRepo } from "./spese";
 import { LocalStatsRepo } from "./stats";
@@ -22,6 +23,7 @@ export { LocalEsamiRepo } from "./esami";
 export { LocalEventsRepo } from "./events";
 export { LocalGymRepo } from "./gym";
 export { LocalRemindersRepo } from "./reminders";
+export { LocalSeraRepo, seraDayId } from "./sera";
 export { DEFAULT_SETTINGS, LocalSettingsRepo } from "./settings";
 export { LocalSpeseRepo } from "./spese";
 export { LocalStatsRepo } from "./stats";
@@ -33,6 +35,7 @@ export function createLocalRepos(db: LifeosDb, clock?: Clock): Repos {
     events: new LocalEventsRepo(db, clock),
     esami: new LocalEsamiRepo(db, clock),
     spese: new LocalSpeseRepo(db, clock),
+    sera: new LocalSeraRepo(db, clock),
     gym: new LocalGymRepo(db, clock),
     stats: new LocalStatsRepo(db),
     reminders: new LocalRemindersRepo(db, clock),

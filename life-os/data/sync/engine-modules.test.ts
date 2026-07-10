@@ -97,6 +97,35 @@ describe("SyncEngine — round-trip lo_esami", () => {
     expect(await b.repos.spese.listMonth("2026-07")).toHaveLength(0);
   });
 
+  it("round-trip lo_sera: la riga del giorno CONVERGE tra dispositivi (id derivato)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    // Entrambi scrivono lo stesso giorno PRIMA di sincronizzare: con id
+    // derivato dalla data è la stessa PK — il sync fonde con LWW invece
+    // di duplicare.
+    must(await a.repos.sera.upsertDay("2026-07-10", { energy_1_5: 3 }));
+    // Il clock di B parte dopo: la sua versione è la più recente.
+    await new Promise((r) => setTimeout(r, 5));
+    must(
+      await b.repos.sera.upsertDay("2026-07-10", {
+        energy_1_5: 4,
+        journal: "Scritto da B",
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_sera")).toHaveLength(1);
+    const suA = await a.repos.sera.getByDay("2026-07-10");
+    const suB = await b.repos.sera.getByDay("2026-07-10");
+    expect(suA).toEqual(suB);
+    expect(suA?.journal).toBe("Scritto da B");
+  });
+
   it("LWW: il progresso segnato dopo vince; la tombstone viaggia", async () => {
     const remote = new FakeRemote();
     const a = makeDevice(remote);

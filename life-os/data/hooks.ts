@@ -24,6 +24,7 @@ import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  EveningCheckin,
   Exam,
   Expense,
   GymExercise,
@@ -134,6 +135,25 @@ export function useExpense(id: string | null): Expense | null | undefined {
   return useLiveQuery(
     () => (id ? appRepos().spese.getById(id) : Promise.resolve(null)),
     [id],
+  );
+}
+
+/** Check-in del giorno (run-05 prompt 5); null se non ancora scritto. */
+export function useCheckin(date: IsoDay): EveningCheckin | null | undefined {
+  return useLiveQuery(async () => {
+    const row = await appRepos().sera.getByDay(date);
+    return row ?? null;
+  }, [date]);
+}
+
+/** Storico check-in prima di `before`, dal più recente, al massimo limit. */
+export function useCheckinHistory(
+  before: IsoDay,
+  limit: number,
+): EveningCheckin[] | undefined {
+  return useLiveQuery(
+    () => appRepos().sera.listRecent(before, limit),
+    [before, limit],
   );
 }
 

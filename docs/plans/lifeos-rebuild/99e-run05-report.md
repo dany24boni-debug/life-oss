@@ -252,3 +252,43 @@ Pattern consolidato: fetch RLS-scoped di `personal_expenses` → mappatura pura 
 **Commit:** `feat(spese): expenses module on ports with sync and legacy importer`
 
 ---
+
+## Prompt 5 — Modulo Sera sui port (stub 15)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ (rituale `.next` stantio) · build ✓ (`ƒ /sera` nel gruppo (app)) · test **656/656** (+11: 6 `data/local/sera.test.ts`, 4 `importer.test.ts`, 1 convergenza lo_sera in `engine-modules.test.ts`; migrazione Dexie → verno 5). Dev server DA OSPITE: `/sera` 200 — titolo modulo, sezione "Sere passate" e i due Skeleton nell'HTML (il check-in è dietro la liveQuery Dexie, come da pattern della shell: compare all'idratazione — la logica è provata dai test del repo); **zero** menzioni di Drive da ospite (il blocco non esiste proprio); zero controlli nativi. **`git diff HEAD --stat -- lib/google lib/validation/form-inputs.ts` → vuoto** (lib Drive e schemi riusati, MAI toccati).
+
+### Il disegno: una riga per giorno, per costruzione
+
+L'insight architetturale del prompt: il check-in serale è un'entità per-GIORNO, ma un vincolo `unique(user_id, date)` server-side farebbe fallire i push quando due dispositivi creano lo stesso giorno offline. Soluzione: **l'id è derivato dalla data** (`deriveUuidV8("lifeos:sera-day:<date>")`, SHA-256→UUIDv8, nuova in `data/ids.ts`) — stessa data, stessa PK ovunque → il sync FONDE con LWW invece di duplicare. Provato dal test di convergenza (due dispositivi scrivono lo stesso giorno prima di sincronizzare → UNA riga remota, entrambi convergono sulla versione più recente). La stessa derivazione rende l'importer incapace di toccare un giorno già scritto a mano (stesso id → insert-only-missing salta). *Nota per il cleanup (16)*: l'algoritmo è lo stesso della `deriveId` di `app/(app)/gym/importer.ts` (fuori fence qui) — unificazione rimandata, documentata nel codice.
+
+### Entità e realtà legacy
+
+`evening_checkins` (0013): date, `energy_1_5` 1..5, mood, notes — **niente diario**: i testi andavano SOLO su Drive. L'entità nuova: quei campi PIÙ `journal` (cap 100.000 come il salvataggio Drive) — nel mondo nuovo il diario è LOCALE (guest-first, sincronizza via `lo_sera`) e **Drive diventa un export esplicito** che riusa `lib/google/drive-journal` READ-ONLY (stessa cartella Life-OS/Diario/, stessi slug d'errore). `SeraRepo`: `upsertDay(date, patch)` (unico percorso di scrittura: salvataggio continuo; revive una tombstone — scrivere il giorno È l'intento), `getByDay`, `listRecent(before, limit)` paginato, `purgeTombstones`.
+
+### Migrazione SCRITTA, NON applicata
+
+`supabase/migrations/0023_lo_sera.sql` — `lo_sera` (date, energy_1_5 con check 1..5, mood, notes, journal), convenzioni 0019, **senza** unique(user_id,date) (garanzia lato client per costruzione — commentato nel file), `lo_push` con l'allowlist completa del run (`… lo_esami, lo_spese, lo_sera`). `evening_checkins` INTATTA.
+
+### UI (`app/(app)/sera/`)
+
+Check-in di OGGI come superficie primaria: **energia** con radiogroup orizzontale 1..5 fatto a mano (target 44px, `role="radio"`, frecce ←/→ — il RadioGroup Ember è verticale, 5 righe erano troppe), umore e note (commit on blur), **diario** Textarea col salvataggio continuo LOCALE (debounce 800ms + blur, riga di stato "Salvato" quieta, `aria-live`); la riga live segue sync/import solo quando non ci sono modifiche in volo (l'utente vince). **Blocco Drive per stato reale**: ospite → non esiste; nessun account → invito a collegare Google dal Calendario; scope mancante → "Autorizza Drive" (stesso flusso `?upgrade=drive` della legacy); pronto → "Esporta su Drive" con toast di esito. **Storico paginato onesto**: 7 sere alla volta, "Mostra altre sere" (+7) — si carica ESATTAMENTE ciò che si rende (il fetch-30-render-2 dell'audit muore qui); riga → sheet read-only (confine V1 come la legacy). NESSUNA sezione "Domani", niente placeholder.
+
+### Azione Drive ricollocata (grep-gated)
+
+```
+$ grep -rn "app/sera|sera/actions|sera/_components" app lib components data ui | grep -v "^app/sera/" | grep -v "^app/(app)/sera"
+lib/validation/form-inputs.ts:88:/** Mirror of MAX_DIary_CHARS in app/sera/actions.ts. */   ← solo un COMMENTO, nessun import
+```
+`saveDiaryEntry` ricollocata in `app/(app)/sera/actions.ts` (corpo identico: `parseFormData(SaveDiaryEntrySchema)`, slug stabili, `saveJournalEntry` della lib); rimossi `app/sera/page.tsx`, `actions.ts` (con `submitEveningCheckin` e `toggleCarryover`, entrambe superate: la prima dal port, la seconda apparteneva al motore daily_tasks morto), `_components/journal-editor.tsx`. Residui dichiarati fuori fence, ora senza consumatori: `parseDiaryDraft`/`DiaryDraftSchema` in `lib/validation/local-storage.ts` (+ i loro test, che restano verdi) e `EveningCheckinSchema`/`ToggleCarryoverSchema` in `form-inputs.ts` — candidati al cleanup (16). Limite pre-esistente NON toccato: `drive-journal` risolve l'account con `.maybeSingle()` interno (con due account Google l'export fallirebbe — comportamento identico alla legacy, lib read-only; da sistemare quando la lib entrerà in una fence).
+
+### Importer
+
+Fetch RLS-scoped di `evening_checkins` → mappatura pura (id = **id del giorno**, energia fuori dominio → null, duplicati di giorno scartati e contati, diario null — i testi legacy restano su Drive, leggibili lì) → insert-only-missing. Card "Vecchie sere" in Impostazioni + prompt inline su /sera a modulo vuoto (authed).
+
+### Case e proxy
+
+`IconMoon`; Rail e card "Moduli" → Esami, Spese, Sera. `proxy.ts`: `"/sera"` rimosso da PROTECTED_PREFIXES (riga commentata insieme a /esami).
+
+**Commit:** `feat(sera): evening journal on ports with sync, Drive export kept, legacy importer`
+
+---

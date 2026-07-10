@@ -15,6 +15,8 @@
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
 import type {
+  CheckinPatch,
+  EveningCheckin,
   EventCreate,
   EventPatch,
   Exam,
@@ -161,6 +163,26 @@ export interface SpeseRepo {
 }
 
 // ============================================================
+// Sera (run-05 prompt 5, stub 15)
+// ============================================================
+
+export interface SeraRepo {
+  /**
+   * Crea-o-aggiorna il check-in del giorno (l'unico percorso di
+   * scrittura: salvataggio continuo). Una riga per giorno per
+   * costruzione: l'id è derivato dalla data. Se la riga del giorno era
+   * una tombstone (arrivata dal sync), la revive.
+   */
+  upsertDay(date: IsoDay, patch: CheckinPatch): Promise<Result<EveningCheckin>>;
+
+  getByDay(date: IsoDay): Promise<EveningCheckin | null>;
+  /** Check-in vivi con date < before, dal più recente, al massimo limit. */
+  listRecent(before: IsoDay, limit: number): Promise<EveningCheckin[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
 // Gym (B2.3)
 // ============================================================
 
@@ -300,6 +322,7 @@ export interface Repos {
   events: EventsRepo;
   esami: EsamiRepo;
   spese: SpeseRepo;
+  sera: SeraRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

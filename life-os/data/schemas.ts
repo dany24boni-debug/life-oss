@@ -254,6 +254,46 @@ export const ExpensePatchSchema = z.object(expenseEditable).partial();
 export type ExpensePatch = z.infer<typeof ExpensePatchSchema>;
 
 // ============================================================
+// Sera (run-05 prompt 5, stub 15) — il check-in serale: i campi che
+// la pagina legacy persisteva in `evening_checkins` (energia 1..5,
+// umore, note) PIÙ il diario, che nel mondo nuovo vive in locale
+// (guest-first, sincronizzato) — su Drive ci va con l'export
+// esplicito, riusando la lib esistente. UNA riga per giorno: l'id è
+// DERIVATO dalla data (SHA-256 → UUIDv8), così due dispositivi che
+// scrivono lo stesso giorno convergono sulla stessa riga per
+// costruzione (LWW), senza vincoli server fragili.
+// ============================================================
+
+export const EnergySchema = z.number().int().min(1).max(5);
+
+const MoodSchema = z.string().trim().min(1).max(80);
+/** Il diario può essere lungo: stesso tetto del salvataggio Drive. */
+const JournalSchema = z.string().max(100_000);
+
+export const EveningCheckinSchema = z.object({
+  id: UuidSchema,
+  /** Giorno del check-in (unico per costruzione: id derivato). */
+  date: IsoDaySchema,
+  energy_1_5: EnergySchema.nullable(),
+  mood: MoodSchema.nullable(),
+  notes: NotesSchema.nullable(),
+  journal: JournalSchema.nullable(),
+  ...audit,
+});
+export type EveningCheckin = z.infer<typeof EveningCheckinSchema>;
+
+/** Patch dell'upsert per-giorno: ogni campo opzionale, assente = non toccare. */
+export const CheckinPatchSchema = z
+  .object({
+    energy_1_5: EnergySchema.nullable(),
+    mood: MoodSchema.nullable(),
+    notes: NotesSchema.nullable(),
+    journal: JournalSchema.nullable(),
+  })
+  .partial();
+export type CheckinPatch = z.infer<typeof CheckinPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

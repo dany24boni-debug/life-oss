@@ -59,6 +59,26 @@ export function uuidv7Timestamp(id: string): number {
   return Number.parseInt(hex, 16);
 }
 
+/**
+ * UUIDv8 DETERMINISTICO da una chiave testuale (run-05 prompt 5):
+ * SHA-256 della chiave → primi 16 byte → bit di versione 8 e variant.
+ * Stessa chiave = stesso id, su qualsiasi dispositivo — è ciò che rende
+ * "una riga per giorno" del modulo Sera vera per costruzione (LWW sulla
+ * stessa PK) e gli import rilanciabili. Stesso algoritmo della
+ * `deriveId` degli importer in app/(app)/gym/importer.ts (nata lì al
+ * run-04, fuori fence in questo prompt): unificazione al cleanup (16).
+ */
+export async function deriveUuidV8(key: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(key),
+  );
+  const b = new Uint8Array(digest).slice(0, 16);
+  b[6] = 0x80 | (b[6] & 0x0f); // versione 8 (custom, RFC 9562 §5.8)
+  b[8] = 0x80 | (b[8] & 0x3f); // variant 10
+  return format(b);
+}
+
 function randomInt(): number {
   const b = new Uint8Array(2);
   crypto.getRandomValues(b);

@@ -18,9 +18,9 @@ const PROTECTED_PREFIXES = [
   "/timeline",
   "/insights",
   "/agenda",
-  "/sera",
-  // "/esami" rimosso (run-05 prompt 3): la rotta ora serve il modulo NUOVO
-  // dentro la shell (app) — guest-first, come /gym al run-04.
+  // "/sera" e "/esami" rimossi (run-05, prompt 5 e 3): le rotte ora
+  // servono i moduli NUOVI dentro la shell (app) — guest-first, come
+  // /gym al run-04.
   "/commute",
 ];
 const AUTH_ONLY_PREFIXES = ["/login"];
