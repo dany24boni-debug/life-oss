@@ -8,30 +8,10 @@
 
 import { z } from "zod";
 
-// ============================================================
-// Commute mode (lifeos.commute.manual)
-// ============================================================
-
-/** Stored value on the dashboard banner key. `null` = no override. */
-export const CommuteModeSchema = z.enum(["on", "off"]);
-export type CommuteMode = z.infer<typeof CommuteModeSchema>;
-
-/** Three-state UI in /more (auto = absence of the localStorage key). */
-export const CommuteToggleStateSchema = z.enum(["on", "off", "auto"]);
-export type CommuteToggleState = z.infer<typeof CommuteToggleStateSchema>;
-
-/**
- * Safe-parse a commute mode value. Anything other than "on" / "off"
- * (including null, undefined, or a malformed write) returns null —
- * which the banner interprets as "no manual override, follow auto".
- */
-export function parseCommuteMode(
-  raw: string | null | undefined,
-): CommuteMode | null {
-  if (raw == null) return null;
-  const r = CommuteModeSchema.safeParse(raw);
-  return r.success ? r.data : null;
-}
+// La sezione commute (lifeos.commute.manual) è stata rimossa col ritiro
+// di /commute e della dashboard mock (run-05 prompt 1): i suoi unici
+// consumatori erano il banner della dashboard e il toggle di /more. La
+// chiave localStorage eventualmente rimasta sui dispositivi è inerte.
 
 // ============================================================
 // Diary draft (lifeos.diary.draft.<YYYY-MM-DD>)

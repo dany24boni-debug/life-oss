@@ -1,4 +1,8 @@
 // Avatar — circular initial-on-surface badge.
+//
+// Ricollocato 1:1 da app/dashboard/_components/avatar.tsx (run-05
+// prompt 1): l'unico consumatore vivo è /more, la cartella d'origine è
+// morta col ritiro della dashboard mock.
 
 export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const initial = (name?.trim()?.[0] ?? "?").toUpperCase();

@@ -67,7 +67,9 @@ export async function proxy(request: NextRequest) {
 
   if (isAuthOnly && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    // Run-05 prompt 1: chi è già autenticato e visita /login atterra
+    // sulla Oggi nuova (la dashboard legacy è un redirect a "/").
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

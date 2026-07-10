@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { CalendarImportButton } from "../calendar/import-button";
 import { GymImportButton } from "../gym/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
@@ -101,6 +102,25 @@ export default async function ImpostazioniPage() {
           </p>
           <div className="mt-3">
             <GymImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import dalla vecchia Agenda (run-05 prompt 1, B3.6): stesso
+          pattern del gym — solo account, idempotente, rilanciabile. */}
+      {user ? (
+        <section
+          aria-label="Importa dalla vecchia Agenda"
+          className="em-card p-5"
+        >
+          <p className="em-eyebrow">Vecchia agenda</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta nel Calendario gli eventi locali della vecchia Agenda
+            (quelli di Google si risincronizzano da soli). Rilanciarlo non
+            crea doppioni.
+          </p>
+          <div className="mt-3">
+            <CalendarImportButton />
           </div>
         </section>
       ) : null}
