@@ -300,6 +300,66 @@ Only content changes: root `.gitignore` (+44/−1), `life-os/.gitignore` (−47 
 (+4/−4). Everything else is a pure 0-line rename → "overwhelmingly R", consistent with the move
 plus the two sanctioned config edits.
 
-**Commit:** `chore(repo): move app from life-os/ to repository root`
+**Commit:** `chore(repo): move app from life-os/ to repository root` → `fd45df3`
+
+---
+
+## Prompt 3 — CI, alive at the root
+
+**Checkpoint (from ROOT):** lint ✓ · typecheck ✓ · test **648 (54)** · build ✓.
+
+### Why the CI was dead, and why it's alive now
+GitHub Actions only discovers workflows in the **repo-root** `.github/workflows/`. Pre-run-06
+the workflow lived at `life-os/.github/workflows/ci.yml` (nested) → never discovered → never ran
+(audit A9 #3). Prompt 2 `git mv`'d `.github/` to the repo root, so GitHub will now discover it.
+This prompt rewrites it correctly (adds the missing build step; routes typecheck through a script).
+
+### 1. `typecheck` script (anchored, `package.json`)
+```
+  "lint:sentinels": "node scripts/check-sentinels.mjs",
++ "typecheck": "tsc --noEmit",
+  "test": "vitest run",
+```
+
+### 2. `.github/workflows/ci.yml` rewritten
+- **Triggers:** `push` → `[main]`, `pull_request` → `[main]`. (DELTA: narrowed from the old
+  `[master, main, shared]` per the brief's "push to `main`"; `master` is dead, and `shared` can
+  be re-added to the branch lists if the shared variant should get CI.)
+- **Job:** single `verify` on `ubuntu-latest`.
+- **Node:** `20` — matches `@types/node ^20` and the committed lockfile (no `engines` field);
+  same major as the prior workflow.
+- **Steps (brief order):** Checkout → Setup Node (`cache: npm`) → `npm ci --no-audit --no-fund`
+  → `npm run lint` → `npm run typecheck` → `node scripts/check-sentinels.mjs` → `npm test` →
+  `npm run build`. No deploy steps (Vercel deploys independently).
+
+**Build step needs placeholder public env (discovered + solved).** An env-less `next build`
+**fails**: the static `/offline` page constructs a Supabase browser client at prerender and
+`@supabase/ssr` throws on empty url/key (`Export encountered an error on /(app)/offline/page`).
+Verified locally: with `.env.local` moved aside, a build passes iff `NEXT_PUBLIC_SUPABASE_URL`
++ `NEXT_PUBLIC_SUPABASE_ANON_KEY` are present. These are **public anon-tier values, not secrets**,
+and the build never connects — so the Build step sets placeholder values inline:
+```
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build
+```
+(`NEXT_PUBLIC_APP_URL` isn't needed — it has a `?? "http://localhost:3000"` fallback.)
+
+### 3. Sanity
+- **YAML valid** (parsed with `js-yaml`): `on` = push[main]+pull_request[main], `runs-on:
+  ubuntu-latest`, `node-version: 20`, 8 steps in the expected order.
+- **No `working-directory` / functional `life-os` remnants** (the only `life-os` strings are the
+  explanatory header comment).
+- **`npm ci --dry-run --no-audit --no-fund`** against the moved lockfile → success (117 packages,
+  lockfile ↔ package.json in sync at root).
+
+### 4. Davide's GitHub-side verification (cannot run in-session)
+After merge + push of `main`: open the repo **Actions** tab and confirm this `CI` workflow runs
+and goes **green** (lint · types · sentinels · tests · build). Only then is the audit's "dead CI"
+finding (A9 #3) closed.
+
+**Commit:** `ci: root workflow with lint, typecheck, sentinels, tests, build`
 
 ---

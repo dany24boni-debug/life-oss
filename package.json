@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "lint:sentinels": "node scripts/check-sentinels.mjs",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
