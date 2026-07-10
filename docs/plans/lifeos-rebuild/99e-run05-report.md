@@ -103,3 +103,62 @@ dopo: resta solo la nota ospite (`{!user ? … : null}`); commento di testa aggi
 **Commit:** `feat(retire): delete mock dashboard world, redirect legacy routes, coherent auth landings`
 
 ---
+
+## Prompt 2 — PWA + offline (stub 13)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · test **618/618** (+11: `pwa-logic.test.ts` — parse difensivi localStorage, regole della card, rilevazione iOS/iPadOS). Runtime pass su build di produzione (`next build` + `next start`): `/sw.js` **200** con `Cache-Control: public, max-age=0` (semantica no-cache già di default → **nessun edit a next.config.ts, flag chiuso**), `/offline` **200** e prerender **statico** (○ nel build output) con la copy onesta servita, `manifest.webmanifest` 200 `application/manifest+json`, `/icon-512` e `/icon-512?maskable=1` 200 `image/png`, e la chiamata `register("/sw.js",{scope:"/"})` presente nel chunk `layout-*.js` del gruppo (app) referenziato dall'HTML servito. Dev intatto: la registrazione è dietro `process.env.NODE_ENV === "production"`.
+
+### Service worker (`public/sw.js`, JS puro, zero dipendenze)
+
+`SW_VERSION` nei nomi cache (`lifeos-pages/static/assets-v1`); **runtime caching puro, nessun precache manifest di build** (build webpack, nessun plugin — `next-pwa` resta fuori, regola 7):
+- **Navigazioni** → network-first; si cacheano solo risposte `ok && !redirected` (i redirect del proxy — es. rotte protette → /login — e gli errori non diventano mai fallback); fallback cache → `/offline` → 503 testuale.
+- **`/_next/static/**`** → cache-first (nomi content-hashed, immutabili per natura).
+- **Font/icone/manifest** → stale-while-revalidate (i font di `next/font` sono self-hosted sotto `/_next/static/media`, quindi già coperti dal cache-first; il bucket copre manifest, `/icon*`, `/icons/`, svg/png/woff2).
+- **MAI cache**: `/api/**` e `/sw.js` (bypass esplicito), richieste non-GET, e OGNI origine esterna (Supabase/Google sono cross-origin: il fetch handler li ignora del tutto — il browser li gestisce senza SW).
+- `activate` cancella ogni cache `lifeos-*` di versioni precedenti + `clients.claim()`; `message: SKIP_WAITING` → `skipWaiting()`.
+- La pagina `/offline` si ri-cachea a OGNI install (HTML fresco → chunk freschi). Limite onesto documentato: subito dopo un update, i chunk della pagina offline sono in cache solo se già usati dalla navigazione normale (runtime caching, per costruzione); l'HTML SSR resta comunque leggibile.
+
+### Flusso di aggiornamento + kill-switch
+
+`PwaHost` (client, nel layout della shell dentro `ToastProvider`): registra il SW, e su `updatefound`/`waiting` mostra il toast Ember "Nuova versione disponibile — **Aggiorna**" → `postMessage("SKIP_WAITING")` → `controllerchange` → reload. Il reload scatta **solo nella tab che l'ha chiesto** (flag `wantsReload`): il primo install (`clients.claim`) e gli update partiti da altre tab non ricaricano mai sotto i piedi. Check aggiornamenti anche a ogni ritorno in foreground (`visibilitychange` → `registration.update()`).
+
+**KILL-SWITCH** (per Davide): se un deploy lasciasse client bloccati, rinominare `public/sw-kill.js.txt` in `sw.js` e deployare — install: `skipWaiting`; activate: cancella TUTTE le cache `lifeos-*`, `unregister()`, e naviga i client aperti (= reload dalla rete, senza SW). Il template è nel repo, commentato. Rientro: rideployare il sw.js normale con una `SW_VERSION` nuova.
+
+**Ciclo d'aggiornamento (walkthrough per il gate):** deploy nuovo → una tab aperta torna in foreground → `update()` scarica il sw.js nuovo (byte diversi) → install (ri-cachea /offline) → waiting → toast → "Aggiorna" → il SW nuovo si attiva, cancella le cache vecchie → reload → asset nuovi. Senza tap: il SW nuovo si attiva comunque alla prossima chiusura completa dell'app.
+
+### Offline fallback
+
+`app/(app)/offline/page.tsx` — statica per costruzione (`force-static`, nessun dato per-utente): "Sei offline — i tuoi dati locali sono comunque qui" + spiegazione onesta (è la pagina mai visitata a mancare, non i dati) + link "Torna a Oggi". Dentro la shell (fence), quindi con Rail/TabBar.
+
+### Install UX
+
+- `pwa-store.ts`: cattura di `beforeinstallprompt` (tipo dichiarato: API solo-Chromium) fuori da React, consumo via `useSyncExternalStore`; `appinstalled` → `installed`.
+- `pwa-install.tsx`: **InstallSection** in Impostazioni (card "App" quieta: prompt nativo dove esiste; su iOS Safari non-standalone apre il BottomSheet di coaching "Condividi → Aggiungi alla schermata Home", 3 passi); **InstallTodayCard** su Oggi — compare dopo **3 aperture** dell'app (contatore per-dispositivo `lifeos.pwa.visits`, incrementato da PwaHost a ogni mount della shell), congedabile per sempre ("Non ora" → `lifeos.pwa.installCardDismissed`), in fondo alla pagina (gentile, mai la prima cosa). TUTTO sparisce in display-mode standalone o dove non esiste una strada (né prompt né iOS): mai promettere l'impossibile.
+- Rilevazioni al render post-idratazione con l'idioma `useSyncExternalStore` di `ui/internal.tsx` (la prima stesura usava setState-in-effect: bocciata da `react-hooks/set-state-in-effect`, riscritta senza effect).
+- iPadOS 13+ riconosciuto anche mascherato da MacIntel (maxTouchPoints > 1), testato.
+
+### Manifest e meta (edit ancorati)
+
+`public/manifest.webmanifest`: name/short_name → **"LifeOS"**, descrizione in italiano, `theme_color`/`background_color` → `#15171C` (ink Ember — il manifest non supporta media query: vale il tema di default, scuro); icone: aggiunte `/icon-512` (any) e `/icon-512?maskable=1` (glifo ridotto in safe-zone) generate da `app/icon-512/route.tsx` con lo stesso pattern ImageResponse di `app/icon.tsx` — stessa lingua visiva delle 192/180 esistenti; l'SVG `any maskable` esistente resta. *Flag*: `app/icon-512/` è fuori fence alla lettera ma esplicitamente richiesto dal build item 5 ("add 512 maskable via the existing icon-generation pattern"), come il pattern run-04.
+
+`app/layout.tsx` — prima:
+```ts
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+```
+dopo:
+```ts
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#15171C" },
+    { media: "(prefers-color-scheme: light)", color: "#F4F3EF" },
+  ],
+```
+(+ `title`/`appleWebApp.title` → "LifeOS", descrizione italiana; il meta iOS `apple-mobile-web-app-capable`/status-bar era già presente via `appleWebApp`).
+
+### Per il gate di Davide (la sandbox non può farli)
+
+Lighthouse PWA installable pass; iPhone: installazione (coaching sheet), cold start in aereo → Oggi coi dati locali; ciclo d'aggiornamento sul deploy successivo (toast "Aggiorna"); Android: prompt nativo da `beforeinstallprompt`.
+
+**Commit:** `feat(pwa): hand-rolled service worker with offline fallback, update toast, install UX`
+
+---

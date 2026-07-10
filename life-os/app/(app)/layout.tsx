@@ -1,6 +1,7 @@
 import { Bricolage_Grotesque } from "next/font/google";
 import { ToastProvider } from "@/ui";
 import { MobileHeader, Rail, TabBar } from "./_components/app-nav";
+import { PwaHost } from "./_components/pwa-host";
 import { RemindersHost } from "./_components/reminders-host";
 import { SyncHost } from "./_components/sync-host";
 
@@ -37,6 +38,9 @@ export default function AppShellLayout({
         <RemindersHost />
         {/* Sync engine (prompt 08): parte solo per utenti autenticati. */}
         <SyncHost />
+        {/* Service worker + toast aggiornamento + install UX (run-05
+            prompt 2). Registra solo in produzione; dev intatto. */}
+        <PwaHost />
       </ToastProvider>
     </div>
   );

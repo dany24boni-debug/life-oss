@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { GoogleAgendaEvent } from "./calendar/agenda";
 import { readGoogleBlock } from "./calendar/google-read";
+import { InstallTodayCard } from "./_components/pwa-install";
 import {
   UpcomingReminders,
   WhileAwayCard,
@@ -98,6 +99,10 @@ export default async function TodayPage() {
 
       {/* Rail "Prossimi": cosa suonerà ad app aperta (run-03 prompt 5). */}
       <UpcomingReminders />
+
+      {/* Card gentile "Installa LifeOS" (run-05 prompt 2): compare dopo
+          qualche visita, congedabile per sempre, mai in standalone. */}
+      <InstallTodayCard />
     </div>
   );
 }

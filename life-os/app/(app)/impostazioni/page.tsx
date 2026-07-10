@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
 import { GymImportButton } from "../gym/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
@@ -124,6 +125,10 @@ export default async function ImpostazioniPage() {
           </div>
         </section>
       ) : null}
+
+      {/* Installa LifeOS (run-05 prompt 2): prompt nativo dove esiste,
+          coaching iOS altrove; sparisce quando è già installata. */}
+      <InstallSection />
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />
