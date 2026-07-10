@@ -263,3 +263,73 @@ After:
 **Checks** (all green): lint / tsc / build / test — suite **533 -> 558** (11 time + 6 scheduler + 6 ics + 2 adapter). Dev-server: `/` 200 (host mounted, cards honest-empty), `/impostazioni` serves the truth panel ("Promemoria e notifiche", "Esporta su Calendario"), `/tasks` still zero native controls. Fence audit: `data/**`, `lib/reminders/**`, `app/(app)/**`, report.
 
 **Commit:** `feat(reminders): in-app scheduler with catch-up, task reminders, ics export`
+
+---
+
+## Run 03 — Closing summary
+
+All FIVE prompts completed, each checkpoint green, each committed on `feat/run-03`. Nothing pushed, nothing merged, `main` untouched. Final tree re-verified after the last commit: lint / tsc / build / test all green, `git status` clean.
+
+**Test counts:** baseline **467** (34 files) -> final **558** (41 files), all passing. Delta per prompt: +25 (tasks: 23 UI logic + 2 restore), +0 (guest: routing verified at runtime), +0 (auth: redirect-driven server actions, smoke via checklist), +41 (stats: 21 streak engine + 5 adapter + 3 settings + 12 screen logic), +25 (reminders: 11 time + 6 scheduler + 6 ics + 2 adapter).
+
+**Commit log of `feat/run-03`** (review surface, oldest first):
+
+1. `29a196b` — `feat(tasks): tasks module v1 with NL quick-add, views, swipe/undo/reorder`
+2. `2121aa9` — `feat(guest): public (app) surfaces with local-only guest mode`
+3. `756adec` — `feat(auth): email OTP verify flow + token_hash callback support (template flip pending)`
+4. `ce7f67e` — `feat(stats): streak engine with protected days, real Today tiles, stats + weekly review`
+5. `e114b55` — `feat(reminders): in-app scheduler with catch-up, task reminders, ics export`
+
+**Anchored edits to pre-existing files** (full before/after quotes live in each prompt's section above):
+
+- `proxy.ts` — the guest flip: `path === "/" ||` removed; prefix list byte-identical (Prompt 2 section).
+- `app/auth/callback/route.ts` — ONLY the token_hash+type branch added before the PKCE branch, `git diff`-verified (Prompt 3 section).
+- `app/login/actions.ts` — `signInWithOtp` call unchanged; zod validation + rate limits + success -> `/login/verify` (Prompt 3 section).
+- `app/(app)/page.tsx` — evolved across three prompts: Task placeholder section -> `<TodayTasks />`; guest render (no redirect, guest line, conditional bridge link); Streak placeholder -> `<TodayTiles />`; reminders cards added (Prompts 1/2/4/5 sections).
+- `app/(app)/layout.tsx` — single `ToastProvider` + `RemindersHost` (Prompt 5 section).
+- `app/(app)/tasks/page.tsx`, `app/(app)/stats/page.tsx` — skeleton -> thin wrappers over the real screens.
+- `vitest.config.ts` — include gained `app/**/*.test.ts` (enabling edit, flagged; Prompt 1 section).
+- One test fixture updated: `data/schemas.test.ts` settings base + `protected_days: []`.
+
+**Additive data-layer surface** (all flagged in their sections, all tested): `TasksRepo.restore`; `StatsRepo.streak` + `activityDays`; `RemindersRepo.listByRef` + `listFiredUndismissed`; `Settings.protected_days`; `data/streak.ts` module; hooks `useTask`, `useDoneTasks`, `useTasksSummary`, `useCompletionByDay`, `useStreak`, `useActivityDays`, `useTaskReminder`, `useFiredReminders`, `useUpcomingReminders`.
+
+---
+
+## Davide's Gate 1 checklist
+
+**1. Review + merge** (your gate, not mine):
+
+```
+git checkout main
+git merge --no-ff feat/run-03
+```
+
+**2. Single-device smoke list** (dev server or deployed, one pass on the iPhone):
+
+- `/dev/ui` — component playground still intact.
+- Shell: tab bar safe-area, rail on desktop, gear -> Impostazioni (nuova), Palestra tab -> legacy gym (login se ospite: atteso).
+- Tasks, airplane mode ON: quick-add "domani alle 18 spesa #casa !!" -> chips giusti, dismissal di un chip, submit; completa con swipe destro; undo dal toast; swipe sinistro -> snooze a domani; elimina + Annulla; drag della maniglia per riordinare; scheda dettaglio: sottotask, tag, note; reload -> tutto ancora lì (IndexedDB).
+- Guest run: finestra in incognito -> `/` = Oggi ospite con la riga sui dati locali, task utilizzabili, `/finance` -> login, `/impostazioni` = variante ospite con CTA.
+- Stats: chiudi 1-2 task -> tile "Task oggi" e streak si muovono; `/stats` barre e strip; `/stats/review` osservazione; proteggi un giorno futuro in Impostazioni e verifica la strip.
+- Reminders: task con orario tra 2 minuti + promemoria "All'orario del task" -> rail "Prossimi" su Oggi; aspetta il toast (app aperta); poi metti l'app in background prima di uno scatto e rientra -> card "Mentre eri via"; "Esporta su Calendario" -> l'ics si apre in Calendario iOS con l'allarme giusto.
+
+**3. OTP activation** — follow `docs/plans/lifeos-rebuild/03-activation-checklist.md` (Supabase template with `{{ .Token }}`, Redirect URLs, smoke incl. wrong-code x5 and cross-device code entry). Until you flip the template, login works exactly as before via the link (the code screen says so).
+
+**4. Open decision one-liners (D3-D7)** — unchanged, still yours:
+
+- **D3** repo root move: parked for prompt 16.
+- **D4** legacy fates: Palestra tab still points at legacy `/gym` until prompt 10; legacy `/settings` reachable from the new Impostazioni.
+- **D5** light theme: tokens exist; no switcher yet (prompt 14).
+- **D6** Supabase topology: one project vs two — matters before sync (prompt 08).
+- **D7** AI features: untouched, still key-gated on legacy surfaces.
+
+---
+
+## Deliberately NOT done (scope fences)
+
+- **Sync / guest->account migration** (prompt 08): guests AND account holders currently keep new-module data local to the device; the Impostazioni copy says exactly that.
+- **Calendar** (09), **Gym** (10): placeholders on Today remain honest EmptyStates; gym sessions already count toward the streak the day the module lands.
+- **PWA/service worker** (13), push (17), comfort wave (14), legacy ports (15), repo-root move (16).
+- No dependencies added anywhere in this run. No Supabase dashboard changes performed (documented for Davide instead). Nothing pushed or merged.
+
+**Run 04 candidates** (by value): 08-sync-migration (the accounts promise), then 09-calendar or 10-gym (Today has two placeholder sections waiting), 13-pwa-offline to make the guest/local story installable.
