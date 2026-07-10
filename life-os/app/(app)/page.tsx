@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/ui";
+import type { GoogleAgendaEvent } from "./calendar/agenda";
+import { readGoogleBlock } from "./calendar/google-read";
 import {
   UpcomingReminders,
   WhileAwayCard,
 } from "./_components/reminders-cards";
+import { APP_TIME_ZONE } from "./_components/tasks/logic";
+import { TodayAgenda } from "./_components/today-agenda";
 import { TodayTasks } from "./_components/tasks/today-section";
 import { TodayTiles } from "./_components/today-tiles";
 
@@ -26,11 +30,6 @@ const SECTIONS: Array<{
   heading: string;
   text: string;
 }> = [
-  {
-    eyebrow: "Agenda",
-    heading: "Nessun evento in agenda",
-    text: "Arriva con il modulo Calendario.",
-  },
   {
     eyebrow: "Palestra",
     heading: "Nessun allenamento qui, per ora",
@@ -59,6 +58,12 @@ export default async function TodayPage() {
     displayName = profile?.display_name?.trim() || null;
   }
   const dateLabel = formatTodayIt(new Date(), timeZone);
+
+  // Eventi Google per la sezione Agenda (run-04 prompt 09): sola lettura,
+  // già nel fuso dell'app; da ospiti la lista è semplicemente vuota.
+  const googleEvents: GoogleAgendaEvent[] = user
+    ? (await readGoogleBlock(supabase, user.id, APP_TIME_ZONE)).events
+    : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,6 +102,10 @@ export default async function TodayPage() {
 
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />
+
+      {/* Agenda reale (run-04 prompt 09): strip settimana + merge del
+          giorno — eventi locali, task con orario, Google read-only. */}
+      <TodayAgenda google={googleEvents} />
 
       {/* Rail "Prossimi": cosa suonerà ad app aperta (run-03 prompt 5). */}
       <UpcomingReminders />

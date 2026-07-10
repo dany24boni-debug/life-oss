@@ -86,4 +86,27 @@ describe("LocalEventsRepo", () => {
     expect(purged.ok && purged.data).toBe(1);
     expect(await db.events.get(ev.id)).toBeUndefined();
   });
+
+  it("restore annulla il soft delete e bumpa updated_at (undo del toast)", async () => {
+    const ev = await mustCreate({ title: "Ripescami", date: "2026-07-12" });
+    await repo.softDelete(ev.id);
+    expect(await repo.getById(ev.id)).toBeNull();
+
+    const restored = await repo.restore(ev.id);
+    expect(restored.ok).toBe(true);
+    const alive = await repo.getById(ev.id);
+    expect(alive?.title).toBe("Ripescami");
+    expect(alive?.deleted_at).toBeNull();
+    // L'undo vince il LWW sul delete.
+    expect(alive!.updated_at > ev.updated_at).toBe(true);
+  });
+
+  it("restore è idempotente sui vivi e not_found sugli inesistenti", async () => {
+    const ev = await mustCreate({ title: "Vivo", date: "2026-07-12" });
+    const again = await repo.restore(ev.id);
+    expect(again.ok && again.data.id).toBe(ev.id);
+
+    const missing = await repo.restore("01980000-0000-7000-8000-0000000000ff");
+    expect(!missing.ok && missing.error.code).toBe("not_found");
+  });
 });

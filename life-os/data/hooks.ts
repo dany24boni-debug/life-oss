@@ -105,6 +105,14 @@ export function useEventsRange(
   );
 }
 
+/** Singolo evento per id (scheda dettaglio); null se assente o tombstone. */
+export function useEvent(id: string | null): LocalEvent | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().events.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
 /** Sessioni gym nel range di giorni. */
 export function useGymSessionsRange(
   from: IsoDay,

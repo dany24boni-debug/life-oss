@@ -86,6 +86,21 @@ export class LocalEventsRepo implements EventsRepo {
     });
   }
 
+  restore(id: string): Promise<Result<LocalEvent>> {
+    return attempt(async () => {
+      const row = await this.db.events.get(id);
+      if (!row) return err("not_found", EVENTO_NON_TROVATO);
+      if (row.deleted_at === null) return ok(row); // idempotente
+      const next: LocalEvent = {
+        ...row,
+        deleted_at: null,
+        updated_at: bumpFrom(this.clock, row.updated_at),
+      };
+      await this.db.events.put(next);
+      return ok(next);
+    });
+  }
+
   async getById(id: string): Promise<LocalEvent | null> {
     const row = await this.db.events.get(id);
     return row && alive(row) ? row : null;

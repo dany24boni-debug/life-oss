@@ -73,4 +73,47 @@ node scripts/run-migration.mjs supabase/migrations/0020_push_subscriptions.sql
 
 **Commit:** `feat(sync): LWW sync engine with guest->account migration and JSON export/import (migrations to apply)`
 
+---
+
+## Prompt 2 — Modulo Calendario (stub 09, B2.4)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · test **600/600** (+21: 13 merge/densità/fusi, 6 parse eventi, 2 `restore` eventi). Dev server DA OSPITE: `/calendar` 200 con griglia mese (`role="grid"`), quick-add e **nessun** blocco Google nell'HTML; Oggi serve la sezione Agenda reale (strip settimana inclusa); zero controlli nativi. Fence read-only provata: `git diff --stat HEAD -- app/agenda app/api/auth/google lib/google lib/calendar` → **output vuoto** (byte-identici).
+
+### Costruito (`app/(app)/calendar/` nuova + `_components/`)
+
+- **Mese + agenda del giorno** (`calendar-screen.tsx`): Calendar Ember (già con swipe touch, frecce, dot ember su oggi) coi puntini di densità da eventi locali vivi + task APERTI datati + Google; tap su un giorno → la sua agenda sotto; deep-link `?giorno=YYYY-MM-DD`. Le query locali coprono [-6, +12] mesi: il Calendar naviga i mesi con stato interno (nessun onMonthChange nell'API) e i markers devono rispondere per ogni giorno visibile — documentato nel file.
+- **CRUD eventi locali**: quick-add NL (`event-parse.ts` puro + `event-quick-add.tsx`) che condivide parser e chip dismissibili dei task — differenze deliberate e testate: contano solo data/orario (priorità/tag/module restano nel titolo), senza data vale il giorno selezionato (chip attenuato), fine implicita **+1h** (`defaultEndTime`, clamp 23:59), senza orario = tutto il giorno. Scheda evento (`event-detail.tsx`, BottomSheet/Modal come i task): titolo, giorno (DatePicker), inizio/fine (TimePicker), flag tutto-il-giorno, note, eliminazione col toast Annulla.
+- **Port additivo** (convenzione run-03): `EventsRepo.restore(id)` per l'undo — stessa semantica di `TasksRepo.restore`, testato; hook `useEvent(id)`. Gli eventi sincronizzano già via engine del Prompt 1 (`lo_events`) senza toccare nulla: stesso Dexie, stesso segnale mutazioni.
+- **Agenda unificata** (`agenda.ts` puro): all-day prima (eventi, poi Google), poi per orario (a parità eventi < task < Google, poi titolo); i task SENZA orario non entrano (vivono nella lista Task); voci source-linked (task → scheda task, evento → scheda evento, Google → badge "Google", read-only). Conversione istanti→giorno/orario in Europe/Rome testata (CEST/CET, cavallo di mezzanotte, fuso invalido→UTC); all-day Google multi-giorno espansi (fine esclusiva, tetto 60 giorni).
+- **Google portato, non patchato**: lettura server-side (`google-read.ts`) con account a **LISTA** (mai `.maybeSingle()` — azzardo A2 n.1) e **zero scritture al render** (azzardo A2 n.2: il "holder" custom_modules non serve, gli eventi locali vivono in Dexie). "Sincronizza" = server action nuova (`actions.ts`) che riusa il codice testato di `lib/google` (client API, token store, mapping upsert) su **tutti** gli account collegati. Connect = link all'esistente `/api/auth/google/start`. Ospiti: il blocco non esiste.
+- **Oggi**: placeholder Agenda sostituito (edit ancorato sotto) da `TodayAgenda` — strip settimana (tap ≠ oggi → `/calendar?giorno=`), merge reale del giorno, schede al tap.
+
+### Adattamenti alla realtà (brief vs repo)
+
+1. Il brief dice "reuses the existing `lib/calendar` sync code": il codice sync Google vive in **`lib/google/`** (`lib/calendar/` contiene solo `in-presence.ts`, fuori scope). Riusato via import, MAI modificato; nessun wrapper in `lib/calendar` è servito.
+2. Il callback OAuth (read-only) reindirizza su `/agenda`: connettendo da `/calendar` si atterra sulla pagina legacy (funzionante). Il cerchio si chiude al prompt 15 (redirect `/agenda`→`/calendar`).
+3. "visible range server-side": la tabella `external_calendar_events` contiene SOLO la finestra sync [-7g,+30g], quindi la lettura integrale È il massimo range visibile; mesi fuori finestra mostrano onestamente zero eventi Google.
+4. Niente disconnect sulla pagina nuova (il brief non lo chiede): resta su `/agenda` fino al prompt 15. Niente importer eventi legacy (assente dal brief run-04; il gap era già noto nei doc — territorio prompt 15).
+5. `lib/nlp-it/**`: nessun bugfix necessario, intatta.
+
+### Edit ancorati a `app/(app)/page.tsx`
+
+Prima (sezione placeholder nell'array `SECTIONS`):
+```ts
+  {
+    eyebrow: "Agenda",
+    heading: "Nessun evento in agenda",
+    text: "Arriva con il modulo Calendario.",
+  },
+```
+Dopo: voce rimossa (resta solo Palestra) e, tra `<TodayTasks />` e `<UpcomingReminders />`:
+```tsx
+      {/* Agenda reale (run-04 prompt 09): strip settimana + merge del
+          giorno — eventi locali, task con orario, Google read-only. */}
+      <TodayAgenda google={googleEvents} />
+```
+con `googleEvents` letto server-side (`readGoogleBlock`) solo per utenti autenticati (ospiti: `[]`).
+
+**Commit:** `feat(calendar): month/week calendar with NL events, unified agenda, Google read-only port`
+
 _(Sezioni per prompt aggiunte man mano, a checkpoint verde.)_
