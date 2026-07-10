@@ -1,0 +1,58 @@
+name: CI
+
+# Runs at the REPOSITORY ROOT. Before run-06 the app lived in life-os/ and this
+# workflow sat at life-os/.github/workflows/ — GitHub only discovers workflows
+# in the repo-root .github/, so CI never actually ran (audit A9 #3, "dead CI").
+# Moving .github/ to the root (run-06, prompt 2) revives it; this rewrite adds
+# the missing build step and routes typecheck through the new npm script.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: lint · types · sentinels · tests · build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Node 20: matches @types/node ^20 and the committed lockfile
+          # (no `engines` field in package.json). Same major as the prior workflow.
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Sentinel grep: blocks reintroduction of any personal-data string that
+      # was scrubbed during the share-prep refactor. See scripts/check-sentinels.mjs
+      # for the pattern list. Kept as a hard gate (share-prep hygiene).
+      - name: Sentinel grep
+        run: node scripts/check-sentinels.mjs
+
+      - name: Tests
+        run: npm test
+
+      # Build with PLACEHOLDER public Supabase vars: the static /offline page
+      # constructs a browser client at prerender time and @supabase/ssr throws
+      # on an empty url/key. These are public anon-tier values (NOT secrets) and
+      # only need to be present — the build never connects to Supabase.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build
