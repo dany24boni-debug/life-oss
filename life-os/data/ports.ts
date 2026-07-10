@@ -13,6 +13,7 @@
  */
 
 import type { Result } from "./result";
+import type { StreakSummary } from "./streak";
 import type {
   EventCreate,
   EventPatch,
@@ -54,6 +55,12 @@ export interface TasksRepo {
   uncomplete(id: string): Promise<Result<Task>>;
   /** Tombstone: la riga resta fisicamente, sparisce da ogni lettura. */
   softDelete(id: string): Promise<Result<void>>;
+  /**
+   * Annulla un soft delete (pattern undo del toast): rimuove la tombstone
+   * e bumpa updated_at, così l'undo vince il LWW sul delete. Idempotente
+   * su righe vive; err not_found se la riga non esiste proprio.
+   */
+  restore(id: string): Promise<Result<Task>>;
   /**
    * Riordino manuale: assegna sort_order = indice nell'array. Id ignoti o
    * cancellati vengono saltati senza errore (gesto UI, non transazione di
@@ -152,9 +159,10 @@ export interface GymRepo {
 // ============================================================
 
 /**
- * Volutamente minimo: il motore streak (giorni protetti, timezone del
- * giorno civile) arriva col prompt 11 e amplierà questo port con semantica
- * precisa invece di ereditarne una sbagliata.
+ * Aggregati sempre calcolati al volo, mai cache (lezione dell'audit). Il
+ * motore streak (run-03, prompt 11) vive in `data/streak.ts`; qui il port
+ * espone la lettura composta: giorni di attività + giorni protetti dalle
+ * impostazioni -> StreakSummary.
  */
 export interface StatsRepo {
   /** Conteggio task del giorno: { total, done } — tile "oggi". */
@@ -171,6 +179,21 @@ export interface StatsRepo {
     from: IsoDay,
     to: IsoDay,
   ): Promise<{ sessions: number; totalVolumeKg: number }>;
+  /**
+   * Streak onesta (B2.5): giorno attivo = task completato o sessione gym
+   * nel giorno civile della timezone data; i giorni protetti (Settings)
+   * fanno da ponte. Semantica completa in data/streak.ts.
+   */
+  streak(opts: { today: IsoDay; timeZone: string }): Promise<StreakSummary>;
+  /**
+   * Giorni con attività nel range inclusivo (per la strip mensile),
+   * ordinati, senza duplicati.
+   */
+  activityDays(
+    from: IsoDay,
+    to: IsoDay,
+    timeZone: string,
+  ): Promise<IsoDay[]>;
 }
 
 // ============================================================
@@ -187,6 +210,13 @@ export interface RemindersRepo {
   listPending(now: IsoInstant): Promise<Reminder[]>;
   /** In arrivo nel range, ordinati per fire_at. */
   listUpcoming(from: IsoInstant, to: IsoInstant): Promise<Reminder[]>;
+  /** I promemoria del task/evento dato, ordinati per fire_at. */
+  listByRef(refId: string): Promise<Reminder[]>;
+  /**
+   * Scattati ma mai riconosciuti dall'utente (fired, non dismissed):
+   * il contenuto della card "Mentre eri via" e il conteggio del badge.
+   */
+  listFiredUndismissed(): Promise<Reminder[]>;
   markFired(id: string, at: IsoInstant): Promise<Result<Reminder>>;
   dismiss(id: string, at: IsoInstant): Promise<Result<Reminder>>;
 

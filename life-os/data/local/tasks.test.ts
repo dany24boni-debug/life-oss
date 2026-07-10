@@ -107,6 +107,31 @@ describe("LocalTasksRepo — tombstone", () => {
     expect(!r.ok && r.error.code).toBe("not_found");
   });
 
+  it("restore annulla il soft delete e bumpa updated_at (pattern undo)", async () => {
+    const task = await mustCreate({ title: "Ripescabile", date: "2026-07-10" });
+    await repo.softDelete(task.id);
+    const deleted = await db.tasks.get(task.id);
+
+    const r = await repo.restore(task.id);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.deleted_at).toBeNull();
+      // L'undo deve vincere il LWW sul delete: updated_at più recente.
+      expect(r.data.updated_at > deleted!.updated_at).toBe(true);
+    }
+    expect(await repo.getById(task.id)).not.toBeNull();
+    expect(await repo.listByDay("2026-07-10")).toHaveLength(1);
+  });
+
+  it("restore è idempotente su righe vive; su id inesistente not_found", async () => {
+    const task = await mustCreate({ title: "Viva" });
+    const r = await repo.restore(task.id);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.updated_at).toBe(task.updated_at); // nessun bump
+    const missing = await repo.restore("00000000-0000-7000-8000-000000000000");
+    expect(!missing.ok && missing.error.code).toBe("not_found");
+  });
+
   it("update/complete su una tombstone restituisce not_found", async () => {
     const task = await mustCreate({ title: "x" });
     await repo.softDelete(task.id);

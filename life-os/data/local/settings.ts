@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   id: "local",
   display_name: null,
   theme: "dark",
+  protected_days: [],
   created_at: EPOCH,
   updated_at: EPOCH,
   deleted_at: null,
@@ -36,7 +37,9 @@ export class LocalSettingsRepo implements SettingsRepo {
 
   async get(): Promise<Settings> {
     const row = await this.db.settings.get("local");
-    return row ?? DEFAULT_SETTINGS;
+    // Merge sui default: le righe scritte prima di un campo nuovo (es.
+    // protected_days, run-03) tornano complete senza migrazione Dexie.
+    return row ? { ...DEFAULT_SETTINGS, ...row } : DEFAULT_SETTINGS;
   }
 
   update(patch: SettingsPatch): Promise<Result<Settings>> {
@@ -51,6 +54,11 @@ export class LocalSettingsRepo implements SettingsRepo {
           display_name: v.data.display_name,
         }),
         ...(v.data.theme !== undefined && { theme: v.data.theme }),
+        ...(v.data.protected_days !== undefined && {
+          // Ordinati e senza duplicati per costruzione: chi legge (motore
+          // streak, UI) non deve difendersi.
+          protected_days: [...new Set(v.data.protected_days)].sort(),
+        }),
         created_at: current.created_at === EPOCH ? now : current.created_at,
         updated_at: now,
       };

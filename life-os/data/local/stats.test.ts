@@ -108,3 +108,95 @@ describe("LocalStatsRepo", () => {
     });
   });
 });
+
+describe("LocalStatsRepo — streak e giorni attivi (run-03)", () => {
+  /** Task fatto con completed_at controllato, scritto raw sulla tabella. */
+  async function seedDone(completedAt: string) {
+    const { uuidv7 } = await import("../ids");
+    await db.tasks.add({
+      id: uuidv7(),
+      title: "fatto",
+      notes: null,
+      date: null,
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "done",
+      completed_at: completedAt,
+      sort_order: 0,
+      subtasks: [],
+      created_at: completedAt,
+      updated_at: completedAt,
+      deleted_at: null,
+    });
+  }
+
+  it("fixture manuale: catena di 3 con ponte protetto e sessione gym", async () => {
+    // Attivi: 8 (task), 9 (gym), 11 (task). Il 10 è protetto.
+    await seedDone("2026-07-08T10:00:00.000Z");
+    await must(repos.gym.createSession({ date: "2026-07-09" }));
+    await seedDone("2026-07-11T06:00:00.000Z");
+    await must(repos.settings.update({ protected_days: ["2026-07-10"] }));
+
+    const s = await repos.stats.streak({
+      today: "2026-07-11",
+      timeZone: "UTC",
+    });
+    expect(s).toEqual({ current: 3, best: 3, todayCounts: true });
+  });
+
+  it("la timezone iniettata decide il giorno del completamento", async () => {
+    // 22:30 UTC del 9 = 00:30 dell'10 a Roma.
+    await seedDone("2026-07-09T22:30:00.000Z");
+
+    const rome = await repos.stats.streak({
+      today: "2026-07-10",
+      timeZone: "Europe/Rome",
+    });
+    expect(rome.todayCounts).toBe(true);
+    expect(rome.current).toBe(1);
+
+    const utc = await repos.stats.streak({
+      today: "2026-07-10",
+      timeZone: "UTC",
+    });
+    expect(utc.todayCounts).toBe(false); // per UTC è attività di ieri
+    expect(utc.current).toBe(1); // catena in sospeso che arriva a ieri
+  });
+
+  it("i giorni protetti arrivano dalle Settings e fanno solo da ponte", async () => {
+    await seedDone("2026-07-07T10:00:00.000Z");
+    await must(
+      repos.settings.update({ protected_days: ["2026-07-08", "2026-07-09"] }),
+    );
+    const s = await repos.stats.streak({
+      today: "2026-07-10",
+      timeZone: "UTC",
+    });
+    expect(s).toEqual({ current: 1, best: 1, todayCounts: false });
+  });
+
+  it("tombstone escluse: un task fatto poi eliminato non tiene viva la streak", async () => {
+    const t = await must(repos.tasks.create({ title: "x", date: "2026-07-10" }));
+    await must(repos.tasks.complete(t.id));
+    await must(repos.tasks.softDelete(t.id));
+    const s = await repos.stats.streak({
+      today: "2026-07-10",
+      timeZone: "UTC",
+    });
+    expect(s.todayCounts).toBe(false);
+    expect(s.current).toBe(0);
+  });
+
+  it("activityDays: range inclusivo, dedupe e ordine", async () => {
+    await seedDone("2026-07-08T10:00:00.000Z");
+    await seedDone("2026-07-08T18:00:00.000Z"); // stesso giorno: una voce
+    await seedDone("2026-07-05T10:00:00.000Z"); // fuori range
+    await must(repos.gym.createSession({ date: "2026-07-06" }));
+
+    expect(
+      await repos.stats.activityDays("2026-07-06", "2026-07-08", "UTC"),
+    ).toEqual(["2026-07-06", "2026-07-08"]);
+  });
+});

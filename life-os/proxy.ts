@@ -51,10 +51,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  // "/" ora è Oggi (gruppo (app)) e resta protetta fino al guest mode
-  // (prompt 07). Match esatto, non prefisso: ogni path inizia con "/".
-  const isProtected =
-    path === "/" || PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+  // Guest mode (prompt 07, run-03): le superfici del gruppo (app) — "/",
+  // /tasks, /calendar, /stats, /impostazioni — sono pubbliche, coi dati
+  // locali al dispositivo. Le rotte legacy restano protette com'erano.
+  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
   const isAuthOnly = AUTH_ONLY_PREFIXES.some((p) => path.startsWith(p));
 
   if (isProtected && !user) {

@@ -53,3 +53,41 @@ describe("LocalSettingsRepo", () => {
     expect(!r.ok && r.error.code).toBe("validation");
   });
 });
+
+describe("LocalSettingsRepo — protected_days (run-03)", () => {
+  it("una riga salvata prima del campo torna normalizzata con []", async () => {
+    // Simula una riga scritta dallo schema precedente (niente protected_days).
+    const now = new Date().toISOString();
+    await db.settings.put({
+      id: "local",
+      display_name: "Davide",
+      theme: "dark",
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    } as never);
+
+    const s = await repo.get();
+    expect(s.protected_days).toEqual([]);
+    expect(s.display_name).toBe("Davide");
+  });
+
+  it("update ordina e deduplica i giorni protetti", async () => {
+    const r = await repo.update({
+      protected_days: ["2026-07-12", "2026-07-10", "2026-07-12"],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.protected_days).toEqual(["2026-07-10", "2026-07-12"]);
+    }
+    expect((await repo.get()).protected_days).toEqual([
+      "2026-07-10",
+      "2026-07-12",
+    ]);
+  });
+
+  it("update rifiuta giorni non validi", async () => {
+    const r = await repo.update({ protected_days: ["10/07/2026"] });
+    expect(!r.ok && r.error.code).toBe("validation");
+  });
+});

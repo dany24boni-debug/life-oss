@@ -8,6 +8,11 @@
 import type { LifeosDb } from "../db";
 import type { IsoDay } from "../schemas";
 import type { StatsRepo } from "../ports";
+import {
+  civilDayInZone,
+  computeStreak,
+  type StreakSummary,
+} from "../streak";
 import { alive } from "./util";
 
 export class LocalStatsRepo implements StatsRepo {
@@ -46,6 +51,51 @@ export class LocalStatsRepo implements StatsRepo {
     return [...byDay.entries()]
       .map(([date, counts]) => ({ date, ...counts }))
       .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async streak(opts: {
+    today: IsoDay;
+    timeZone: string;
+  }): Promise<StreakSummary> {
+    const [activityDays, settingsRow] = await Promise.all([
+      this.allActivityDays(opts.timeZone),
+      this.db.settings.get("local"),
+    ]);
+    return computeStreak({
+      activityDays,
+      protectedDays: new Set(settingsRow?.protected_days ?? []),
+      today: opts.today,
+    });
+  }
+
+  async activityDays(
+    from: IsoDay,
+    to: IsoDay,
+    timeZone: string,
+  ): Promise<IsoDay[]> {
+    const all = await this.allActivityDays(timeZone);
+    return [...all].filter((d) => d >= from && d <= to).sort();
+  }
+
+  /**
+   * Giorni con almeno un'azione significativa: task completato (istante
+   * completed_at -> giorno civile nella zona) o sessione gym (già un
+   * giorno civile). Scansione filtrata: completed_at non è indicizzato,
+   * a scala personale è la scelta documentata (vedi data/db.ts).
+   */
+  private async allActivityDays(timeZone: string): Promise<Set<IsoDay>> {
+    const [doneTasks, sessions] = await Promise.all([
+      this.db.tasks
+        .where("status")
+        .equals("done")
+        .filter((t) => alive(t) && t.completed_at !== null)
+        .toArray(),
+      this.db.gym_sessions.filter((s) => alive(s)).toArray(),
+    ]);
+    const days = new Set<IsoDay>();
+    for (const t of doneTasks) days.add(civilDayInZone(t.completed_at!, timeZone));
+    for (const s of sessions) days.add(s.date);
+    return days;
   }
 
   async gymVolumeInRange(

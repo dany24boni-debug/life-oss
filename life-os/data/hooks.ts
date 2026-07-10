@@ -25,10 +25,13 @@ import type { Repos } from "./ports";
 import type {
   GymSession,
   IsoDay,
+  IsoInstant,
   LocalEvent,
+  Reminder,
   Settings,
   Task,
 } from "./schemas";
+import type { StreakSummary } from "./streak";
 
 let repos: Repos | null = null;
 
@@ -44,6 +47,22 @@ export function appRepos(): Repos {
 /** Task del giorno (aperti e fatti), ordinati per sort_order. */
 export function useTasks(day: IsoDay): Task[] | undefined {
   return useLiveQuery(() => appRepos().tasks.listByDay(day), [day]);
+}
+
+/** Singolo task per id (scheda dettaglio); null se assente o tombstone. */
+export function useTask(id: string | null): Task | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().tasks.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/**
+ * Archivio Fatti, più recenti prima. La paginazione UI è "carica altri":
+ * il chiamante alza `limit` e la live query si riesegue.
+ */
+export function useDoneTasks(limit: number): Task[] | undefined {
+  return useLiveQuery(() => appRepos().tasks.listDone({ limit }), [limit]);
 }
 
 /** Task aperti in ritardo rispetto a `today`. */
@@ -89,4 +108,95 @@ export function useGymSessionsRange(
 /** Impostazioni locali (default mai-persistiti se la riga non esiste). */
 export function useSettings(): Settings | undefined {
   return useLiveQuery(() => appRepos().settings.get(), []);
+}
+
+/* ── Stats (B2.5, run-03): tile e schermata Statistiche ─────────────── */
+
+/** Conteggio task del giorno per il tile "oggi". */
+export function useTasksSummary(
+  day: IsoDay,
+): { total: number; done: number } | undefined {
+  return useLiveQuery(() => appRepos().stats.tasksSummary(day), [day]);
+}
+
+/** Completamento per giorno nel range (barre settimanali). */
+export function useCompletionByDay(
+  from: IsoDay,
+  to: IsoDay,
+): Array<{ date: IsoDay; total: number; done: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.completionByDay(from, to),
+    [from, to],
+  );
+}
+
+/** Streak con giorni protetti; si aggiorna con task, gym e impostazioni. */
+export function useStreak(
+  today: IsoDay,
+  timeZone: string,
+): StreakSummary | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.streak({ today, timeZone }),
+    [today, timeZone],
+  );
+}
+
+/** Giorni attivi nel range (strip mensile della schermata Statistiche). */
+export function useActivityDays(
+  from: IsoDay,
+  to: IsoDay,
+  timeZone: string,
+): IsoDay[] | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.activityDays(from, to, timeZone),
+    [from, to, timeZone],
+  );
+}
+
+/* ── Reminders (B2.2, run-03): scheduler in-app e superfici di Oggi ──── */
+
+/** Promemoria + task risolto (titolo per toast, card e rail). */
+export type ReminderWithTask = { reminder: Reminder; task: Task | null };
+
+async function withTasks(reminders: Reminder[]): Promise<ReminderWithTask[]> {
+  const repos = appRepos();
+  return Promise.all(
+    reminders.map(async (reminder) => ({
+      reminder,
+      task:
+        reminder.kind === "task"
+          ? await repos.tasks.getById(reminder.ref_id)
+          : null,
+    })),
+  );
+}
+
+/** Il promemoria del task (v1: al più uno), per la scheda dettaglio. */
+export function useTaskReminder(
+  taskId: string | null,
+): Reminder | null | undefined {
+  return useLiveQuery(async () => {
+    if (!taskId) return null;
+    const rows = await appRepos().reminders.listByRef(taskId);
+    return rows[0] ?? null;
+  }, [taskId]);
+}
+
+/** Scattati e mai riconosciuti: card "Mentre eri via" + badge. */
+export function useFiredReminders(): ReminderWithTask[] | undefined {
+  return useLiveQuery(
+    () => appRepos().reminders.listFiredUndismissed().then(withTasks),
+    [],
+  );
+}
+
+/** In arrivo nel range di istanti (rail "Prossimi" di Oggi). */
+export function useUpcomingReminders(
+  from: IsoInstant,
+  to: IsoInstant,
+): ReminderWithTask[] | undefined {
+  return useLiveQuery(
+    () => appRepos().reminders.listUpcoming(from, to).then(withTasks),
+    [from, to],
+  );
 }

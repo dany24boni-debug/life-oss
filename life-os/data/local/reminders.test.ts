@@ -100,3 +100,44 @@ describe("LocalRemindersRepo", () => {
     expect(!r.ok && r.error.code).toBe("validation");
   });
 });
+
+describe("LocalRemindersRepo — letture per la UI (run-03)", () => {
+  it("listByRef: solo i promemoria del ref, vivi, ordinati per fire_at", async () => {
+    const taskId = "00000000-0000-7000-8000-00000000000a";
+    const other = "00000000-0000-7000-8000-00000000000b";
+    const r2 = await must(
+      repo.create({ kind: "task", ref_id: taskId, fire_at: "2026-07-10T18:00:00.000Z" }),
+    );
+    await must(
+      repo.create({ kind: "task", ref_id: taskId, fire_at: "2026-07-10T08:00:00.000Z" }),
+    );
+    await must(
+      repo.create({ kind: "task", ref_id: other, fire_at: "2026-07-10T09:00:00.000Z" }),
+    );
+    await must(repo.softDelete(r2.id));
+
+    const list = await repo.listByRef(taskId);
+    expect(list).toHaveLength(1);
+    expect(list[0].fire_at).toBe("2026-07-10T08:00:00.000Z");
+  });
+
+  it("listFiredUndismissed: scattati e mai riconosciuti, più recenti prima", async () => {
+    const a = await must(
+      repo.create({ kind: "task", ref_id: "00000000-0000-7000-8000-000000000001", fire_at: "2026-07-10T08:00:00.000Z" }),
+    );
+    const b = await must(
+      repo.create({ kind: "task", ref_id: "00000000-0000-7000-8000-000000000002", fire_at: "2026-07-10T09:00:00.000Z" }),
+    );
+    const c = await must(
+      repo.create({ kind: "task", ref_id: "00000000-0000-7000-8000-000000000003", fire_at: "2026-07-10T10:00:00.000Z" }),
+    );
+    await must(repo.markFired(a.id, "2026-07-10T08:00:05.000Z"));
+    await must(repo.markFired(b.id, "2026-07-10T09:00:05.000Z"));
+    await must(repo.dismiss(b.id, "2026-07-10T09:01:00.000Z"));
+    // c non è mai scattato.
+    void c;
+
+    const list = await repo.listFiredUndismissed();
+    expect(list.map((r) => r.id)).toEqual([a.id]);
+  });
+});
