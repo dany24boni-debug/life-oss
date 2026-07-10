@@ -1,10 +1,31 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { IconChevronRight, IconExam } from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
+import { EsamiImportButton } from "../esami/import-button";
 import { GymImportButton } from "../gym/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
+
+/**
+ * Moduli oltre le 5 tab (run-05, stub 15): questa lista è la loro casa su
+ * mobile; sul desktop hanno la sezione "Moduli" del Rail. Cresce coi
+ * prompt del run (Esami, poi Spese e Sera).
+ */
+const MODULE_LINKS: Array<{
+  href: string;
+  label: string;
+  desc: string;
+  icon: (props: { className?: string }) => React.ReactElement;
+}> = [
+  {
+    href: "/esami",
+    label: "Esami",
+    desc: "Countdown e ritmo di studio per capitolo",
+    icon: IconExam,
+  },
+];
 
 /**
  * Impostazioni — la superficie nuova del gruppo (app). Vive a
@@ -75,6 +96,32 @@ export default async function ImpostazioniPage() {
         )}
       </section>
 
+      {/* Moduli oltre le tab (run-05): la casa mobile dei moduli nuovi. */}
+      <section aria-label="Moduli" className="em-card p-5">
+        <p className="em-eyebrow">Moduli</p>
+        <ul className="mt-2 flex flex-col">
+          {MODULE_LINKS.map((m) => (
+            <li key={m.href}>
+              <Link
+                href={m.href}
+                className="flex min-h-11 items-center gap-3 rounded-[var(--em-r-md)] px-2 py-2 transition-colors duration-[var(--em-dur-control)] hover:bg-[color-mix(in_srgb,var(--em-text)_7%,transparent)]"
+              >
+                <m.icon className="shrink-0 text-[var(--em-text-2)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="em-body block font-medium text-[var(--em-text)]">
+                    {m.label}
+                  </span>
+                  <span className="em-body-sm block text-[var(--em-text-3)]">
+                    {m.desc}
+                  </span>
+                </span>
+                <IconChevronRight className="shrink-0 text-[var(--em-text-3)]" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* Backup JSON (prompt 08, B2.6): esporta/importa tutti i dati
           locali. Vale per ospiti E account — la rete di sicurezza che il
           gate di Davide chiede PRIMA di applicare le migrazioni. */}
@@ -122,6 +169,20 @@ export default async function ImpostazioniPage() {
           </p>
           <div className="mt-3">
             <CalendarImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import dei vecchi esami (run-05 prompt 3, B3.6). */}
+      {user ? (
+        <section aria-label="Importa i vecchi esami" className="em-card p-5">
+          <p className="em-eyebrow">Vecchi esami</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui gli esami del vecchio modulo, con capitoli e note.
+            Rilanciarlo non crea doppioni.
+          </p>
+          <div className="mt-3">
+            <EsamiImportButton />
           </div>
         </section>
       ) : null}

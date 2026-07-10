@@ -163,6 +163,50 @@ export const EventPatchSchema = z.object(eventEditable).partial();
 export type EventPatch = z.infer<typeof EventPatchSchema>;
 
 // ============================================================
+// Esami (run-05 prompt 3, stub 15) — la forma REALE della tabella
+// legacy `exams` (0014): titolo, data, capitoli totali/completati,
+// note. (Il brief menzionava CFU e voto: non sono mai esistiti nel
+// DB né nella pagina — l'entità rispecchia la realtà.)
+// ============================================================
+
+const ChapterCountSchema = z.number().int().min(0).max(999);
+
+export const ExamSchema = z
+  .object({
+    id: UuidSchema,
+    title: TitleSchema,
+    /** Giorno dell'esame. */
+    date: IsoDaySchema,
+    total_chapters: ChapterCountSchema,
+    completed_chapters: ChapterCountSchema,
+    notes: NotesSchema.nullable(),
+    ...audit,
+  })
+  .refine((e) => e.completed_chapters <= e.total_chapters, {
+    message: "I capitoli completati non possono superare il totale.",
+    path: ["completed_chapters"],
+  });
+export type Exam = z.infer<typeof ExamSchema>;
+
+const examEditable = {
+  title: TitleSchema,
+  date: IsoDaySchema,
+  total_chapters: ChapterCountSchema,
+  completed_chapters: ChapterCountSchema,
+  notes: NotesSchema.nullable(),
+};
+
+export const ExamCreateSchema = z
+  .object(examEditable)
+  .partial()
+  .required({ title: true, date: true });
+export type ExamCreate = z.infer<typeof ExamCreateSchema>;
+
+/** L'invariante completati ≤ totale si applica alla riga RISULTANTE (repo). */
+export const ExamPatchSchema = z.object(examEditable).partial();
+export type ExamPatch = z.infer<typeof ExamPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

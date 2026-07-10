@@ -162,3 +162,59 @@ Lighthouse PWA installable pass; iPhone: installazione (coaching sheet), cold st
 **Commit:** `feat(pwa): hand-rolled service worker with offline fallback, update toast, install UX`
 
 ---
+
+## Prompt 3 — Modulo Esami sui port (stub 15)
+
+**Checkpoint: VERDE.** lint ✓ (una `no-unused-vars` corretta al volo) · tsc ✓ (di nuovo il rituale `rm -rf .next/dev` per i tipi generati stantii della rotta cancellata) · build ✓ (`ƒ /esami` nel gruppo (app)) · test **629/629** (+11: 5 `data/local/esami.test.ts`, 4 `importer.test.ts`, 2 round-trip `data/sync/engine-modules.test.ts`; il test di migrazione Dexie aggiornato v2→v3 a parità di casi). Dev server DA OSPITE: `/esami` 200 col modulo nuovo (form "Nuovo esame" nell'HTML), zero controlli nativi, prompt import assente (solo autenticati), sezione "Moduli" nel Rail.
+
+### Adattamento alla realtà (delta dal brief, quotato)
+
+Il brief chiedeva l'entità con "name, CFU, date, grade". La tabella legacy `exams` (0014) non ha MAI avuto CFU né voto:
+```
+$ grep -rni "cfu|grade|voto" supabase/migrations/ app/esami lib/esami
+(nessun risultato)
+```
+Colonne reali: `title, exam_date, total_chapters, completed_chapters, notes`. L'entità nuova rispecchia la realtà (regola "actual code is the source of truth"): `Exam { title, date, total_chapters, completed_chapters, notes }` + audit, con invariante `completed ≤ total` (zod refine + clamp nel repo + check nella migrazione, cintura tripla come 0014).
+
+### Data layer (pattern additivo, identico ai moduli run-03/04)
+
+- `data/schemas.ts`: sezione Esami (ExamSchema + Create/Patch, capitoli 0..999).
+- `data/ports.ts`: `EsamiRepo` (create/update/softDelete/restore/getById/listAll/purgeTombstones; l'update CLAMPA i completati sulla riga risultante: abbassare il totale non è mai un errore).
+- `data/local/esami.ts` (+5 test: CRUD, invariante, tombstone/undo, input malformati).
+- `data/db.ts`: **Dexie v3** additiva (`esami: "id, date, updated_at"`); test di migrazione aggiornati (verno 3, upgrade v1→corrente con la tabella nuova subito usabile).
+- `data/sync/tables.ts`: voce `esami ↔ lo_esami` (parse ExamSchema, instantColumns audit) — da qui l'engine la muove come le altre, **provato** dal round-trip su FakeRemote (`engine-modules.test.ts`: push→pull identico tra due dispositivi; LWW sul progresso; tombstone che viaggia).
+- `data/sync/signal.ts`: repo esami decorato dal segnale mutazioni.
+- `data/hooks.ts`: `useEsami()` + `useExam(id)`.
+
+### Migrazione SCRITTA, NON applicata
+
+`supabase/migrations/0021_lo_esami.sql` — convenzioni 0019 al millimetro: colonne 1:1 con ExamSchema, doppio timestamp, PK `(user_id, id)`, indice di pull su `(user_id, server_updated_at)`, trigger `lo_touch_server_updated_at` riusato, RLS + grant espliciti/revoca anon, e **`lo_push` RIDECLARATA con l'allowlist estesa** a `lo_esami` (create or replace: applicata dopo 0019 la sostituisce — è così che la RPC "accetta" una tabella nuova). La tabella legacy `exams` resta intatta (sorgente read-only dell'importer).
+
+### UI (`app/(app)/esami/`)
+
+`page.tsx` (server: authed per l'import) + `esami-screen.tsx`: form "Nuovo esame" (Input nome, DatePicker con default oggi, capitoli numerici via Input `inputMode="numeric"` — zero controlli nativi), lista per data crescente con **countdown** ("45 giorni"/"oggi"/"3g fa"), **badge di pacing** (etichette riusate da `STATUS_BADGE_IT` della lib pura legacy `lib/esami/pacing` — read-only, MAI modificata — mappate sui toni Ember: done/vantaggio→salvia, in linea→ember, sotto pace/scaduto→segnale), barra capitoli con "target oggi: N/dì" e azione rapida "Capitolo fatto"; `exam-detail.tsx`: scheda BottomSheet/Modal con commit-on-blur, stepper ±1 sui completati (44px), eliminazione col toast Annulla (restore).
+
+### Importer (pattern gym, quarta iterazione)
+
+`import-actions.ts` (fetch RLS-scoped di `exams`, read-only) → `importer.ts` puro (id `deriveId("lifeos-import:exams:<id>")`; **`updated_at` legacy preservato** — LWW onesto sui reimport da più dispositivi; capitoli clampati, righe senza titolo/data malformata saltate e contate) → `import-run.ts` (solo id assenti + notifica sync). Superfici: card "Vecchi esami" in Impostazioni + prompt inline su /esami a lista vuota (authed).
+
+### Case dei moduli (vale per i prompt 3-5, cablato qui)
+
+Le 5 tab mobile restano com'erano. `app-nav.tsx`: il Rail desktop guadagna la sezione **"Moduli"** (lista `MODULES`, per ora Esami — icona nuova `IconExam` in icons.tsx); Impostazioni guadagna la card **"Moduli"** con le righe di navigazione (casa mobile).
+
+### Supersessione (grep quotati)
+
+```
+$ grep -rn "app/esami|esami/actions" app lib components data ui | grep -v "^app/esami/" | grep -v "^app/(app)/esami"
+(nessun risultato — exit 1)
+
+$ grep -rln "lib/esami" app lib components data ui
+app/(app)/esami/esami-screen.tsx      (modulo nuovo — riuso voluto)
+app/(app)/esami/page.tsx              (commento)
+app/esami/page.tsx                    (pagina legacy, cancellata)
+```
+→ rimossi `app/esami/page.tsx` + `app/esami/actions.ts` (con dentro la `updateExamProgress` morta dall'audit A6). `lib/esami/pacing.ts` + test RESTANO (riusati dal modulo nuovo). `proxy.ts`: `"/esami"` rimosso da PROTECTED_PREFIXES (una riga commentata, precedente run-04 /gym — l'acceptance chiede /esami 200 da ospite).
+
+**Commit:** `feat(esami): exams module on ports with sync, pacing, legacy importer`
+
+---

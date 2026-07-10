@@ -17,6 +17,9 @@ import type { StreakSummary } from "./streak";
 import type {
   EventCreate,
   EventPatch,
+  Exam,
+  ExamCreate,
+  ExamPatch,
   ExerciseCreate,
   ExercisePatch,
   GymExercise,
@@ -109,6 +112,29 @@ export interface EventsRepo {
   listByDay(date: IsoDay): Promise<LocalEvent[]>;
   /** from <= date <= to, ordinati per giorno poi orario. */
   listRange(from: IsoDay, to: IsoDay): Promise<LocalEvent[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Esami (run-05 prompt 3, stub 15)
+// ============================================================
+
+export interface EsamiRepo {
+  create(input: ExamCreate): Promise<Result<Exam>>;
+  /**
+   * Patch mirata; l'invariante completati ≤ totale si applica alla riga
+   * RISULTANTE: se il patch la violerebbe, i completati vengono clampati
+   * al totale (abbassare il totale non è mai un errore).
+   */
+  update(id: string, patch: ExamPatch): Promise<Result<Exam>>;
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restore(id: string): Promise<Result<Exam>>;
+
+  getById(id: string): Promise<Exam | null>;
+  /** Tutti gli esami vivi, per data crescente (poi titolo). */
+  listAll(): Promise<Exam[]>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -251,6 +277,7 @@ export interface SettingsRepo {
 export interface Repos {
   tasks: TasksRepo;
   events: EventsRepo;
+  esami: EsamiRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

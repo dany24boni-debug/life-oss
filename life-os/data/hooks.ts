@@ -24,6 +24,7 @@ import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  Exam,
   GymExercise,
   GymPlan,
   GymSession,
@@ -113,6 +114,19 @@ export function useEventsRange(
 export function useEvent(id: string | null): LocalEvent | null | undefined {
   return useLiveQuery(
     () => (id ? appRepos().events.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** Tutti gli esami vivi, per data crescente (run-05 prompt 3). */
+export function useEsami(): Exam[] | undefined {
+  return useLiveQuery(() => appRepos().esami.listAll(), []);
+}
+
+/** Singolo esame per id (scheda dettaglio); null se assente o tombstone. */
+export function useExam(id: string | null): Exam | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().esami.getById(id) : Promise.resolve(null)),
     [id],
   );
 }

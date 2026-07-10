@@ -8,6 +8,7 @@
 
 import type { LifeosDb } from "../db";
 import type { Repos } from "../ports";
+import { LocalEsamiRepo } from "./esami";
 import { LocalEventsRepo } from "./events";
 import { LocalGymRepo } from "./gym";
 import { LocalRemindersRepo } from "./reminders";
@@ -16,6 +17,7 @@ import { LocalStatsRepo } from "./stats";
 import { LocalTasksRepo } from "./tasks";
 import type { Clock } from "./util";
 
+export { LocalEsamiRepo } from "./esami";
 export { LocalEventsRepo } from "./events";
 export { LocalGymRepo } from "./gym";
 export { LocalRemindersRepo } from "./reminders";
@@ -27,6 +29,7 @@ export function createLocalRepos(db: LifeosDb, clock?: Clock): Repos {
   return {
     tasks: new LocalTasksRepo(db, clock),
     events: new LocalEventsRepo(db, clock),
+    esami: new LocalEsamiRepo(db, clock),
     gym: new LocalGymRepo(db, clock),
     stats: new LocalStatsRepo(db),
     reminders: new LocalRemindersRepo(db, clock),

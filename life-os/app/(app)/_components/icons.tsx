@@ -157,3 +157,13 @@ export function IconDownload({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Esami: tocco accademico, un libro aperto (run-05 prompt 3). */
+export function IconExam({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 6.5C10.2 5 7.8 4.5 4.5 4.5v13c3.3 0 5.7.5 7.5 2 1.8-1.5 4.2-2 7.5-2v-13c-3.3 0-5.7.5-7.5 2Z" />
+      <path d="M12 6.5v13" />
+    </svg>
+  );
+}
