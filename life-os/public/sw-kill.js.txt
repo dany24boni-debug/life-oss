@@ -1,0 +1,33 @@
+/*
+ * KILL-SWITCH del service worker (documentato nel report run-05, prompt 2).
+ *
+ * Se un sw.js difettoso lasciasse client bloccati su una versione stantia,
+ * il rimedio è deployare QUESTO file come public/sw.js (rinominandolo in
+ * sw.js). Al prossimo caricamento con rete:
+ *   1. il browser rileva il nuovo sw.js (byte diversi) e lo installa;
+ *   2. install: skipWaiting immediato (niente attesa, niente toast);
+ *   3. activate: cancella TUTTE le cache lifeos-* e si de-registra;
+ *   4. i client aperti vengono ricaricati dalla rete, senza service worker.
+ *
+ * Da lì in poi l'app funziona come prima del prompt 2 (nessun offline).
+ * Per reintrodurre il SW: deployare di nuovo il sw.js normale con una
+ * SW_VERSION mai usata prima.
+ */
+
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names.filter((n) => n.startsWith("lifeos-")).map((n) => caches.delete(n)),
+      );
+      await self.registration.unregister();
+      const clients = await self.clients.matchAll({ type: "window" });
+      clients.forEach((client) => client.navigate(client.url));
+    })(),
+  );
+});

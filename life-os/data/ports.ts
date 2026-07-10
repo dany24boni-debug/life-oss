@@ -15,10 +15,18 @@
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
 import type {
+  CheckinPatch,
+  EveningCheckin,
   EventCreate,
   EventPatch,
+  Exam,
+  ExamCreate,
+  ExamPatch,
   ExerciseCreate,
   ExercisePatch,
+  Expense,
+  ExpenseCreate,
+  ExpensePatch,
   GymExercise,
   GymPlan,
   GymSession,
@@ -109,6 +117,67 @@ export interface EventsRepo {
   listByDay(date: IsoDay): Promise<LocalEvent[]>;
   /** from <= date <= to, ordinati per giorno poi orario. */
   listRange(from: IsoDay, to: IsoDay): Promise<LocalEvent[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Esami (run-05 prompt 3, stub 15)
+// ============================================================
+
+export interface EsamiRepo {
+  create(input: ExamCreate): Promise<Result<Exam>>;
+  /**
+   * Patch mirata; l'invariante completati ≤ totale si applica alla riga
+   * RISULTANTE: se il patch la violerebbe, i completati vengono clampati
+   * al totale (abbassare il totale non è mai un errore).
+   */
+  update(id: string, patch: ExamPatch): Promise<Result<Exam>>;
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restore(id: string): Promise<Result<Exam>>;
+
+  getById(id: string): Promise<Exam | null>;
+  /** Tutti gli esami vivi, per data crescente (poi titolo). */
+  listAll(): Promise<Exam[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Spese (run-05 prompt 4, stub 15)
+// ============================================================
+
+export interface SpeseRepo {
+  create(input: ExpenseCreate): Promise<Result<Expense>>;
+  update(id: string, patch: ExpensePatch): Promise<Result<Expense>>;
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restore(id: string): Promise<Result<Expense>>;
+
+  getById(id: string): Promise<Expense | null>;
+  /** Spese vive del mese "YYYY-MM", per giorno decrescente (poi id). */
+  listMonth(month: string): Promise<Expense[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Sera (run-05 prompt 5, stub 15)
+// ============================================================
+
+export interface SeraRepo {
+  /**
+   * Crea-o-aggiorna il check-in del giorno (l'unico percorso di
+   * scrittura: salvataggio continuo). Una riga per giorno per
+   * costruzione: l'id è derivato dalla data. Se la riga del giorno era
+   * una tombstone (arrivata dal sync), la revive.
+   */
+  upsertDay(date: IsoDay, patch: CheckinPatch): Promise<Result<EveningCheckin>>;
+
+  getByDay(date: IsoDay): Promise<EveningCheckin | null>;
+  /** Check-in vivi con date < before, dal più recente, al massimo limit. */
+  listRecent(before: IsoDay, limit: number): Promise<EveningCheckin[]>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -251,6 +320,9 @@ export interface SettingsRepo {
 export interface Repos {
   tasks: TasksRepo;
   events: EventsRepo;
+  esami: EsamiRepo;
+  spese: SpeseRepo;
+  sera: SeraRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

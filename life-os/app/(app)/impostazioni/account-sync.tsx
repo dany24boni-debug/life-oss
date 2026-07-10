@@ -17,7 +17,7 @@ import { getDb } from "@/data/db";
 import { useSyncInfo, useSyncStatus } from "@/data/hooks";
 import { exportAll, importAll } from "@/data/sync/export";
 import { wipeLocalDevice } from "@/data/sync/wipe";
-import { signOut } from "@/app/dashboard/actions";
+import { signOut } from "@/lib/auth/actions";
 import { Button, Modal, useToast } from "@/ui";
 
 /* ── Stato sync ─────────────────────────────────────────────────────── */

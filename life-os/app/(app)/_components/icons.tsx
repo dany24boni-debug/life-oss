@@ -157,3 +157,33 @@ export function IconDownload({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Esami: tocco accademico, un libro aperto (run-05 prompt 3). */
+export function IconExam({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 6.5C10.2 5 7.8 4.5 4.5 4.5v13c3.3 0 5.7.5 7.5 2 1.8-1.5 4.2-2 7.5-2v-13c-3.3 0-5.7.5-7.5 2Z" />
+      <path d="M12 6.5v13" />
+    </svg>
+  );
+}
+
+/** Spese: un portafoglio essenziale (run-05 prompt 4). */
+export function IconWallet({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="3.5" y="6" width="17" height="13" rx="3" />
+      <path d="M3.5 10h17" />
+      <path d="M15.5 14.5h2" />
+    </svg>
+  );
+}
+
+/** Sera: una luna quieta (run-05 prompt 5). */
+export function IconMoon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z" />
+    </svg>
+  );
+}

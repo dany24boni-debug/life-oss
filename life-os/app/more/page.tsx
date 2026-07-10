@@ -5,9 +5,8 @@ import { BottomNav } from "@/app/_components/bottom-nav";
 import { getPrivateWhitelist, hasAnyPrivate } from "@/lib/auth/whitelist";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusPill } from "@/components/ui/status-pill";
-import { Avatar } from "@/app/dashboard/_components/avatar";
-import { signOut } from "@/app/dashboard/actions";
-import { CommuteToggle } from "./_components/commute-toggle";
+import { Avatar } from "@/components/ui/avatar";
+import { signOut } from "@/lib/auth/actions";
 
 type LinkRow = {
   href: string;
@@ -82,13 +81,6 @@ export default async function MorePage() {
           </div>
         </section>
       ) : null}
-
-      <section className="mt-7">
-        <SectionHeader label="Modalità" />
-        <div className="mt-2">
-          <CommuteToggle />
-        </div>
-      </section>
 
       <section className="mt-7">
         <SectionHeader label="Daily" />

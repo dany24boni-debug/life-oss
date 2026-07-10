@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { GoogleAgendaEvent } from "./calendar/agenda";
 import { readGoogleBlock } from "./calendar/google-read";
+import { InstallTodayCard } from "./_components/pwa-install";
 import {
   UpcomingReminders,
   WhileAwayCard,
@@ -17,8 +18,8 @@ import { TodayTiles } from "./_components/today-tiles";
  * VERO (regola B1): data reale nel fuso dell'utente, saluto dal
  * display_name del profilo; le sezioni dei moduli non ancora arrivati sono
  * EmptyState onesti, senza numeri finti né card che fingono di essere
- * funzioni. Il ponte "Vecchia dashboard" è a senso unico: la dashboard
- * legacy non viene toccata (il link di ritorno arriva col prompt 15).
+ * funzioni. La dashboard legacy è stata ritirata (run-05 prompt 1):
+ * /dashboard ora è solo un redirect a questa pagina.
  *
  * Nota: a differenza delle pagine legacy, qui NON c'è il redirect a
  * /onboarding — l'onboarding appartiene al mondo vecchio; il profilo può
@@ -63,15 +64,10 @@ export default async function TodayPage() {
         <h1 className="em-title-lg mt-1 text-[var(--em-text)]">
           {displayName ? `Ciao, ${displayName}` : "Ciao"}
         </h1>
-        <p className="mt-2">
-          {user ? (
-            <Link
-              href="/dashboard"
-              className="em-body-sm text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
-            >
-              Vecchia dashboard
-            </Link>
-          ) : (
+        {/* Il ponte "Vecchia dashboard" è caduto (run-05 prompt 1): la
+            destinazione ora è un redirect proprio qui. */}
+        {!user ? (
+          <p className="mt-2">
             <span className="em-body-sm text-[var(--em-text-3)]">
               I tuoi dati vivono su questo dispositivo.{" "}
               <Link
@@ -81,8 +77,8 @@ export default async function TodayPage() {
                 Account e sincronizzazione
               </Link>
             </span>
-          )}
-        </p>
+          </p>
+        ) : null}
       </header>
 
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
@@ -103,6 +99,10 @@ export default async function TodayPage() {
 
       {/* Rail "Prossimi": cosa suonerà ad app aperta (run-03 prompt 5). */}
       <UpcomingReminders />
+
+      {/* Card gentile "Installa LifeOS" (run-05 prompt 2): compare dopo
+          qualche visita, congedabile per sempre, mai in standalone. */}
+      <InstallTodayCard />
     </div>
   );
 }

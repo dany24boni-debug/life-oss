@@ -1,8 +1,51 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import {
+  IconChevronRight,
+  IconExam,
+  IconMoon,
+  IconWallet,
+} from "../_components/icons";
+import { InstallSection } from "../_components/pwa-install";
+import { CalendarImportButton } from "../calendar/import-button";
+import { EsamiImportButton } from "../esami/import-button";
 import { GymImportButton } from "../gym/import-button";
+import { SeraImportButton } from "../sera/import-button";
+import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
+import { ThemeSection } from "./theme-section";
+
+/**
+ * Moduli oltre le 5 tab (run-05, stub 15): questa lista è la loro casa su
+ * mobile; sul desktop hanno la sezione "Moduli" del Rail. Cresce coi
+ * prompt del run (Esami, poi Spese e Sera).
+ */
+const MODULE_LINKS: Array<{
+  href: string;
+  label: string;
+  desc: string;
+  icon: (props: { className?: string }) => React.ReactElement;
+}> = [
+  {
+    href: "/esami",
+    label: "Esami",
+    desc: "Countdown e ritmo di studio per capitolo",
+    icon: IconExam,
+  },
+  {
+    href: "/spese",
+    label: "Spese",
+    desc: "Uscite del mese per categoria",
+    icon: IconWallet,
+  },
+  {
+    href: "/sera",
+    label: "Sera",
+    desc: "Check-in serale e diario",
+    icon: IconMoon,
+  },
+];
 
 /**
  * Impostazioni — la superficie nuova del gruppo (app). Vive a
@@ -73,6 +116,32 @@ export default async function ImpostazioniPage() {
         )}
       </section>
 
+      {/* Moduli oltre le tab (run-05): la casa mobile dei moduli nuovi. */}
+      <section aria-label="Moduli" className="em-card p-5">
+        <p className="em-eyebrow">Moduli</p>
+        <ul className="mt-2 flex flex-col">
+          {MODULE_LINKS.map((m) => (
+            <li key={m.href}>
+              <Link
+                href={m.href}
+                className="flex min-h-11 items-center gap-3 rounded-[var(--em-r-md)] px-2 py-2 transition-colors duration-[var(--em-dur-control)] hover:bg-[color-mix(in_srgb,var(--em-text)_7%,transparent)]"
+              >
+                <m.icon className="shrink-0 text-[var(--em-text-2)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="em-body block font-medium text-[var(--em-text)]">
+                    {m.label}
+                  </span>
+                  <span className="em-body-sm block text-[var(--em-text-3)]">
+                    {m.desc}
+                  </span>
+                </span>
+                <IconChevronRight className="shrink-0 text-[var(--em-text-3)]" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* Backup JSON (prompt 08, B2.6): esporta/importa tutti i dati
           locali. Vale per ospiti E account — la rete di sicurezza che il
           gate di Davide chiede PRIMA di applicare le migrazioni. */}
@@ -104,6 +173,79 @@ export default async function ImpostazioniPage() {
           </div>
         </section>
       ) : null}
+
+      {/* Import dalla vecchia Agenda (run-05 prompt 1, B3.6): stesso
+          pattern del gym — solo account, idempotente, rilanciabile. */}
+      {user ? (
+        <section
+          aria-label="Importa dalla vecchia Agenda"
+          className="em-card p-5"
+        >
+          <p className="em-eyebrow">Vecchia agenda</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta nel Calendario gli eventi locali della vecchia Agenda
+            (quelli di Google si risincronizzano da soli). Rilanciarlo non
+            crea doppioni.
+          </p>
+          <div className="mt-3">
+            <CalendarImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import dei vecchi esami (run-05 prompt 3, B3.6). */}
+      {user ? (
+        <section aria-label="Importa i vecchi esami" className="em-card p-5">
+          <p className="em-eyebrow">Vecchi esami</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui gli esami del vecchio modulo, con capitoli e note.
+            Rilanciarlo non crea doppioni.
+          </p>
+          <div className="mt-3">
+            <EsamiImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import delle vecchie spese (run-05 prompt 4, B3.6). */}
+      {user ? (
+        <section aria-label="Importa le vecchie spese" className="em-card p-5">
+          <p className="em-eyebrow">Vecchie spese</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta nel modulo Spese le uscite registrate nella vecchia
+            pagina Finance. Rilanciarlo non crea doppioni; l&apos;archivio
+            resta dov&apos;è.
+          </p>
+          <div className="mt-3">
+            <SpeseImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Import dei vecchi check-in serali (run-05 prompt 5, B3.6). */}
+      {user ? (
+        <section
+          aria-label="Importa i vecchi check-in"
+          className="em-card p-5"
+        >
+          <p className="em-eyebrow">Vecchie sere</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui i check-in della vecchia Sera (energia, umore,
+            note). I diari già esportati restano su Drive. Un giorno già
+            scritto qui non viene mai toccato.
+          </p>
+          <div className="mt-3">
+            <SeraImportButton />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Tema per-dispositivo (run-05 prompt 6, D5). */}
+      <ThemeSection />
+
+      {/* Installa LifeOS (run-05 prompt 2): prompt nativo dove esiste,
+          coaching iOS altrove; sparisce quando è già installata. */}
+      <InstallSection />
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />

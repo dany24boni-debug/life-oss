@@ -18,8 +18,9 @@ const PROTECTED_PREFIXES = [
   "/timeline",
   "/insights",
   "/agenda",
-  "/sera",
-  "/esami",
+  // "/sera" e "/esami" rimossi (run-05, prompt 5 e 3): le rotte ora
+  // servono i moduli NUOVI dentro la shell (app) — guest-first, come
+  // /gym al run-04.
   "/commute",
 ];
 const AUTH_ONLY_PREFIXES = ["/login"];
@@ -67,7 +68,9 @@ export async function proxy(request: NextRequest) {
 
   if (isAuthOnly && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    // Run-05 prompt 1: chi è già autenticato e visita /login atterra
+    // sulla Oggi nuova (la dashboard legacy è un redirect a "/").
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

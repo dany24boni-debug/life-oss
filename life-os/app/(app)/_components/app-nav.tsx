@@ -17,11 +17,14 @@ import { usePathname } from "next/navigation";
 import { cx } from "@/ui";
 import {
   IconCalendar,
+  IconExam,
   IconGym,
+  IconMoon,
   IconSettings,
   IconStats,
   IconTasks,
   IconToday,
+  IconWallet,
 } from "./icons";
 import { SyncDot } from "./sync-dot";
 
@@ -37,6 +40,17 @@ const TABS: NavItem[] = [
   { href: "/calendar", label: "Calendario", icon: IconCalendar },
   { href: "/gym", label: "Palestra", icon: IconGym },
   { href: "/stats", label: "Statistiche", icon: IconStats },
+];
+
+/**
+ * Moduli oltre le 5 tab (run-05, stub 15): sul Rail desktop hanno la loro
+ * sezione; su mobile vivono nella lista "Moduli" di Impostazioni — le tab
+ * restano cinque.
+ */
+const MODULES: NavItem[] = [
+  { href: "/esami", label: "Esami", icon: IconExam },
+  { href: "/spese", label: "Spese", icon: IconWallet },
+  { href: "/sera", label: "Sera", icon: IconMoon },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -96,6 +110,14 @@ export function Rail() {
       <nav aria-label="Principale" className="flex flex-1 flex-col px-3">
         <ul className="flex flex-col gap-1">
           {TABS.map((item) => (
+            <li key={item.href}>
+              <RailLink item={item} active={isActive(pathname, item.href)} />
+            </li>
+          ))}
+        </ul>
+        <p className="em-eyebrow px-3 pb-1 pt-5">Moduli</p>
+        <ul className="flex flex-col gap-1">
+          {MODULES.map((item) => (
             <li key={item.href}>
               <RailLink item={item} active={isActive(pathname, item.href)} />
             </li>

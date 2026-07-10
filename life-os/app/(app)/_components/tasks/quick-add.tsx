@@ -9,7 +9,7 @@
  * viene ripristinato (con toast d'errore) se il Result è ko.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, cx, useToast } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
 import { parse } from "@/lib/nlp-it";
@@ -28,6 +28,7 @@ export function QuickAdd({
   today,
   defaultDate,
   autoFocus,
+  focusToken,
   onCreated,
   className,
 }: {
@@ -35,11 +36,23 @@ export function QuickAdd({
   /** Data implicita della vista (chip attenuato, dismissibile). */
   defaultDate?: DayString;
   autoFocus?: boolean;
+  /**
+   * Focus imperativo (run-05 prompt 6): quando cambia (e non è 0),
+   * l'input prende il focus — la scorciatoia `n` e la palette passano
+   * di qui su /tasks, dove il quick-add è persistente.
+   */
+  focusToken?: number;
   onCreated?: (task: Task) => void;
   className?: string;
 }) {
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focusToken !== undefined && focusToken > 0) {
+      inputRef.current?.focus();
+    }
+  }, [focusToken]);
   const [value, setValue] = useState("");
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [defaultDismissed, setDefaultDismissed] = useState(false);

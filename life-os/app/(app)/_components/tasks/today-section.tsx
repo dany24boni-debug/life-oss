@@ -8,11 +8,15 @@
  */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BottomSheet, Button, EmptyState, Modal, Skeleton } from "@/ui";
 import { useOverdueTasks, useTasks } from "@/data/hooks";
 import type { Task } from "@/data/schemas";
 import { IconPlus } from "../icons";
+import {
+  consumeQuickAddRequest,
+  onQuickAddRequest,
+} from "../quick-add-bus";
 import { useTaskActions } from "./actions";
 import { QuickAdd } from "./quick-add";
 import { useIsDesktop, useToday } from "./screen-hooks";
@@ -35,6 +39,24 @@ function TodayTasksInner() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [snoozeTask, setSnoozeTask] = useState<Task | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+
+  // "Nuovo task…" da palette o scorciatoia `n` (run-05 prompt 6): apre lo
+  // sheet; una richiesta partita PRIMA del mount viene consumata subito
+  // dopo (timeout 0: lo stato cambia in un callback, mai nel corpo
+  // dell'effect — regola set-state-in-effect).
+  useEffect(() => {
+    const pending = setTimeout(() => {
+      if (consumeQuickAddRequest()) setAddOpen(true);
+    }, 0);
+    const unsubscribe = onQuickAddRequest(() => {
+      consumeQuickAddRequest();
+      setAddOpen(true);
+    });
+    return () => {
+      clearTimeout(pending);
+      unsubscribe();
+    };
+  }, []);
 
   const loading = tasks === undefined || overdue === undefined;
   const open = (tasks ?? []).filter((t) => t.status === "open");

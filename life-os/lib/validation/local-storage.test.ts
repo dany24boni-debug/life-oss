@@ -1,59 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
-  CommuteModeSchema,
-  CommuteToggleStateSchema,
   DiaryDraftSchema,
   DIARY_DRAFT_MAX_CHARS,
-  parseCommuteMode,
   parseDiaryDraft,
 } from "./local-storage";
 
-describe("CommuteModeSchema", () => {
-  it("accepts 'on'", () => {
-    expect(CommuteModeSchema.parse("on")).toBe("on");
-  });
-
-  it("accepts 'off'", () => {
-    expect(CommuteModeSchema.parse("off")).toBe("off");
-  });
-
-  it("rejects arbitrary strings", () => {
-    expect(CommuteModeSchema.safeParse("yes").success).toBe(false);
-    expect(CommuteModeSchema.safeParse("ON").success).toBe(false);
-    expect(CommuteModeSchema.safeParse("").success).toBe(false);
-  });
-
-  it("rejects non-string inputs", () => {
-    expect(CommuteModeSchema.safeParse(null).success).toBe(false);
-    expect(CommuteModeSchema.safeParse(1).success).toBe(false);
-  });
-});
-
-describe("CommuteToggleStateSchema", () => {
-  it("accepts the three valid states", () => {
-    expect(CommuteToggleStateSchema.parse("on")).toBe("on");
-    expect(CommuteToggleStateSchema.parse("off")).toBe("off");
-    expect(CommuteToggleStateSchema.parse("auto")).toBe("auto");
-  });
-
-  it("rejects unrelated strings", () => {
-    expect(CommuteToggleStateSchema.safeParse("automatic").success).toBe(false);
-  });
-});
-
-describe("parseCommuteMode", () => {
-  it("returns the value when valid", () => {
-    expect(parseCommuteMode("on")).toBe("on");
-    expect(parseCommuteMode("off")).toBe("off");
-  });
-
-  it("returns null on null / undefined / invalid (no throw)", () => {
-    expect(parseCommuteMode(null)).toBeNull();
-    expect(parseCommuteMode(undefined)).toBeNull();
-    expect(parseCommuteMode("garbage")).toBeNull();
-    expect(parseCommuteMode("")).toBeNull();
-  });
-});
+// I describe su CommuteModeSchema / CommuteToggleStateSchema /
+// parseCommuteMode sono morti con la sezione commute (run-05 prompt 1):
+// testavano codice eliminato.
 
 describe("DiaryDraftSchema", () => {
   it("accepts an empty string (the user just opened the editor)", () => {

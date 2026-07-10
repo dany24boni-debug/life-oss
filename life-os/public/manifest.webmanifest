@@ -1,13 +1,13 @@
 {
-  "name": "Life OS",
-  "short_name": "Life OS",
-  "description": "Personal productivity OS — adaptive task management.",
+  "name": "LifeOS",
+  "short_name": "LifeOS",
+  "description": "La tua dashboard personale: task, calendario, palestra.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#15171C",
+  "theme_color": "#15171C",
   "categories": ["productivity", "lifestyle"],
   "lang": "it",
   "icons": [
@@ -22,6 +22,18 @@
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512?maskable=1",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon.svg",

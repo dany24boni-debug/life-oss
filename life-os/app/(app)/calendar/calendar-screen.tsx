@@ -28,7 +28,7 @@ import { AgendaList } from "../_components/agenda-list";
 import { useTaskActions } from "../_components/tasks/actions";
 import { useToday } from "../_components/tasks/screen-hooks";
 import { TaskDetailSheet } from "../_components/tasks/task-detail";
-import { syncGoogleCalendars } from "./actions";
+import { disconnectGoogleAccount, syncGoogleCalendars } from "./actions";
 import {
   buildDayAgenda,
   buildDensityMap,
@@ -36,6 +36,7 @@ import {
 } from "./agenda";
 import { EventDetailSheet } from "./event-detail";
 import { EventQuickAdd } from "./event-quick-add";
+import { CalendarImportButton } from "./import-button";
 
 /** Vista serializzabile del blocco Google (dal server, via RSC). */
 export type GoogleBlockView = {
@@ -135,6 +136,24 @@ export function CalendarScreen({
         )}
       </section>
 
+      {/* Prompt inline dell'import legacy (run-05 prompt 1): solo utenti
+          autenticati (google !== null) con zero eventi locali nella
+          finestra — i dati della vecchia /agenda vivono sul server. */}
+      {google !== null && events !== undefined && events.length === 0 ? (
+        <section
+          aria-label="Importa dalla vecchia agenda"
+          className="rounded-[var(--em-r-lg)] border border-dashed border-[var(--em-hairline-strong)] p-5"
+        >
+          <p className="em-body-sm text-[var(--em-text-3)]">
+            Qui non ci sono ancora eventi, ma quelli della vecchia Agenda non
+            si perdono: importali quando vuoi.
+          </p>
+          <div className="mt-3">
+            <CalendarImportButton compact />
+          </div>
+        </section>
+      ) : null}
+
       {google !== null ? <GoogleBlock google={google} /> : null}
 
       <EventDetailSheet
@@ -192,18 +211,31 @@ function GoogleBlock({ google }: { google: GoogleBlockView }) {
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {google.accounts.map((account) => (
-            <div key={account.id}>
-              <p className="em-body text-[var(--em-text)]">{account.email}</p>
-              <p className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
-                Sola lettura · ultima sincronizzazione:{" "}
-                {relativeTimeIt(account.lastSyncedAt)}
-              </p>
-              {account.lastSyncError ? (
-                <p className="em-body-sm mt-1 text-[var(--em-segnale)]">
-                  {SYNC_ERROR_LABELS[account.lastSyncError] ??
-                    SYNC_ERROR_LABELS.sync_failed}
+            <div
+              key={account.id}
+              className="flex items-start justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="em-body truncate text-[var(--em-text)]">
+                  {account.email}
                 </p>
-              ) : null}
+                <p className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
+                  Sola lettura · ultima sincronizzazione:{" "}
+                  {relativeTimeIt(account.lastSyncedAt)}
+                </p>
+                {account.lastSyncError ? (
+                  <p className="em-body-sm mt-1 text-[var(--em-segnale)]">
+                    {SYNC_ERROR_LABELS[account.lastSyncError] ??
+                      SYNC_ERROR_LABELS.sync_failed}
+                  </p>
+                ) : null}
+              </div>
+              {/* Disconnessione PER-ACCOUNT (run-05 prompt 1): revoca
+                  server-side portata dalla /agenda legacy; con più account
+                  se ne stacca uno solo. */}
+              <form action={disconnectGoogleAccount.bind(null, account.id)}>
+                <DisconnectButton />
+              </form>
             </div>
           ))}
           <form action={syncGoogleCalendars}>
@@ -220,6 +252,15 @@ function SyncButton() {
   return (
     <Button type="submit" loading={pending}>
       Sincronizza
+    </Button>
+  );
+}
+
+function DisconnectButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="ghost" size="sm" loading={pending}>
+      Disconnetti
     </Button>
   );
 }

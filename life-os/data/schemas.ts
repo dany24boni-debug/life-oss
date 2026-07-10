@@ -163,6 +163,137 @@ export const EventPatchSchema = z.object(eventEditable).partial();
 export type EventPatch = z.infer<typeof EventPatchSchema>;
 
 // ============================================================
+// Esami (run-05 prompt 3, stub 15) — la forma REALE della tabella
+// legacy `exams` (0014): titolo, data, capitoli totali/completati,
+// note. (Il brief menzionava CFU e voto: non sono mai esistiti nel
+// DB né nella pagina — l'entità rispecchia la realtà.)
+// ============================================================
+
+const ChapterCountSchema = z.number().int().min(0).max(999);
+
+export const ExamSchema = z
+  .object({
+    id: UuidSchema,
+    title: TitleSchema,
+    /** Giorno dell'esame. */
+    date: IsoDaySchema,
+    total_chapters: ChapterCountSchema,
+    completed_chapters: ChapterCountSchema,
+    notes: NotesSchema.nullable(),
+    ...audit,
+  })
+  .refine((e) => e.completed_chapters <= e.total_chapters, {
+    message: "I capitoli completati non possono superare il totale.",
+    path: ["completed_chapters"],
+  });
+export type Exam = z.infer<typeof ExamSchema>;
+
+const examEditable = {
+  title: TitleSchema,
+  date: IsoDaySchema,
+  total_chapters: ChapterCountSchema,
+  completed_chapters: ChapterCountSchema,
+  notes: NotesSchema.nullable(),
+};
+
+export const ExamCreateSchema = z
+  .object(examEditable)
+  .partial()
+  .required({ title: true, date: true });
+export type ExamCreate = z.infer<typeof ExamCreateSchema>;
+
+/** L'invariante completati ≤ totale si applica alla riga RISULTANTE (repo). */
+export const ExamPatchSchema = z.object(examEditable).partial();
+export type ExamPatch = z.infer<typeof ExamPatchSchema>;
+
+// ============================================================
+// Spese (run-05 prompt 4, stub 15) — la forma della tabella legacy
+// `personal_expenses` (0017): importo in EURO decimali numeric(10,2)
+// (scelta del brief: combaciare col tipo legacy per un import
+// lossless), categoria, giorno, nota. Differenza deliberata: la
+// categoria è testo libero 1..40 (i chip propongono le 10 legacy) —
+// il closed enum era una scelta della vecchia UI, non del dominio.
+// ============================================================
+
+/** Euro con al massimo due decimali, positivi, tetto legacy 0017. */
+export const EuroAmountSchema = z
+  .number()
+  .positive()
+  .max(99_999_999.99)
+  .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, {
+    message: "L'importo può avere al massimo due decimali.",
+  });
+
+export const ExpenseCategorySchema = z.string().trim().min(1).max(40);
+
+export const ExpenseSchema = z.object({
+  id: UuidSchema,
+  amount: EuroAmountSchema,
+  category: ExpenseCategorySchema,
+  /** Giorno della spesa. */
+  date: IsoDaySchema,
+  note: NotesSchema.nullable(),
+  ...audit,
+});
+export type Expense = z.infer<typeof ExpenseSchema>;
+
+const expenseEditable = {
+  amount: EuroAmountSchema,
+  category: ExpenseCategorySchema,
+  date: IsoDaySchema,
+  note: NotesSchema.nullable(),
+};
+
+export const ExpenseCreateSchema = z
+  .object(expenseEditable)
+  .partial()
+  .required({ amount: true, category: true, date: true });
+export type ExpenseCreate = z.infer<typeof ExpenseCreateSchema>;
+
+export const ExpensePatchSchema = z.object(expenseEditable).partial();
+export type ExpensePatch = z.infer<typeof ExpensePatchSchema>;
+
+// ============================================================
+// Sera (run-05 prompt 5, stub 15) — il check-in serale: i campi che
+// la pagina legacy persisteva in `evening_checkins` (energia 1..5,
+// umore, note) PIÙ il diario, che nel mondo nuovo vive in locale
+// (guest-first, sincronizzato) — su Drive ci va con l'export
+// esplicito, riusando la lib esistente. UNA riga per giorno: l'id è
+// DERIVATO dalla data (SHA-256 → UUIDv8), così due dispositivi che
+// scrivono lo stesso giorno convergono sulla stessa riga per
+// costruzione (LWW), senza vincoli server fragili.
+// ============================================================
+
+export const EnergySchema = z.number().int().min(1).max(5);
+
+const MoodSchema = z.string().trim().min(1).max(80);
+/** Il diario può essere lungo: stesso tetto del salvataggio Drive. */
+const JournalSchema = z.string().max(100_000);
+
+export const EveningCheckinSchema = z.object({
+  id: UuidSchema,
+  /** Giorno del check-in (unico per costruzione: id derivato). */
+  date: IsoDaySchema,
+  energy_1_5: EnergySchema.nullable(),
+  mood: MoodSchema.nullable(),
+  notes: NotesSchema.nullable(),
+  journal: JournalSchema.nullable(),
+  ...audit,
+});
+export type EveningCheckin = z.infer<typeof EveningCheckinSchema>;
+
+/** Patch dell'upsert per-giorno: ogni campo opzionale, assente = non toccare. */
+export const CheckinPatchSchema = z
+  .object({
+    energy_1_5: EnergySchema.nullable(),
+    mood: MoodSchema.nullable(),
+    notes: NotesSchema.nullable(),
+    journal: JournalSchema.nullable(),
+  })
+  .partial();
+export type CheckinPatch = z.infer<typeof CheckinPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

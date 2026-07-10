@@ -14,18 +14,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Life OS",
-  description: "Personal productivity OS — adaptive task management.",
+  title: "LifeOS",
+  description: "La tua dashboard personale: task, calendario, palestra.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Life OS",
+    title: "LifeOS",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  // Entrambi i temi (run-05 prompt 2): la barra di stato segue il tema di
+  // sistema; il ground scuro è l'ink Ember, quello chiaro la calce.
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#15171C" },
+    { media: "(prefers-color-scheme: light)", color: "#F4F3EF" },
+  ],
   width: "device-width",
   initialScale: 1,
   // WCAG 1.4.4: never block pinch-zoom. We let users zoom up to 5×; this

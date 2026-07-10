@@ -10,7 +10,7 @@ import { SegmentedBar } from "@/components/ui/segmented-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { RoutineRow } from "@/components/ui/routine-row";
-import { emojiForModule } from "@/lib/mock-data";
+import { emojiForModule } from "@/lib/module-emoji";
 
 export default async function RecapPage() {
   const supabase = await createClient();

@@ -16,7 +16,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { listEvents } from "@/lib/google/calendar-client";
+import { listEvents, revokeToken } from "@/lib/google/calendar-client";
+import { decryptToken } from "@/lib/crypto/token-cipher";
 import { getValidAccessToken } from "@/lib/google/token-store";
 import {
   buildExternalEventRows,
@@ -98,6 +99,59 @@ export async function syncGoogleCalendars(): Promise<void> {
       })
       .eq("id", account.id as string)
       .eq("user_id", user.id);
+  }
+
+  revalidatePath("/calendar");
+  revalidatePath("/");
+}
+
+/**
+ * "Disconnetti" per /calendar (run-05 prompt 1) — il porting della
+ * disconnessione che viveva sulla /agenda legacy, con la stessa logica
+ * server-side riusata (revoca best-effort del refresh token a Google via
+ * lib, poi delete della riga account: gli eventi importati cascadono).
+ * Differenza deliberata: PER-ACCOUNT (riga scelta per id + user_id), mai
+ * `.maybeSingle()` sul provider — con due account Google se ne stacca
+ * uno solo, l'altro resta.
+ */
+export async function disconnectGoogleAccount(
+  accountId: string,
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: account } = await supabase
+    .from("external_calendar_accounts")
+    .select("id, refresh_token_ciphertext")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .eq("provider", "google")
+    .maybeSingle(); // qui è una riga puntuale per PK: singolare per natura.
+  if (!account) {
+    revalidatePath("/calendar");
+    return;
+  }
+
+  try {
+    const refreshToken = decryptToken(account.refresh_token_ciphertext);
+    await revokeToken(refreshToken);
+  } catch (err) {
+    console.error(
+      "[calendar] revoca Google fallita (procedo col delete locale):",
+      err,
+    );
+  }
+
+  const { error: delErr } = await supabase
+    .from("external_calendar_accounts")
+    .delete()
+    .eq("id", account.id)
+    .eq("user_id", user.id);
+  if (delErr) {
+    console.error("[calendar] delete account fallita:", delErr.message);
   }
 
   revalidatePath("/calendar");
