@@ -51,7 +51,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+  // "/" ora è Oggi (gruppo (app)) e resta protetta fino al guest mode
+  // (prompt 07). Match esatto, non prefisso: ogni path inizia con "/".
+  const isProtected =
+    path === "/" || PROTECTED_PREFIXES.some((p) => path.startsWith(p));
   const isAuthOnly = AUTH_ONLY_PREFIXES.some((p) => path.startsWith(p));
 
   if (isProtected && !user) {
