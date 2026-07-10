@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/dashboard/actions";
 import { Button } from "@/ui";
+import { ProtectedDays } from "./protected-days";
 
 /**
  * Impostazioni — la superficie nuova del gruppo (app). Vive a
@@ -74,6 +75,9 @@ export default async function ImpostazioniPage() {
           </div>
         )}
       </section>
+
+      {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
+      <ProtectedDays />
     </div>
   );
 }

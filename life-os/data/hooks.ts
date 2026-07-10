@@ -29,6 +29,7 @@ import type {
   Settings,
   Task,
 } from "./schemas";
+import type { StreakSummary } from "./streak";
 
 let repos: Repos | null = null;
 
@@ -105,4 +106,47 @@ export function useGymSessionsRange(
 /** Impostazioni locali (default mai-persistiti se la riga non esiste). */
 export function useSettings(): Settings | undefined {
   return useLiveQuery(() => appRepos().settings.get(), []);
+}
+
+/* ── Stats (B2.5, run-03): tile e schermata Statistiche ─────────────── */
+
+/** Conteggio task del giorno per il tile "oggi". */
+export function useTasksSummary(
+  day: IsoDay,
+): { total: number; done: number } | undefined {
+  return useLiveQuery(() => appRepos().stats.tasksSummary(day), [day]);
+}
+
+/** Completamento per giorno nel range (barre settimanali). */
+export function useCompletionByDay(
+  from: IsoDay,
+  to: IsoDay,
+): Array<{ date: IsoDay; total: number; done: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.completionByDay(from, to),
+    [from, to],
+  );
+}
+
+/** Streak con giorni protetti; si aggiorna con task, gym e impostazioni. */
+export function useStreak(
+  today: IsoDay,
+  timeZone: string,
+): StreakSummary | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.streak({ today, timeZone }),
+    [today, timeZone],
+  );
+}
+
+/** Giorni attivi nel range (strip mensile della schermata Statistiche). */
+export function useActivityDays(
+  from: IsoDay,
+  to: IsoDay,
+  timeZone: string,
+): IsoDay[] | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.activityDays(from, to, timeZone),
+    [from, to, timeZone],
+  );
 }

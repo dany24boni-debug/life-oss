@@ -84,6 +84,7 @@ describe("Eventi e Settings", () => {
     const now = new Date().toISOString();
     const base = {
       display_name: null,
+      protected_days: [],
       created_at: now,
       updated_at: now,
       deleted_at: null,

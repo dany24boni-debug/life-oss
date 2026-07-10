@@ -356,11 +356,17 @@ export type Theme = z.infer<typeof ThemeSchema>;
 /**
  * Riga singola con id fisso "local". Il tema di default è "dark" (D5:
  * entrambi i temi esistono dai token, il dark resta il default).
+ *
+ * `protected_days` (B2.5, prompt 11): giorni di riposo/vacanza segnati IN
+ * ANTICIPO che non spezzano mai la streak. Lista di giorni civili, senza
+ * duplicati per costruzione dell'adapter; cap generoso (2 anni di giorni
+ * tutti protetti) solo come guardia anti-crescita-infinita.
  */
 export const SettingsSchema = z.object({
   id: z.literal("local"),
   display_name: z.string().trim().max(80).nullable(),
   theme: ThemeSchema,
+  protected_days: z.array(IsoDaySchema).max(730),
   ...audit,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -369,6 +375,7 @@ export const SettingsPatchSchema = z
   .object({
     display_name: z.string().trim().max(80).nullable(),
     theme: ThemeSchema,
+    protected_days: z.array(IsoDaySchema).max(730),
   })
   .partial();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

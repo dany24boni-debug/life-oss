@@ -1,22 +1,9 @@
-import { EmptyState } from "@/ui";
+import { StatsScreen } from "./stats-screen";
 
-// Skeleton onesto della rotta Statistiche (stub 05).
+// /stats — statistiche vere sul port locale (B2.5, run-03).
 
 export const metadata = { title: "Statistiche — LifeOS" };
 
 export default function StatsPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <header className="pt-2">
-        <p className="em-eyebrow">Modulo</p>
-        <h1 className="em-title-lg mt-1 text-[var(--em-text)]">Statistiche</h1>
-      </header>
-      <section className="em-card p-5">
-        <EmptyState
-          heading="Il modulo Statistiche non è ancora qui"
-          text="Streak onesta con giorni protetti, barre della settimana e volume palestra arrivano con il modulo Statistiche."
-        />
-      </section>
-    </div>
-  );
+  return <StatsScreen />;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/ui";
 import { TodayTasks } from "./_components/tasks/today-section";
+import { TodayTiles } from "./_components/today-tiles";
 
 /**
  * Oggi — la home della shell nuova (stub 05). Tutto ciò che è a schermo è
@@ -30,11 +31,6 @@ const SECTIONS: Array<{
     eyebrow: "Palestra",
     heading: "Nessun allenamento qui, per ora",
     text: "Arriva con il modulo Palestra.",
-  },
-  {
-    eyebrow: "Streak",
-    heading: "La streak parte da qui",
-    text: "Arriva con il modulo Statistiche.",
   },
 ];
 
@@ -88,6 +84,9 @@ export default async function TodayPage() {
           )}
         </p>
       </header>
+
+      {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
+      <TodayTiles />
 
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />

@@ -13,6 +13,7 @@
  */
 
 import type { Result } from "./result";
+import type { StreakSummary } from "./streak";
 import type {
   EventCreate,
   EventPatch,
@@ -158,9 +159,10 @@ export interface GymRepo {
 // ============================================================
 
 /**
- * Volutamente minimo: il motore streak (giorni protetti, timezone del
- * giorno civile) arriva col prompt 11 e amplierà questo port con semantica
- * precisa invece di ereditarne una sbagliata.
+ * Aggregati sempre calcolati al volo, mai cache (lezione dell'audit). Il
+ * motore streak (run-03, prompt 11) vive in `data/streak.ts`; qui il port
+ * espone la lettura composta: giorni di attività + giorni protetti dalle
+ * impostazioni -> StreakSummary.
  */
 export interface StatsRepo {
   /** Conteggio task del giorno: { total, done } — tile "oggi". */
@@ -177,6 +179,21 @@ export interface StatsRepo {
     from: IsoDay,
     to: IsoDay,
   ): Promise<{ sessions: number; totalVolumeKg: number }>;
+  /**
+   * Streak onesta (B2.5): giorno attivo = task completato o sessione gym
+   * nel giorno civile della timezone data; i giorni protetti (Settings)
+   * fanno da ponte. Semantica completa in data/streak.ts.
+   */
+  streak(opts: { today: IsoDay; timeZone: string }): Promise<StreakSummary>;
+  /**
+   * Giorni con attività nel range inclusivo (per la strip mensile),
+   * ordinati, senza duplicati.
+   */
+  activityDays(
+    from: IsoDay,
+    to: IsoDay,
+    timeZone: string,
+  ): Promise<IsoDay[]>;
 }
 
 // ============================================================

@@ -186,3 +186,50 @@ inserted between `const next = safeNext(...)` and the existing `if (!code)` fall
 **Checks** (all green): lint / tsc / build / test — suite unchanged at **492** (auth flow is redirect-driven server actions against live Supabase; per session rule 8 no live-project scripting — verification is the checklist's smoke). Dev-server pass: `/login` 200 ("Continua" button), `/login/verify?email=...` 200 (one-time-code input, cooldown button, sent banner, torna indietro), `/login/verify` without email -> streamed `NEXT_REDIRECT;replace;/login;307` + `url=/login` meta fallback (Next 16 in-band redirect for dynamic pages — functionally a redirect for browsers and no-JS clients). Callback diff = ONLY the added branch. Fence audit: `app/login/**`, `app/auth/callback/route.ts`, checklist doc, report.
 
 **Commit:** `feat(auth): email OTP verify flow + token_hash callback support (template flip pending)`
+
+---
+
+## Prompt 4 — Stats + streak engine: DONE (checkpoint green, committed)
+
+**What was built**
+
+- `data/streak.ts` (NEW, pure, no I/O) — the streak engine:
+  - **Semantics**: a day counts if any meaningful action happened (adapter decides the sources: task completed, gym session logged); **protected days bridge but never count** — the streak counts ACTIVE days; **today without activity is pending, not broken** (the chain shown reaches yesterday; `todayCounts` drives the flame dot); `best >= current` by construction.
+  - **Timezone**: instant -> civil day through `civilDayInZone` (Intl formatToParts, injected zone, UTC fallback, never throws); ALL day arithmetic is UTC-noon string math (`shiftDay`, `dayRange`) — DST 23/25-hour days are ordinary days by construction.
+  - 21 unit tests: normal chains, pending today, gap breaks (current resets, best remembers), single/multi-day protected bridges, protected-tail with pending today, all-protected-no-activity (no invented streak), active+protected same day, historical best with bridges, DST entry/exit day arithmetic and instant conversion (March 23h day, October 25h day), timezone injection (same instant, different civil days), invalid-zone fallback.
+- `data/schemas.ts` — `Settings.protected_days: IsoDay[]` (max 730) + patch field. `data/local/settings.ts` — DEFAULT includes `[]`; **merge-on-read normalization** (rows written before the field return complete — no Dexie migration needed for an unindexed field); update sorts + dedupes so readers never defend. 3 new tests incl. legacy-row normalization.
+- `data/ports.ts` — StatsRepo gains `streak({today, timeZone})` and `activityDays(from, to, timeZone)` (the port comment already reserved this prompt the right to extend). `data/local/stats.ts` implements both: activity = alive done-tasks (`completed_at` -> civil day in zone) + alive gym-session days (the table exists; it enriches automatically when prompt 10 ships); protected days read from the settings row so live queries re-fire on any of tasks/gym/settings. Scan-based on `completed_at` (unindexed) — the documented personal-scale trade. 5 adapter tests with seeded fixtures and manual counts, incl. the timezone-decides-the-day case and tombstone exclusion.
+- `data/hooks.ts` — additive: `useTasksSummary`, `useCompletionByDay`, `useStreak(today, timeZone)`, `useActivityDays`.
+- `app/(app)/stats/logic.ts` (pure, 12 tests) — `weekBounds`/`lastSevenDays`/`monthBounds` (leap-February tested), `fillDays` (bars always show 7 slots), `completionPercent` (**null when there is nothing to measure — never a fake 0%**), `bestDay`, `weeklyObservation` (rule-based single sentence, first-match: quiet week / every-day-active / >=80% / one-day-carried / plain count with cared-for singular; a dedicated test asserts NO shame vocabulary in any branch).
+- `app/(app)/stats/week-bars.tsx` — hand-rolled SVG (no chart dependency): ghost bar = planned, ember bar = done, per-day counts, 12px mono axis labels, today marked, `role="img"` with an Italian summary; days with zero tasks draw only a baseline tick (no fake bars).
+- `app/(app)/stats/month-heat.tsx` — month strip as a Mon-first 7-col grid: solid ember = active, hollow ring = protected, faint = past inactive, outline = future, focus-ring outline = today; aria summary.
+- `app/(app)/stats/stats-screen.tsx` + rewritten `stats/page.tsx` — Streak/Record StatCards (flame dot only when `current > 0 && todayCounts`), week ChartFrame (loading/empty/ready states), month ChartFrame with legend and an explanatory caption, and the gym volume frame as a DECLARED empty state ("qui niente numeri finti") until prompt 10; link to the review.
+- `app/(app)/stats/review/` — `/stats/review`: last-7-days bars, Chiusi / Completamento / Giorno migliore cards, and the one gentle observation in a quiet card.
+- `app/(app)/_components/today-tiles.tsx` + Today wiring — real tiles: task done/total (— when no tasks), streak with flame dot, week completion computed over the ELAPSED week only (Mon -> today: future planned tasks don't deflate today's number — documented choice), gym placeholder tile with honest copy.
+- `app/(app)/impostazioni/protected-days.tsx` + page wiring — protected-days management: Ember DatePicker with **min = today** (protected days are marked IN ADVANCE, per the audit's iron rule 2 — retro-protecting the past is deliberately impossible), list with remove, past protected days shown muted at the tail (they did their bridging work), immediate SettingsRepo persistence with toast errors.
+
+**Anchored edit — `app/(app)/page.tsx`** (Today): the `SECTIONS` entry `{ eyebrow: "Streak", heading: "La streak parte da qui", text: "Arriva con il modulo Statistiche." }` REMOVED (Agenda/Palestra remain as honest placeholders for prompts 09/10) and:
+Before:
+```tsx
+      {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
+      <TodayTasks />
+```
+After:
+```tsx
+      {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
+      <TodayTiles />
+
+      {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
+      <TodayTasks />
+```
+(plus the `TodayTiles` import). `app/(app)/stats/page.tsx`: full rewrite from the night-01 honest skeleton to the thin wrapper around `StatsScreen`; metadata preserved.
+
+**Decisions flagged**
+
+1. **Activity sources v1 = completed tasks + gym sessions** (both tables exist; events are a later enrichment per the brief's own note). Adding gym now costs nothing and makes prompt 10 count automatically.
+2. **Per-tag counts SKIPPED**: the brief says "if cheap from indexes" — tags are not indexed (`SCHEMA_V1`), so honestly: not cheap, not built.
+3. **One existing test updated**: `data/schemas.test.ts` settings fixture gained `protected_days: []` (the field is required on the row schema) — behavioral assertions unchanged.
+
+**Checks** (all green): lint / tsc / build / test — suite **492 -> 533** (21 streak + 5 stats adapter + 3 settings + 12 stats logic). Dev-server: `/stats` 200, `/stats/review` 200, Today serves the tiles section (aria "Statistiche di oggi") with the honest gym placeholder, `/impostazioni` serves "Giorni protetti"; `grep -ri MOCK` over every touched surface: 0. Fence audit: `app/(app)/stats/**`, Today page + `_components/**`, `data/**`, the `/impostazioni` settings area (the adapted `app/(app)/settings` fence per pre-flight delta 2), report.
+
+**Commit:** `feat(stats): streak engine with protected days, real Today tiles, stats + weekly review`
