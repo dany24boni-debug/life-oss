@@ -292,3 +292,47 @@ Fetch RLS-scoped di `evening_checkins` → mappatura pura (id = **id del giorno*
 **Commit:** `feat(sera): evening journal on ports with sync, Drive export kept, legacy importer`
 
 ---
+
+## Prompt 6 — Comfort wave (stub 14)
+
+**Checkpoint: VERDE.** lint ✓ (due `set-state-in-effect` corrette spostando il consumo del bus in callback differiti) · tsc ✓ · build ✓ · test **656/656** (invariati: il comfort è cablaggio UI su logica già testata). Dev server: il controllo Tema è nell'HTML di /impostazioni (legend "Aspetto", opzioni Scuro/Chiaro/Sistema), lo script di boot del tema è nell'HTML di ogni pagina della shell; palette e overlay `?` verificati nel chunk servito del layout (`Nuovo task…`, `Tema scuro`, `Vai a` ×5, "Scorciatoie da tastiera" — il markup della palette monta solo all'apertura, per costruzione della shell ui/).
+
+### Palette comandi (cmd+K / ctrl+K)
+
+`ComfortHost` nel layout della shell: la CommandPalette di `ui/` (fuzzy a sottosequenza, combobox, focus trap — già pronta dalla foundation) cablata con: **Vai a** (Oggi, Task, Calendario, Palestra, Statistiche, Esami, Spese, Sera, Impostazioni — con keyword di ricerca: "soldi" trova Spese), **Azioni** ("Nuovo task…"), **Tema** (scuro/chiaro/sistema). **Recenti in testa**: gli ultimi 4 comandi usati (localStorage `lifeos.palette.recent`, parse difensivo) compaiono nel gruppo "Recenti" sopra tutto — l'ordine dell'array comanda la lista. cmd+K funziona anche dentro un input (unico caso); un secondo cmd+K chiude.
+
+### Scorciatoie
+
+- `n` → **Nuovo task** da qualsiasi schermata: su Oggi apre lo sheet del FAB, su /tasks mette il focus sul quick-add persistente (nuova prop `focusToken`), altrove naviga a /tasks e poi apre — via un **bus minimale** (`quick-add-bus.ts`) col flag `pending` che sopravvive alla navigazione (consumo al mount, in callback differito).
+- `g` poi `t/c/g/s` → Task / Calendario / Palestra / Statistiche (accordo con timeout 900ms).
+- `?` → overlay Ember (Modal) con l'elenco completo.
+- Guardie: MAI dentro input/textarea/select/contenteditable, mai con modificatori (tranne cmd/ctrl+K), mai sopra palette o overlay già aperti.
+
+### Tema per-dispositivo (D5)
+
+- `theme.ts`: modalità dark/light/system; il chiaro si attiva stampando `data-ember-theme="light"` su `<html>` (il layer di token Ember era pronto dalla foundation — attivazione, zero nuove css); "system" segue `prefers-color-scheme` con listener vivo. **Persistenza PER-DISPOSITIVO** in localStorage `lifeos.theme`, MAI sincronizzata (decisione documentata nel codice: il tema è del dispositivo — OLED del telefono vs monitor di giorno; il campo `theme` di Settings/0019 resta inerte). **Default: scuro** (D5 "dark remains the default") — chi non sceglie non vede cambiare nulla.
+- **Niente flash**: script inline in testa alla shell (`THEME_BOOT_SCRIPT` nel layout (app)) stampa l'attributo prima del paint; la CSP esistente consente inline script.
+- **Il meta theme-color segue** (chiusura del filo lasciato dal prompt 2): tema forzato → entrambi i meta media-based puntano al colore forzato; "system" → tornano ai loro valori (#15171C / #F4F3EF).
+- Superficie: card "Tema" in Impostazioni (RadioGroup Ember a 3 opzioni con descrizioni, arrow-key nav di serie).
+
+### Audit pass (esiti, uno per riga)
+
+- **Skeleton**: ogni superficie async della shell ne ha (Oggi/tiles/task/agenda/gym da run-03/04; calendar/esami/spese/sera costruiti con Skeleton in questo run) — nessuna mancanza trovata.
+- **EmptyState**: copy B4 verificata su tutti i moduli nuovi (niente in agenda / nessun esame in vista / nessuna spesa questo mese / ancora nessuna sera qui) — ok.
+- **Touch target**: FIX — i chip categoria di /spese passano da 36px a **44px** (`min-h-11`, erano l'incoerenza: controlli primari fuori famiglia). DOCUMENTATO, non toccato: la famiglia chip compatti h-8 (chip di parse del quick-add, filtri gruppo della palestra) e le icone h-9 delle righe task — pre-esistenti dai run 03/04, coerenti tra loro come controlli secondari; una rivisitazione globale della taglia chip è un passaggio di design da fare a vista, non un bump meccanico a build chiusa. Da spot-check sul device al gate.
+- **`prefers-reduced-motion`**: il blocco globale di ember.css (transition/animation → 0.01ms, skeleton e dot fermi) copre TUTTE le animazioni aggiunte nei run 03-05 — ogni transizione nuova usa i token di durata dentro `.em-scope`. Nessun'animazione fuori scope trovata.
+- **`:focus-visible`**: ring globale `.em-scope :focus-visible` — copre anche i controlli custom nuovi (chip, energia, dot radio); ordine di tab sano sui flussi primari (verificato per costruzione: markup nell'ordine visivo, roving tabindex sul radiogroup energia).
+
+### Tour da tastiera (il pass manuale che Davide ripete)
+
+1. `cmd+K` → digita "spe" → Invio: atterri su /spese. Riapri: "Spese" è in Recenti.
+2. `g` poi `t` → /tasks; `n` → il quick-add ha il focus; scrivi "domani alle 18 prova !!" → Invio → chip visibili prima dell'invio, task creato.
+3. Da /gym: `n` → atterri su /tasks col quick-add a fuoco.
+4. `?` → overlay scorciatoie; `Esc` chiude.
+5. Tab attraverso Oggi: ring visibile su ogni interattivo nell'ordine visivo; dentro un campo, `n` NON scatta.
+6. Impostazioni → Tema → "Chiaro": la shell flippa live (frecce ↑/↓ nel RadioGroup), la barra di stato segue; ricarica → niente flash scuro; "Sistema" → cambia il tema dell'OS e guarda la shell seguirlo senza reload.
+7. `cmd+K` → "Tema scuro" → tutto torna grafite. Le pagine legacy restano scure com'erano, sempre.
+
+**Commit:** `feat(comfort): command palette, shortcuts, theme switcher, polish audit`
+
+---

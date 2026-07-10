@@ -270,7 +270,7 @@ function QuickAdd({
                     setCategory(c);
                   }}
                   className={cx(
-                    "min-h-9 rounded-[var(--em-r-full)] px-3 text-[length:var(--em-fs-body-sm)] transition-colors duration-[var(--em-dur-control)]",
+                    "min-h-11 rounded-[var(--em-r-full)] px-3 text-[length:var(--em-fs-body-sm)] transition-colors duration-[var(--em-dur-control)]",
                     active
                       ? "bg-[var(--em-ember-tint)] font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-ember)]"
                       : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
@@ -285,7 +285,7 @@ function QuickAdd({
               aria-pressed={freeMode}
               onClick={() => setFreeMode(true)}
               className={cx(
-                "min-h-9 rounded-[var(--em-r-full)] px-3 text-[length:var(--em-fs-body-sm)] transition-colors duration-[var(--em-dur-control)]",
+                "min-h-11 rounded-[var(--em-r-full)] px-3 text-[length:var(--em-fs-body-sm)] transition-colors duration-[var(--em-dur-control)]",
                 freeMode
                   ? "bg-[var(--em-ember-tint)] font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-ember)]"
                   : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",

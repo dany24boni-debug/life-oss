@@ -14,6 +14,7 @@ import { SeraImportButton } from "../sera/import-button";
 import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
+import { ThemeSection } from "./theme-section";
 
 /**
  * Moduli oltre le 5 tab (run-05, stub 15): questa lista è la loro casa su
@@ -238,6 +239,9 @@ export default async function ImpostazioniPage() {
           </div>
         </section>
       ) : null}
+
+      {/* Tema per-dispositivo (run-05 prompt 6, D5). */}
+      <ThemeSection />
 
       {/* Installa LifeOS (run-05 prompt 2): prompt nativo dove esiste,
           coaching iOS altrove; sparisce quando è già installata. */}

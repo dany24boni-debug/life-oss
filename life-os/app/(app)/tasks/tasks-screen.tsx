@@ -7,7 +7,7 @@
  * (archivio paginato). Tutto passa da port/hook: qui non esiste Dexie.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, EmptyState, Skeleton, Tabs } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
 import {
@@ -18,6 +18,10 @@ import {
   useUpcomingTasks,
 } from "@/data/hooks";
 import type { Task } from "@/data/schemas";
+import {
+  consumeQuickAddRequest,
+  onQuickAddRequest,
+} from "../_components/quick-add-bus";
 import { useTaskActions, type TaskActions } from "../_components/tasks/actions";
 import { dayHeading, groupTasksByDay, upcomingRange } from "../_components/tasks/logic";
 import { QuickAdd } from "../_components/tasks/quick-add";
@@ -52,6 +56,25 @@ function Screen() {
   const [tab, setTab] = useState("oggi");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [snoozeTask, setSnoozeTask] = useState<Task | null>(null);
+  const [focusToken, setFocusToken] = useState(0);
+
+  // "Nuovo task…" (run-05 prompt 6): qui il quick-add è persistente, la
+  // richiesta diventa un focus sull'input — anche se arrivata prima del
+  // mount (navigazione dalla palette su un'altra schermata; consumo in
+  // un callback differito, mai nel corpo dell'effect).
+  useEffect(() => {
+    const pending = setTimeout(() => {
+      if (consumeQuickAddRequest()) setFocusToken((n) => n + 1);
+    }, 0);
+    const unsubscribe = onQuickAddRequest(() => {
+      consumeQuickAddRequest();
+      setFocusToken((n) => n + 1);
+    });
+    return () => {
+      clearTimeout(pending);
+      unsubscribe();
+    };
+  }, []);
 
   const ctx: ViewCtx = {
     today,
@@ -67,7 +90,11 @@ function Screen() {
         <h1 className="em-title-lg mt-1 text-[var(--em-text)]">Task</h1>
       </header>
 
-      <QuickAdd today={today} defaultDate={tab === "oggi" ? today : undefined} />
+      <QuickAdd
+        today={today}
+        defaultDate={tab === "oggi" ? today : undefined}
+        focusToken={focusToken}
+      />
 
       <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
         {(active) =>
