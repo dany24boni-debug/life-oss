@@ -199,4 +199,35 @@ describe("LocalStatsRepo — streak e giorni attivi (run-03)", () => {
       await repos.stats.activityDays("2026-07-06", "2026-07-08", "UTC"),
     ).toEqual(["2026-07-06", "2026-07-08"]);
   });
+
+  it("una sessione palestra registrata dal flusso nuovo rende attivo il giorno (streak)", async () => {
+    // Il flusso del modulo Gym (run-04 prompt 10): sessione + set loggati.
+    const session = await must(
+      repos.gym.createSession({
+        date: "2026-07-10",
+        started_at: "2026-07-10T18:00:00.000Z",
+      }),
+    );
+    const ex = await must(
+      repos.gym.createExercise({ name: "Panca piana", muscle_group: "petto" }),
+    );
+    await must(
+      repos.gym.addSet({
+        session_id: session.id,
+        exercise_id: ex.id,
+        weight_kg: 60,
+        reps: 8,
+      }),
+    );
+
+    const streak = await repos.stats.streak({
+      today: "2026-07-10",
+      timeZone: "UTC",
+    });
+    expect(streak.todayCounts).toBe(true);
+    expect(streak.current).toBe(1);
+    expect(
+      await repos.stats.activityDays("2026-07-10", "2026-07-10", "UTC"),
+    ).toEqual(["2026-07-10"]);
+  });
 });

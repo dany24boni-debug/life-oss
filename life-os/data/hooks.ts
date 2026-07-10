@@ -24,10 +24,14 @@ import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  GymExercise,
+  GymPlan,
   GymSession,
+  GymSet,
   IsoDay,
   IsoInstant,
   LocalEvent,
+  MuscleGroup,
   Reminder,
   Settings,
   Task,
@@ -120,6 +124,77 @@ export function useGymSessionsRange(
 ): GymSession[] | undefined {
   return useLiveQuery(
     () => appRepos().gym.listSessionsRange(from, to),
+    [from, to],
+  );
+}
+
+/* ── Gym (B2.3, run-04 prompt 10) ────────────────────────────────────── */
+
+/** Libreria esercizi ordinata per nome; filtro gruppo opzionale. */
+export function useExercises(group?: MuscleGroup): GymExercise[] | undefined {
+  return useLiveQuery(
+    () => appRepos().gym.listExercises(group ? { group } : undefined),
+    [group],
+  );
+}
+
+/** Piani ordinati per nome. */
+export function usePlans(): GymPlan[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listPlans(), []);
+}
+
+/** Sessioni del giorno (di solito zero o una). */
+export function useGymSessionsByDay(day: IsoDay): GymSession[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listSessionsByDay(day), [day]);
+}
+
+/** Singola sessione per id; null se assente o tombstone. */
+export function useGymSession(
+  id: string | null,
+): GymSession | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().gym.getSessionById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** Set della sessione, ordinati per esercizio e numero. */
+export function useSetsBySession(
+  sessionId: string | null,
+): GymSet[] | undefined {
+  return useLiveQuery(
+    () =>
+      sessionId
+        ? appRepos().gym.listSetsBySession(sessionId)
+        : Promise.resolve([]),
+    [sessionId],
+  );
+}
+
+/** Storico set per esercizio, più recenti prima (PR, sparkline). */
+export function useSetsByExercise(
+  exerciseId: string | null,
+  limit?: number,
+): GymSet[] | undefined {
+  return useLiveQuery(
+    () =>
+      exerciseId
+        ? appRepos().gym.listSetsByExercise(
+            exerciseId,
+            limit !== undefined ? { limit } : undefined,
+          )
+        : Promise.resolve([]),
+    [exerciseId, limit],
+  );
+}
+
+/** Sessioni e volume nel range (tile di Oggi, frame di /stats). */
+export function useGymVolume(
+  from: IsoDay,
+  to: IsoDay,
+): { sessions: number; totalVolumeKg: number } | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.gymVolumeInRange(from, to),
     [from, to],
   );
 }

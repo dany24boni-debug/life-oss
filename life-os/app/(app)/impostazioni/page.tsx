@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { GymImportButton } from "../gym/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProtectedDays } from "./protected-days";
 
@@ -87,6 +88,22 @@ export default async function ImpostazioniPage() {
           <DataButtons />
         </div>
       </section>
+
+      {/* Import dal vecchio Gym (run-04 prompt 10, B3.6): solo account —
+          i dati legacy vivono sul server. Idempotente, rilanciabile. */}
+      {user ? (
+        <section aria-label="Importa dal vecchio Gym" className="em-card p-5">
+          <p className="em-eyebrow">Vecchi allenamenti</p>
+          <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+            Porta qui le sessioni e gli esercizi registrati nel vecchio
+            modulo Gym. Rilanciarlo non crea doppioni: le righe già
+            importate vengono saltate.
+          </p>
+          <div className="mt-3">
+            <GymImportButton />
+          </div>
+        </section>
+      ) : null}
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />

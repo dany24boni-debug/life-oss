@@ -7,7 +7,9 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/recap",
   "/body",
-  "/gym",
+  // "/gym" rimosso (run-04 prompt 10): la rotta ora serve il modulo NUOVO
+  // dentro la shell (app) — guest-first come /tasks e /calendar. La pagina
+  // legacy che questa protezione copriva non esiste più.
   "/health",
   "/finance",
   "/more",

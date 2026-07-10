@@ -5,9 +5,9 @@
  * safe-area), rail a sinistra da md in su (la cura del deserto desktop).
  * Tab attiva marcata dall'ember dot — l'unico elemento che respira.
  *
- * Nota collisioni rotte: la voce Palestra punta ancora alla pagina LEGACY
- * /gym (intatta, protetta) finché il prompt 10 non la sostituirà senza
- * rompere una schermata funzionante. Impostazioni invece punta alla
+ * Nota collisioni rotte: da run-04 (prompt 10) la voce Palestra punta al
+ * modulo NUOVO dentro la shell — la pagina legacy è stata rimossa dopo il
+ * grep di supersessione (nessun import esterno). Impostazioni punta alla
  * superficie NUOVA /impostazioni (run-03): la legacy /settings resta
  * raggiungibile e protetta al suo indirizzo.
  */
@@ -29,15 +29,13 @@ type NavItem = {
   href: string;
   label: string;
   icon: (props: { className?: string }) => React.ReactElement;
-  /** true = rotta legacy fuori dalla shell (nessuno stato attivo qui). */
-  legacy?: boolean;
 };
 
 const TABS: NavItem[] = [
   { href: "/", label: "Oggi", icon: IconToday },
   { href: "/tasks", label: "Task", icon: IconTasks },
   { href: "/calendar", label: "Calendario", icon: IconCalendar },
-  { href: "/gym", label: "Palestra", icon: IconGym, legacy: true },
+  { href: "/gym", label: "Palestra", icon: IconGym },
   { href: "/stats", label: "Statistiche", icon: IconStats },
 ];
 

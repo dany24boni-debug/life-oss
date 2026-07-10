@@ -116,4 +116,70 @@ con `googleEvents` letto server-side (`readGoogleBlock`) solo per utenti autenti
 
 **Commit:** `feat(calendar): month/week calendar with NL events, unified agenda, Google read-only port`
 
-_(Sezioni per prompt aggiunte man mano, a checkpoint verde.)_
+---
+
+## Prompt 3 — Modulo Palestra (stub 10, B2.3)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · test **624/624** (+24: 13 logica gym, 7 importer, 3 semina, 1 adapter streak). Dev server DA OSPITE: `/gym` 200 col modulo NUOVO (tab Allenamento/Storico/Libreria/Piani nell'HTML), zero controlli nativi; Oggi ha la sezione Palestra reale (il placeholder "Arriva con il modulo" è sparito ovunque); `/stats` serve il frame "Volume settimanale" vero. `git diff --stat HEAD -- app/body lib/insights lib/fitness.ts` → **vuoto** (intatti, incluse le tabelle legacy: mai toccate).
+
+### Supersessione della rotta legacy (grep-gated)
+
+Grep eseguito prima della rimozione — nessun import di `app/gym/*` da fuori la cartella:
+```
+$ grep -rn "from \"@/app/gym|app/gym/actions|gym/actions\"" app lib components | grep -v "^app/gym/"
+(nessun risultato — exit 1)
+```
+→ rimossi `app/gym/page.tsx` e `app/gym/actions.ts` (la collisione a `/gym` sarebbe stata un errore di build); il fallback `/palestra` non è servito. Tab "Palestra" della shell → modulo nuovo (flag `legacy` eliminato).
+
+**Unico edit deliberato fuori fence — `proxy.ts` (una riga, quotata):** prima:
+```ts
+  "/body",
+  "/gym",
+  "/health",
+```
+dopo: `"/gym"` rimosso da `PROTECTED_PREFIXES` con commento. Motivo: l'acceptance del brief richiede `/gym` 200 **guest-usable** e il proxy lo avrebbe rimbalzato su /login; la pagina legacy che quella protezione copriva non esiste più. Il resto di proxy.ts è intatto (in particolare il redirect `/login`→`/dashboard` per utenti già autenticati). Nota: anche `app/(app)/stats/stats-screen.tsx` non era elencato nella fence ma il flip del frame è richiesto esplicitamente dal build item 7 e dall'acceptance — edit ancorato sotto.
+
+### Costruito
+
+- **Catalogo seminato** (`data/gym-seed.ts`): 80 esercizi italiani in 8 gruppi, **UUID fissi** (prefisso riservato `01970000-90aa-…`) e timestamp costante `SEED_INSTANT`: due dispositivi che seminano indipendentemente producono righe IDENTICHE → il sync deduplica per costruzione. Semina idempotente che non risuscita né sovrascrive (testato: rinomina e tombstone dell'utente sopravvivono). Recupero predefinito per esercizio (60–180s).
+- **Piani**: template nominati con esercizi ordinati (target serie × reps), CRUD in sheet, riordino con frecce, "Inizia" da ogni piano.
+- **Sessione** (`session-runner.tsx`): inizia vuota o da piano (gli esercizi del piano compaiono con l'obiettivo "3×10"); loggare una serie = l'hai finita — stepper **±2,5 kg / ±1 rep su tap da 44px**, "Duplica ultima serie" come gesto primario, prima serie prefillata dall'ultima storica; il **timer di recupero** parte da solo (default dell'esercizio, 90s senza), wake-safe: si salva l'istante di inizio e si rende la differenza (`restRemainingS`, testato: 2 minuti a schermo spento = 2 minuti passati), chime WebAudio (stesso pattern dei promemoria) a fine recupero; note sessione; **Concludi** → riepilogo con volume, durata e **record battuti** (`newRecords`: solo se batti strettamente un passato che esiste — la prima sessione non è "tutta record", testato).
+- **Progressi** (scheda esercizio): sparkline SVG del miglior carico per giorno (`sparklinePath`, ChartFrame), PR calcolati DAI SET alla lettura (peso max, reps max, volume di sessione migliore) e 1RM stimato riusando `lib/fitness.ts` (Brzycki, read-only).
+- **Storico**: lista sessioni (12 mesi) + strip mensile dei giorni di allenamento (riusa `MonthHeat` di /stats); una sessione passata si apre e si MODIFICA con lo stesso runner (senza timer).
+- **Importer** (auth-only): server action `fetchLegacyGymData` fa SOLO fetch RLS-scoped delle tabelle legacy (read-only, intatte); la mappatura è pura e testata (`importer.ts`): `gym_sessions` → "sessione semplice" senza set (gruppi+durata nelle note — lo schema nuovo non ha quei campi), `gym_workouts` → una sessione per giorno con le righe **espanse in N set** (la tabella HA la colonna `sets`: espanderla conserva volume e PR reali — deviazione documentata dal "single-set" del brief, tetto 20); nomi normalizzati (accenti/spazi/case) contro il catalogo o esercizio custom in "altro". **Idempotenza per costruzione**: ogni riga ha un id **derivato (SHA-256 → UUIDv8)** dalla riga legacy — rilanci e doppi-import da più dispositivi convergono; la scrittura inserisce solo id assenti. Superfici: card in Impostazioni + prompt inline a storico vuoto. Riepilogo: "Importate N sessioni, M esercizi nuovi e K serie."
+- **Oggi**: sezione Palestra reale (`today-gym.tsx`) — nessuna → CTA "Inizia allenamento"; in corso → "Riprendi" col dot vivo; conclusa → riga con volume e durata. **Tile Palestra** di Oggi: sessioni + volume della settimana (era "—"). **Frame /stats**: sessioni + volume settimanali dal port `gymVolumeInRange` (già implementato in run-03, ora alimentato).
+- **Streak**: test adapter nuovo — una sessione loggata dal flusso nuovo (sessione+set) rende `todayCounts` vero e il giorno attivo (il gancio `activityDays`→gym esisteva già).
+
+### Edit ancorati
+
+`app/(app)/page.tsx` — prima (ultimo placeholder):
+```ts
+  {
+    eyebrow: "Palestra",
+    heading: "Nessun allenamento qui, per ora",
+    text: "Arriva con il modulo Palestra.",
+  },
+```
+dopo: array `SECTIONS` eliminato del tutto (era rimasto solo questo) e `<TodayGym />` tra `<TodayTasks />`/`<TodayAgenda />` e `<UpcomingReminders />`.
+
+`app/(app)/_components/app-nav.tsx` — prima:
+```ts
+  { href: "/gym", label: "Palestra", icon: IconGym, legacy: true },
+```
+dopo: `{ href: "/gym", label: "Palestra", icon: IconGym },` (+ commento di testa aggiornato, campo `legacy` rimosso dal tipo: non ha più utenti).
+
+`app/(app)/stats/stats-screen.tsx` — prima:
+```tsx
+      <ChartFrame
+        label="Palestra"
+        title="Volume settimanale"
+        state="empty"
+        emptyText="Arriva con il modulo Palestra: qui niente numeri finti."
+        minHeight={120}
+      />
+```
+dopo: stato loading/empty/ready da `useGymVolume(week)`, con sessioni e volume formattato ("1.250 kg", B4 — `formatKg` forza il raggruppamento: il CLDR italiano di suo raggruppa solo da 10.000).
+
+**Commit:** `feat(gym): training log with library, plans, set logging, rest timer, PRs, legacy importers`
+
+_(Chiusura e checklist Gate 2 in coda al report.)_
