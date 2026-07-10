@@ -9,17 +9,14 @@
  */
 
 import { useState } from "react";
-import { DatePicker, EmptyState, ToastProvider, useToast } from "@/ui";
+import { DatePicker, EmptyState, useToast } from "@/ui";
 import { formatDayShort, type DayString } from "@/ui/calendar-core";
 import { appRepos, useSettings } from "@/data/hooks";
 import { useToday } from "../_components/tasks/screen-hooks";
 
+// Il ToastProvider vive nel layout del gruppo (run-03 prompt 5).
 export function ProtectedDays() {
-  return (
-    <ToastProvider>
-      <ProtectedDaysInner />
-    </ToastProvider>
-  );
+  return <ProtectedDaysInner />;
 }
 
 function ProtectedDaysInner() {

@@ -139,3 +139,21 @@ export function IconChevronRight({ className }: IconProps) {
     </svg>
   );
 }
+
+export function IconBell({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M6 16.5v-6a6 6 0 0 1 12 0v6l1.5 2.5H4.5L6 16.5Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+export function IconDownload({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 4v11M7.5 11 12 15.5 16.5 11" />
+      <path d="M5 19.5h14" />
+    </svg>
+  );
+}

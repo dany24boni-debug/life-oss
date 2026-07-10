@@ -17,16 +17,29 @@ import {
   Field,
   Input,
   Modal,
+  Select,
   Skeleton,
   Textarea,
   TimePicker,
   cx,
+  useToast,
+  type SelectOption,
 } from "@/ui";
-import type { DayString } from "@/ui/calendar-core";
-import { useTask } from "@/data/hooks";
-import type { Task, TaskPriority } from "@/data/schemas";
-import { IconPlus, IconTrash } from "../icons";
+import { formatDayShort, type DayString } from "@/ui/calendar-core";
+import { appRepos, useTask, useTaskReminder } from "@/data/hooks";
+import type { Reminder, Task, TaskPriority } from "@/data/schemas";
+import { civilDayInZone } from "@/data/streak";
+import { taskToIcs } from "@/lib/reminders/ics";
+import {
+  computeFireAt,
+  derivePreset,
+  instantToHhmm,
+  REMINDER_PRESET_LABELS,
+  type ReminderPreset,
+} from "@/lib/reminders/time";
+import { IconDownload, IconPlus, IconTrash } from "../icons";
 import type { TaskActions } from "./actions";
+import { APP_TIME_ZONE } from "./logic";
 import { useIsDesktop } from "./screen-hooks";
 
 export function TaskDetailSheet({
@@ -90,10 +103,88 @@ function TaskEditor({
   actions: TaskActions;
   onClose: () => void;
 }) {
+  const toast = useToast();
+  const reminder = useTaskReminder(task.id);
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes ?? "");
   const [newSubtask, setNewSubtask] = useState("");
   const [newTag, setNewTag] = useState("");
+
+  /**
+   * Cambiare data/orario del task fa SEGUIRE il promemoria quando il suo
+   * offset è uno dei preset (derivabile); se i requisiti cadono (es.
+   * orario rimosso con preset relativo) il promemoria decade — il campo
+   * qui sotto lo mostra subito. Un fire_at personalizzato non si tocca.
+   */
+  async function patchSchedule(patch: {
+    date?: DayString | null;
+    time?: string | null;
+  }) {
+    const current = reminder ?? null;
+    const preset = current
+      ? derivePreset(task.date, task.time, current.fire_at, APP_TIME_ZONE)
+      : null;
+    const ok = await actions.patch(task.id, patch);
+    if (!ok || !current || !preset) return;
+    const nextDate = patch.date !== undefined ? patch.date : task.date;
+    const nextTime = patch.time !== undefined ? patch.time : task.time;
+    const fireAt = computeFireAt(preset, nextDate, nextTime, APP_TIME_ZONE);
+    const r = fireAt
+      ? await appRepos().reminders.update(current.id, { fire_at: fireAt })
+      : await appRepos().reminders.softDelete(current.id);
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  async function setReminderPreset(value: string) {
+    const current = reminder ?? null;
+    if (value === "custom") return; // voce descrittiva, non un comando
+    if (value === "none") {
+      if (!current) return;
+      const r = await appRepos().reminders.softDelete(current.id);
+      if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    const fireAt = computeFireAt(
+      value as ReminderPreset,
+      task.date,
+      task.time,
+      APP_TIME_ZONE,
+    );
+    if (!fireAt) return; // opzione disabilitata: non si arriva qui
+    const r = current
+      ? await appRepos().reminders.update(current.id, { fire_at: fireAt })
+      : await appRepos().reminders.create({
+          kind: "task",
+          ref_id: task.id,
+          fire_at: fireAt,
+        });
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  function exportIcs() {
+    if (task.date === null || task.time === null) return;
+    const ics = taskToIcs({
+      task: {
+        id: task.id,
+        title: task.title,
+        notes: task.notes,
+        date: task.date,
+        time: task.time,
+      },
+      reminderFireAt: reminder?.fire_at ?? null,
+      timeZone: APP_TIME_ZONE,
+      now: new Date(),
+    });
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lifeos-${task.id.slice(0, 8)}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
 
   function commitTitle() {
     const next = title.trim();
@@ -168,7 +259,7 @@ function TaskEditor({
             <DatePicker
               {...p}
               value={task.date}
-              onChange={(day) => void actions.patch(task.id, { date: day })}
+              onChange={(day) => void patchSchedule({ date: day })}
             />
           )}
         </Field>
@@ -177,11 +268,34 @@ function TaskEditor({
             <TimePicker
               {...p}
               value={task.time}
-              onChange={(time) => void actions.patch(task.id, { time })}
+              onChange={(time) => void patchSchedule({ time })}
             />
           )}
         </Field>
       </div>
+
+      <Field
+        label="Promemoria"
+        hint={
+          task.date === null
+            ? "Serve una data per impostare un promemoria."
+            : undefined
+        }
+      >
+        {(p) =>
+          reminder === undefined ? (
+            <Skeleton className="h-11 w-full" />
+          ) : (
+            <Select
+              {...p}
+              options={reminderOptions(task, reminder)}
+              value={reminderValue(task, reminder)}
+              onChange={(v) => void setReminderPreset(v)}
+              disabled={task.date === null}
+            />
+          )
+        }
+      </Field>
 
       <Field label="Priorità">
         {(p) => (
@@ -311,25 +425,78 @@ function TaskEditor({
         )}
       </Field>
 
-      <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <span className="em-body-sm text-[var(--em-text-3)]">
           {task.status === "done" ? "Completato" : "Aperto"}
           {task.date === today ? " · oggi" : ""}
         </span>
-        <Button
-          variant="ghost"
-          className="text-[var(--em-segnale-text)] hover:bg-[var(--em-segnale-tint)]"
-          icon={<IconTrash className="h-4 w-4" />}
-          onClick={() => {
-            void actions.remove(task);
-            onClose();
-          }}
-        >
-          Elimina
-        </Button>
+        <span className="flex items-center gap-2">
+          {task.date !== null && task.time !== null ? (
+            <Button
+              variant="ghost"
+              icon={<IconDownload className="h-4 w-4" />}
+              onClick={exportIcs}
+            >
+              Esporta su Calendario
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            className="text-[var(--em-segnale-text)] hover:bg-[var(--em-segnale-tint)]"
+            icon={<IconTrash className="h-4 w-4" />}
+            onClick={() => {
+              void actions.remove(task);
+              onClose();
+            }}
+          >
+            Elimina
+          </Button>
+        </span>
       </div>
     </div>
   );
+}
+
+/* ── Promemoria: opzioni e valore del Select ──────────────────────────── */
+
+const PRESET_ORDER: ReminderPreset[] = [
+  "at_time",
+  "before_10m",
+  "before_1h",
+  "morning",
+];
+
+function reminderValue(task: Task, reminder: Reminder | null): string {
+  if (!reminder) return "none";
+  return (
+    derivePreset(task.date, task.time, reminder.fire_at, APP_TIME_ZONE) ??
+    "custom"
+  );
+}
+
+function reminderOptions(task: Task, reminder: Reminder | null): SelectOption[] {
+  const needsTime = task.time === null;
+  const options: SelectOption[] = [
+    { value: "none", label: "Nessuno" },
+    ...PRESET_ORDER.map((preset) => ({
+      value: preset,
+      label: REMINDER_PRESET_LABELS[preset],
+      disabled: preset === "morning" ? task.date === null : needsTime,
+    })),
+  ];
+  if (reminder && reminderValue(task, reminder) === "custom") {
+    // fire_at non riconducibile ai preset coi campi attuali: si mostra
+    // com'è, scegliere un'altra voce lo sostituisce.
+    const day = civilDayInZone(reminder.fire_at, APP_TIME_ZONE);
+    options.push({
+      value: "custom",
+      label: `Personalizzato · ${formatDayShort(day)} ${instantToHhmm(
+        reminder.fire_at,
+        APP_TIME_ZONE,
+      )}`,
+    });
+  }
+  return options;
 }
 
 function CrossSmall() {

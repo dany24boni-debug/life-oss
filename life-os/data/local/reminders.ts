@@ -102,6 +102,23 @@ export class LocalRemindersRepo implements RemindersRepo {
       .sort((a, b) => a.fire_at.localeCompare(b.fire_at));
   }
 
+  async listByRef(refId: string): Promise<Reminder[]> {
+    const rows = await this.db.reminders.where("ref_id").equals(refId).toArray();
+    return rows
+      .filter(alive)
+      .sort((a, b) => a.fire_at.localeCompare(b.fire_at));
+  }
+
+  async listFiredUndismissed(): Promise<Reminder[]> {
+    // fired_at non è indicizzato: scansione filtrata, scala personale.
+    const rows = await this.db.reminders
+      .filter(
+        (r) => alive(r) && r.fired_at !== null && r.dismissed_at === null,
+      )
+      .toArray();
+    return rows.sort((a, b) => b.fire_at.localeCompare(a.fire_at));
+  }
+
   markFired(id: string, at: IsoInstant): Promise<Result<Reminder>> {
     return this.stamp(id, { fired_at: at });
   }

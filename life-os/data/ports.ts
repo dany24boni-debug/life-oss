@@ -210,6 +210,13 @@ export interface RemindersRepo {
   listPending(now: IsoInstant): Promise<Reminder[]>;
   /** In arrivo nel range, ordinati per fire_at. */
   listUpcoming(from: IsoInstant, to: IsoInstant): Promise<Reminder[]>;
+  /** I promemoria del task/evento dato, ordinati per fire_at. */
+  listByRef(refId: string): Promise<Reminder[]>;
+  /**
+   * Scattati ma mai riconosciuti dall'utente (fired, non dismissed):
+   * il contenuto della card "Mentre eri via" e il conteggio del badge.
+   */
+  listFiredUndismissed(): Promise<Reminder[]>;
   markFired(id: string, at: IsoInstant): Promise<Result<Reminder>>;
   dismiss(id: string, at: IsoInstant): Promise<Result<Reminder>>;
 

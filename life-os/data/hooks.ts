@@ -25,7 +25,9 @@ import type { Repos } from "./ports";
 import type {
   GymSession,
   IsoDay,
+  IsoInstant,
   LocalEvent,
+  Reminder,
   Settings,
   Task,
 } from "./schemas";
@@ -148,5 +150,53 @@ export function useActivityDays(
   return useLiveQuery(
     () => appRepos().stats.activityDays(from, to, timeZone),
     [from, to, timeZone],
+  );
+}
+
+/* ── Reminders (B2.2, run-03): scheduler in-app e superfici di Oggi ──── */
+
+/** Promemoria + task risolto (titolo per toast, card e rail). */
+export type ReminderWithTask = { reminder: Reminder; task: Task | null };
+
+async function withTasks(reminders: Reminder[]): Promise<ReminderWithTask[]> {
+  const repos = appRepos();
+  return Promise.all(
+    reminders.map(async (reminder) => ({
+      reminder,
+      task:
+        reminder.kind === "task"
+          ? await repos.tasks.getById(reminder.ref_id)
+          : null,
+    })),
+  );
+}
+
+/** Il promemoria del task (v1: al più uno), per la scheda dettaglio. */
+export function useTaskReminder(
+  taskId: string | null,
+): Reminder | null | undefined {
+  return useLiveQuery(async () => {
+    if (!taskId) return null;
+    const rows = await appRepos().reminders.listByRef(taskId);
+    return rows[0] ?? null;
+  }, [taskId]);
+}
+
+/** Scattati e mai riconosciuti: card "Mentre eri via" + badge. */
+export function useFiredReminders(): ReminderWithTask[] | undefined {
+  return useLiveQuery(
+    () => appRepos().reminders.listFiredUndismissed().then(withTasks),
+    [],
+  );
+}
+
+/** In arrivo nel range di istanti (rail "Prossimi" di Oggi). */
+export function useUpcomingReminders(
+  from: IsoInstant,
+  to: IsoInstant,
+): ReminderWithTask[] | undefined {
+  return useLiveQuery(
+    () => appRepos().reminders.listUpcoming(from, to).then(withTasks),
+    [from, to],
   );
 }

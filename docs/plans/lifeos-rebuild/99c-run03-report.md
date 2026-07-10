@@ -233,3 +233,33 @@ After:
 **Checks** (all green): lint / tsc / build / test — suite **492 -> 533** (21 streak + 5 stats adapter + 3 settings + 12 stats logic). Dev-server: `/stats` 200, `/stats/review` 200, Today serves the tiles section (aria "Statistiche di oggi") with the honest gym placeholder, `/impostazioni` serves "Giorni protetti"; `grep -ri MOCK` over every touched surface: 0. Fence audit: `app/(app)/stats/**`, Today page + `_components/**`, `data/**`, the `/impostazioni` settings area (the adapted `app/(app)/settings` fence per pre-flight delta 2), report.
 
 **Commit:** `feat(stats): streak engine with protected days, real Today tiles, stats + weekly review`
+
+---
+
+## Prompt 5 — Reminders v1: DONE (checkpoint green, committed)
+
+**What was built**
+
+- `lib/reminders/` (NEW, pure, injected clocks/timers/zones — 23 tests):
+  - `time.ts` — the civil-time bridge: `zonedTimeToInstant` (two-pass offset resolution; DST spring-gap wall times degrade by one hour without throwing, October ambiguity resolves to a valid instant — both tested), `instantToHhmm`, reminder presets (`at_time` / `before_10m` / `before_1h` / `morning` 08:00) with `computeFireAt` (null when requirements are missing) and `derivePreset` (exact-match recognition, null for custom/stale offsets).
+  - `scheduler.ts` — the `RemindersScheduler` INTERFACE (push-ready per B3.4: prompt 17 can implement the same contract server-driven) + `createInAppScheduler`: ONE foreground interval (30s default), immediate tick on start and on visibility return; `markFired` BEFORE delivery and pending-excludes-fired make a reminder fire exactly once (a `markFired` ko = handled elsewhere = no delivery); age-based classification splits `live` (toast+sound) from `catchup` ("mentre eri via", no toast burst), threshold injectable. Fake-timer tests: fires once never twice, old ones go to catchup, future fires via the interval at its time, stop/idempotent start, ko-exclusion, custom threshold.
+  - `ics.ts` — per-task .ics: CRLF everywhere, RFC 5545 TEXT escaping (backslash/semicolon/comma/newline), 74-char line folding (longest physical line <= 75 verified in test), `DTSTART;TZID=Europe/Rome` with a static VTIMEZONE (EU last-Sunday rules), VALARM DISPLAY with the app reminder's relative offset (`-PT10M`, `-PT1H30M` composite tested) or `PT0S` without one, DTEND = start+30min (a task is a point; half an hour is the smallest readable calendar block), non-Rome zones degrade to absolute UTC instants (never a TZID without definition). 6 snapshot-style tests with byte-exact expected output.
+- Port additions (flagged): `RemindersRepo.listByRef(refId)` (detail sheet) and `listFiredUndismissed()` (the "Mentre eri via" card + badge source of truth — surviving reload by construction, no in-memory store), both implemented + tested (2 tests).
+- Hooks (additive): `useTaskReminder`, `useFiredReminders`, `useUpcomingReminders` — the latter two join the task row for titles (`ReminderWithTask`).
+- `app/(app)/_components/reminders-host.tsx` — mounts the scheduler for the whole shell (in the group layout): live delivery = Toast "Promemoria: <titolo>" (8s, Ok = dismiss) + one short WebAudio chime per batch (autoplay-suspended contexts give up silently — enhancement, the toast is the real delivery) + Badging API count (guarded, `.catch`-safed); orphan reminders (task deleted) are auto-dismissed instead of shown; the toast context rides in a ref so scheduler never restarts on re-render.
+- `app/(app)/_components/reminders-cards.tsx` — `WhileAwayCard` (fired-unacknowledged with per-item Ok and "Segna tutti letti") and `UpcomingReminders` (next 24h, max 4, minute-advancing window, honest closing line "Suonano finché l'app è aperta"). Both render NOTHING when empty — no empty cards.
+- Task detail sheet — "Promemoria" Field (Ember Select: Nessuno + 4 presets, time-dependent options disabled without an orario, morning without a data; an underivable stored fire_at shows as a descriptive "Personalizzato · <giorno> <ora>" entry), and **preset-follow**: changing the task's date/time recomputes the reminder when its offset is a recognizable preset (requirements gone -> the reminder decays visibly); custom offsets are never touched. "Esporta su Calendario" ghost button (date+time tasks) downloads the .ics via Blob.
+- `app/(app)/impostazioni/page.tsx` — the truth panel (B2.2 honesty): App aperta / Al ritorno / App chiusa ("il web non può suonare da solo: per promemoria garantiti usa Esporta su Calendario").
+- Today page — `WhileAwayCard` above the task section, `UpcomingReminders` rail below it.
+
+**Anchored edit — `app/(app)/layout.tsx`** (night-01 file): the shell subtree is now wrapped in ONE `ToastProvider` with `RemindersHost` mounted inside (quoted: `<ToastProvider>` around Rail/MobileHeader/main/TabBar + `<RemindersHost />` before closing). Consequently the per-island providers from prompts 1/2/4 (TasksScreen, TodayTasks, ProtectedDays) were REMOVED — one toast stack for modules and reminders alike.
+
+**Semantics worth knowing (documented, tested where testable)**
+
+1. A reminder that fires while the toast goes unseen is NOT lost: it stays in "Mentre eri via" until acknowledged (fired-undismissed is the queue, dismiss is the acknowledgment; the port's `update(fire_at)` re-arms a reminder by design — adapter comment).
+2. Two open tabs could each deliver the same reminder once (both read pending before either stamps) — accepted v1 edge for a single-user local app, noted here.
+3. The rail and the card render null when empty (the acceptance's "Today renders the rail" = the components are mounted and appear as soon as a reminder exists; served-HTML shows them only with data — honesty beats markup).
+
+**Checks** (all green): lint / tsc / build / test — suite **533 -> 558** (11 time + 6 scheduler + 6 ics + 2 adapter). Dev-server: `/` 200 (host mounted, cards honest-empty), `/impostazioni` serves the truth panel ("Promemoria e notifiche", "Esporta su Calendario"), `/tasks` still zero native controls. Fence audit: `data/**`, `lib/reminders/**`, `app/(app)/**`, report.
+
+**Commit:** `feat(reminders): in-app scheduler with catch-up, task reminders, ics export`

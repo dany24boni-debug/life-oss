@@ -78,6 +78,45 @@ export default async function ImpostazioniPage() {
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />
+
+      {/* Pannello di verità sulle notifiche (run-03 prompt 5, B2.2):
+          esattamente quando LifeOS può avvisare — e quando non può. */}
+      <section aria-label="Promemoria e notifiche" className="em-card p-5">
+        <p className="em-eyebrow">Promemoria e notifiche</p>
+        <p className="em-body-sm mt-2 text-[var(--em-text-3)]">
+          Quando LifeOS può avvisarti, senza promesse:
+        </p>
+        <dl className="mt-3 flex flex-col gap-3">
+          <div>
+            <dt className="em-body font-medium text-[var(--em-text)]">
+              App aperta
+            </dt>
+            <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
+              Il promemoria arriva subito: una notifica in basso, con un
+              breve suono quando il browser lo consente.
+            </dd>
+          </div>
+          <div>
+            <dt className="em-body font-medium text-[var(--em-text)]">
+              Al ritorno
+            </dt>
+            <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
+              Quello che è scattato mentre eri via ti aspetta su Oggi,
+              nella card &ldquo;Mentre eri via&rdquo;.
+            </dd>
+          </div>
+          <div>
+            <dt className="em-body font-medium text-[var(--em-text)]">
+              App chiusa
+            </dt>
+            <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
+              Il web non può suonare da solo ad app chiusa. Per promemoria
+              garantiti usa &ldquo;Esporta su Calendario&rdquo; dalla scheda
+              del task: l&apos;allarme lo fa il calendario di sistema.
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   );
 }

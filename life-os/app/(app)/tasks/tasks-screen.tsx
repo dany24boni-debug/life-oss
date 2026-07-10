@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { Button, EmptyState, Skeleton, Tabs, ToastProvider } from "@/ui";
+import { Button, EmptyState, Skeleton, Tabs } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
 import {
   useDoneTasks,
@@ -41,12 +41,9 @@ type ViewCtx = {
   onOpenSnooze: (task: Task) => void;
 };
 
+// Il ToastProvider vive nel layout del gruppo (run-03 prompt 5).
 export function TasksScreen() {
-  return (
-    <ToastProvider>
-      <Screen />
-    </ToastProvider>
-  );
+  return <Screen />;
 }
 
 function Screen() {

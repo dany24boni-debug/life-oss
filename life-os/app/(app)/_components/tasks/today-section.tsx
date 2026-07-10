@@ -9,14 +9,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  BottomSheet,
-  Button,
-  EmptyState,
-  Modal,
-  Skeleton,
-  ToastProvider,
-} from "@/ui";
+import { BottomSheet, Button, EmptyState, Modal, Skeleton } from "@/ui";
 import { useOverdueTasks, useTasks } from "@/data/hooks";
 import type { Task } from "@/data/schemas";
 import { IconPlus } from "../icons";
@@ -27,12 +20,9 @@ import { SnoozeMenu } from "./snooze-menu";
 import { TaskDetailSheet } from "./task-detail";
 import { TaskList } from "./task-list";
 
+// Il ToastProvider vive nel layout del gruppo (run-03 prompt 5).
 export function TodayTasks() {
-  return (
-    <ToastProvider>
-      <TodayTasksInner />
-    </ToastProvider>
-  );
+  return <TodayTasksInner />;
 }
 
 function TodayTasksInner() {

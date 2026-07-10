@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/ui";
+import {
+  UpcomingReminders,
+  WhileAwayCard,
+} from "./_components/reminders-cards";
 import { TodayTasks } from "./_components/tasks/today-section";
 import { TodayTiles } from "./_components/today-tiles";
 
@@ -88,8 +92,14 @@ export default async function TodayPage() {
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
       <TodayTiles />
 
+      {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
+      <WhileAwayCard />
+
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />
+
+      {/* Rail "Prossimi": cosa suonerà ad app aperta (run-03 prompt 5). */}
+      <UpcomingReminders />
 
       {SECTIONS.map((s) => (
         <section key={s.eyebrow} aria-label={s.eyebrow} className="em-card p-5">
