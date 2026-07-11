@@ -8,8 +8,8 @@
  */
 
 import { useMemo, useState } from "react";
-import { BottomSheet, Input, Modal, cx } from "@/ui";
-import { useExercises } from "@/data/hooks";
+import { BottomSheet, Input, Modal, cx, useToast } from "@/ui";
+import { appRepos, useExercises } from "@/data/hooks";
 import type { GymExercise, MuscleGroup } from "@/data/schemas";
 import { MuscleGroupSchema } from "@/data/schemas";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
@@ -36,15 +36,38 @@ export function ExercisePicker({
   open,
   onClose,
   onPick,
+  allowCreate = false,
 }: {
   open: boolean;
   onClose: () => void;
   onPick: (exercise: GymExercise) => void;
+  /**
+   * Creazione inline (builder, run-07): se la ricerca non trova nulla,
+   * "Crea «query»" crea un esercizio custom (gruppo "altro" — si affina
+   * dalla Libreria) e lo consegna subito a onPick.
+   */
+  allowCreate?: boolean;
 }) {
   const isDesktop = useIsDesktop();
+  const toast = useToast();
   const exercises = useExercises();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<MuscleGroup | null>(null);
+
+  async function createFromQuery() {
+    const name = query.trim();
+    if (name === "") return;
+    const r = await appRepos().gym.createExercise({
+      name,
+      muscle_group: "altro",
+    });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    setQuery("");
+    onPick(r.data);
+  }
 
   const filtered = useMemo(() => {
     const all = exercises ?? [];
@@ -100,7 +123,23 @@ export function ExercisePicker({
             </button>
           </li>
         ))}
-        {filtered.length === 0 ? (
+        {allowCreate && query.trim() !== "" ? (
+          <li>
+            <button
+              type="button"
+              onClick={() => void createFromQuery()}
+              className="flex min-h-11 w-full items-center gap-2 border-b border-[var(--em-hairline)] py-2.5 text-left transition-colors duration-[var(--em-dur-tap)] last:border-b-0 hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)]"
+            >
+              <span className="em-body font-medium text-[var(--em-ember-text)]">
+                + Crea «{query.trim()}»
+              </span>
+              <span className="em-eyebrow text-[var(--em-text-3)]">
+                nuovo esercizio
+              </span>
+            </button>
+          </li>
+        ) : null}
+        {filtered.length === 0 && !(allowCreate && query.trim() !== "") ? (
           <li className="em-body-sm py-4 text-[var(--em-text-3)]">
             Nessun esercizio trovato. Crealo dalla Libreria.
           </li>

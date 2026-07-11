@@ -140,6 +140,26 @@ describe("export/import JSON", () => {
     expect(!futuro.ok && futuro.error.message).toMatch(/versione/);
   });
 
+  it("un export scritto PRIMA del run-07 (senza tabelle programmi) resta importabile", async () => {
+    const sorgente = makeDb();
+    await seed(sorgente);
+    const envelope = await exportAll(sorgente);
+    const file = JSON.parse(JSON.stringify(envelope)) as {
+      tables: Record<string, unknown>;
+    };
+    // Un backup run-06 non conosce le tabelle nuove: chiavi ASSENTI.
+    delete file.tables.gym_programs;
+    delete file.tables.gym_program_days;
+    delete file.tables.gym_program_slots;
+
+    const destinazione = makeDb();
+    const result = await importAll(destinazione, file);
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.data.invalid).toBe(0);
+    expect((await destinazione.tasks.toArray()).length).toBe(2);
+    expect(await destinazione.gym_programs.count()).toBe(0);
+  });
+
   it("le righe non valide nel file vengono ignorate e contate", async () => {
     const db = makeDb();
     await seed(db);

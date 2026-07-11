@@ -20,6 +20,7 @@ import {
   IconExam,
   IconGym,
   IconMoon,
+  IconScale,
   IconSettings,
   IconStats,
   IconTasks,
@@ -51,6 +52,7 @@ const MODULES: NavItem[] = [
   { href: "/esami", label: "Esami", icon: IconExam },
   { href: "/spese", label: "Spese", icon: IconWallet },
   { href: "/sera", label: "Sera", icon: IconMoon },
+  { href: "/corpo", label: "Corpo", icon: IconScale },
 ];
 
 function isActive(pathname: string, href: string): boolean {

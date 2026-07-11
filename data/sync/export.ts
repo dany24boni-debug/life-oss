@@ -22,9 +22,17 @@ import { SYNC_TABLES, localTable, type LocalTableName } from "./tables";
 export const EXPORT_FORMAT = "lifeos-export" as const;
 export const EXPORT_VERSION = 1 as const;
 
+/**
+ * Ogni tabella con default []: un export scritto PRIMA che una tabella
+ * esistesse (es. backup run-06 senza i programmi del run-07) resta
+ * importabile — la tabella assente vale "vuota", mai un rifiuto.
+ */
 const tablesShape = Object.fromEntries(
-  SYNC_TABLES.map((spec) => [spec.local, z.array(z.unknown())]),
-) as Record<LocalTableName, z.ZodArray<z.ZodUnknown>>;
+  SYNC_TABLES.map((spec) => [spec.local, z.array(z.unknown()).default([])]),
+) as Record<
+  LocalTableName,
+  z.ZodDefault<z.ZodArray<z.ZodUnknown>>
+>;
 
 export const ExportEnvelopeSchema = z.object({
   format: z.literal(EXPORT_FORMAT),

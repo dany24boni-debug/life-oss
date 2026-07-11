@@ -30,11 +30,15 @@
 
 import Dexie, { type Table } from "dexie";
 import type {
+  BodyEntry,
   EveningCheckin,
   Exam,
   Expense,
   GymExercise,
   GymPlan,
+  GymProgram,
+  GymProgramDay,
+  GymProgramSlot,
   GymSession,
   GymSet,
   LocalEvent,
@@ -80,6 +84,35 @@ export const SCHEMA_V5 = {
   sera: "id, date, updated_at",
 } as const;
 
+/**
+ * v6 = v5 + programmi (run-07): tre tabelle nuove (programma → giorni →
+ * slot), indice `program_day_id` sulle sessioni (next-up e storico per
+ * giorno di programma). Le righe esistenti non cambiano forma: i campi
+ * nuovi di sessioni/set vengono riempiti a null dall'upgrade (backfill),
+ * mai reshaping. La conversione piani v1 → programma NON vive qui: è
+ * `convertPlansToPrograms` (data/gym-programs.ts), post-open — deriva id
+ * con crypto.subtle (promise nativa), che dentro una transazione Dexie
+ * la farebbe committare troppo presto.
+ */
+export const SCHEMA_V6 = {
+  ...SCHEMA_V5,
+  gym_sessions: "id, date, updated_at, program_day_id",
+  gym_programs: "id, updated_at",
+  gym_program_days: "id, program_id, updated_at",
+  gym_program_slots: "id, day_id, updated_at",
+} as const;
+
+/**
+ * v7 = v6 + body (run-07 prompt 4): peso corporeo per giorno, id
+ * derivato dalla data. Solo additiva; i campi profilo nuovi di Settings
+ * NON richiedono migrazione (il repo fonde i default alla lettura, lo
+ * schema li materializza al parse — pattern di protected_days).
+ */
+export const SCHEMA_V7 = {
+  ...SCHEMA_V6,
+  body: "id, date, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -89,8 +122,12 @@ export class LifeosDb extends Dexie {
   esami!: Table<Exam, string>;
   spese!: Table<Expense, string>;
   sera!: Table<EveningCheckin, string>;
+  body!: Table<BodyEntry, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
+  gym_programs!: Table<GymProgram, string>;
+  gym_program_days!: Table<GymProgramDay, string>;
+  gym_program_slots!: Table<GymProgramSlot, string>;
   gym_sessions!: Table<GymSession, string>;
   gym_sets!: Table<GymSet, string>;
   reminders!: Table<Reminder, string>;
@@ -104,6 +141,32 @@ export class LifeosDb extends Dexie {
     this.version(3).stores(SCHEMA_V3);
     this.version(4).stores(SCHEMA_V4);
     this.version(5).stores(SCHEMA_V5);
+    this.version(6)
+      .stores(SCHEMA_V6)
+      .upgrade((tx) =>
+        // Backfill dei campi run-07 sulle righe pre-esistenti: null
+        // esplicito al posto di `undefined`, così schemi zod, LWW e UI
+        // vedono righe complete. Callback sincrone: sicure nella
+        // transazione d'upgrade.
+        Promise.all([
+          tx
+            .table("gym_sessions")
+            .toCollection()
+            .modify((s: Record<string, unknown>) => {
+              if (s.program_day_id === undefined) s.program_day_id = null;
+              if (s.rating_1_10 === undefined) s.rating_1_10 = null;
+            }),
+          tx
+            .table("gym_sets")
+            .toCollection()
+            .modify((s: Record<string, unknown>) => {
+              if (s.rir_done === undefined) s.rir_done = null;
+              if (s.rest_actual_s === undefined) s.rest_actual_s = null;
+              if (s.feeling_1_10 === undefined) s.feeling_1_10 = null;
+            }),
+        ]).then(() => undefined),
+      );
+    this.version(7).stores(SCHEMA_V7);
   }
 }
 

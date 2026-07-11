@@ -24,11 +24,15 @@ import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  BodyEntry,
   EveningCheckin,
   Exam,
   Expense,
   GymExercise,
   GymPlan,
+  GymProgram,
+  GymProgramDay,
+  GymProgramSlot,
   GymSession,
   GymSet,
   IsoDay,
@@ -157,6 +161,40 @@ export function useCheckinHistory(
   );
 }
 
+/* ── Corpo (run-07 prompt 4) ─────────────────────────────────────────── */
+
+/** La pesata del giorno; null se non registrata. */
+export function useBodyDay(date: IsoDay): BodyEntry | null | undefined {
+  return useLiveQuery(async () => {
+    const row = await appRepos().body.getByDay(date);
+    return row ?? null;
+  }, [date]);
+}
+
+/** L'ultima pesata viva; null senza dati. */
+export function useLatestBody(): BodyEntry | null | undefined {
+  return useLiveQuery(() => appRepos().body.latest(), []);
+}
+
+/** Pesate nel range, per giorno crescente (grafico del trend). */
+export function useBodyRange(
+  from: IsoDay,
+  to: IsoDay,
+): BodyEntry[] | undefined {
+  return useLiveQuery(() => appRepos().body.listRange(from, to), [from, to]);
+}
+
+/** Storico pesate fino a `before` incluso, dalla più recente. */
+export function useBodyRecent(
+  before: IsoDay,
+  limit: number,
+): BodyEntry[] | undefined {
+  return useLiveQuery(
+    () => appRepos().body.listRecent(before, limit),
+    [before, limit],
+  );
+}
+
 /** Singolo esame per id (scheda dettaglio); null se assente o tombstone. */
 export function useExam(id: string | null): Exam | null | undefined {
   return useLiveQuery(
@@ -189,6 +227,88 @@ export function useExercises(group?: MuscleGroup): GymExercise[] | undefined {
 /** Piani ordinati per nome. */
 export function usePlans(): GymPlan[] | undefined {
   return useLiveQuery(() => appRepos().gym.listPlans(), []);
+}
+
+/* ── Programmi (run-07) ──────────────────────────────────────────────── */
+
+/** Programmi vivi: l'attivo per primo, poi per nome. */
+export function usePrograms(): GymProgram[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listPrograms(), []);
+}
+
+/** Il programma attivo (al più uno); null se nessuno. */
+export function useActiveProgram(): GymProgram | null | undefined {
+  return useLiveQuery(() => appRepos().gym.activeProgram(), []);
+}
+
+/** Giorni vivi del programma, per sort_order. */
+export function useProgramDays(
+  programId: string | null,
+): GymProgramDay[] | undefined {
+  return useLiveQuery(
+    () =>
+      programId
+        ? appRepos().gym.listProgramDays(programId)
+        : Promise.resolve([]),
+    [programId],
+  );
+}
+
+/** Slot vivi del giorno, per sort_order (le righe della tabella-foglio). */
+export function useProgramSlots(
+  dayId: string | null,
+): GymProgramSlot[] | undefined {
+  return useLiveQuery(
+    () =>
+      dayId ? appRepos().gym.listProgramSlots(dayId) : Promise.resolve([]),
+    [dayId],
+  );
+}
+
+/** Singolo giorno di programma; null se assente o tombstone. */
+export function useProgramDay(
+  id: string | null,
+): GymProgramDay | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().gym.getProgramDayById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** Il prossimo giorno del programma attivo (rotazione last-done). */
+export function useNextUpDay(): GymProgramDay | null | undefined {
+  return useLiveQuery(() => appRepos().gym.nextUpDay(), []);
+}
+
+/** Sessioni nate da un giorno di programma, più recenti prima. */
+export function useSessionsByProgramDay(
+  dayId: string | null,
+): GymSession[] | undefined {
+  return useLiveQuery(
+    () =>
+      dayId
+        ? appRepos().gym.listSessionsByProgramDay(dayId)
+        : Promise.resolve([]),
+    [dayId],
+  );
+}
+
+/** I giorni del programma attivo, ognuno coi suoi slot (per sort_order). */
+export function useActiveProgramSlots():
+  | Array<{ day: GymProgramDay; slots: GymProgramSlot[] }>
+  | undefined {
+  return useLiveQuery(async () => {
+    const gym = appRepos().gym;
+    const program = await gym.activeProgram();
+    if (!program) return [];
+    const days = await gym.listProgramDays(program.id);
+    return Promise.all(
+      days.map(async (day) => ({
+        day,
+        slots: await gym.listProgramSlots(day.id),
+      })),
+    );
+  }, []);
 }
 
 /** Sessioni del giorno (di solito zero o una). */

@@ -18,8 +18,14 @@ import {
   Select,
   useToast,
 } from "@/ui";
-import { appRepos, useGymSessionsRange, useSetsByExercise } from "@/data/hooks";
-import type { GymExercise, MuscleGroup } from "@/data/schemas";
+import {
+  appRepos,
+  useActiveProgramSlots,
+  useBodyRange,
+  useGymSessionsRange,
+  useSetsByExercise,
+} from "@/data/hooks";
+import type { GymExercise, GymSession, MuscleGroup } from "@/data/schemas";
 import { addMonths, todayLocal } from "@/ui/calendar-core";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
 import { MUSCLE_GROUPS, groupLabel } from "./exercise-picker";
@@ -29,6 +35,8 @@ import {
   formatKg,
   sparklinePath,
 } from "./logic";
+import { ProgressTable } from "./progress-table";
+import { verdictForSlot, verdictLabel } from "./progression";
 
 export function ExerciseDetailSheet({
   exercise,
@@ -199,15 +207,21 @@ function ExerciseProgress({ exercise }: { exercise: GymExercise }) {
   const today = todayLocal();
   const sets = useSetsByExercise(exercise.id, 500);
   const sessions = useGymSessionsRange(addMonths(today, -12), today);
+  // Peso corporeo per giorno (run-07 P4): la riga "Forza Rel.".
+  const bodyEntries = useBodyRange(addMonths(today, -12), today);
 
   const loading = sets === undefined || sessions === undefined;
   const prs = computePRs(sets ?? []);
   const days = new Map((sessions ?? []).map((s) => [s.id, s.date] as const));
+  const weightByDate = new Map(
+    (bodyEntries ?? []).map((e) => [e.date, e.weight_kg] as const),
+  );
   const trend = exerciseTrend(sets ?? [], days);
   const path = sparklinePath(trend, 280, 48);
 
   return (
     <div className="flex flex-col gap-3 border-t border-[var(--em-hairline)] pt-4">
+      <ExerciseVerdict exercise={exercise} sessions={sessions ?? []} />
       <ChartFrame
         label="Progressi"
         title="Miglior carico per giorno"
@@ -241,8 +255,70 @@ function ExerciseProgress({ exercise }: { exercise: GymExercise }) {
         <PrLine label="Volume migliore" value={prs.maxSessionVolumeKg !== null ? formatKg(prs.maxSessionVolumeKg) : "—"} />
         <PrLine label="1RM stimato" value={prs.best1RmKg !== null ? formatKg(prs.best1RmKg) : "—"} />
       </dl>
+
+      <div className="flex flex-col gap-1.5 pt-1">
+        <p className="em-eyebrow">Le ultime sedute</p>
+        {loading ? null : (
+          <ProgressTable
+            sets={sets ?? []}
+            dateBySession={days}
+            weightByDate={weightByDate}
+          />
+        )}
+      </div>
     </div>
   );
+}
+
+/**
+ * Il verdetto AUMENTA/RESTA anche qui, se l'esercizio vive in uno slot
+ * del programma attivo: giudica l'ultima seduta COMPLETATA del giorno.
+ */
+function ExerciseVerdict({
+  exercise,
+  sessions,
+}: {
+  exercise: GymExercise;
+  sessions: GymSession[];
+}) {
+  const programSlots = useActiveProgramSlots();
+  const sets = useSetsByExercise(exercise.id, 500);
+  if (programSlots === undefined || sets === undefined) return null;
+
+  for (const { day, slots } of programSlots) {
+    const slot = slots.find((s) => s.exercise_id === exercise.id);
+    if (!slot) continue;
+    const lastCompleted = sessions
+      .filter((s) => s.program_day_id === day.id && s.finished_at !== null)
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.started_at ?? b.created_at).localeCompare(
+            a.started_at ?? a.created_at,
+          ),
+      )[0];
+    if (!lastCompleted) continue;
+    const lastSets = sets
+      .filter((s) => s.session_id === lastCompleted.id)
+      .sort((a, b) => a.set_number - b.set_number);
+    const verdict = verdictForSlot(slot, lastSets);
+    if (verdict === null) continue;
+    return (
+      <p className="em-body-sm flex items-center gap-2 text-[var(--em-text-3)]">
+        <span
+          className={
+            verdict === "aumenta"
+              ? "em-eyebrow rounded-full bg-[var(--em-ember-tint)] px-2 py-0.5 text-[var(--em-ember-text)]"
+              : "em-eyebrow rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)]"
+          }
+        >
+          {verdictLabel(verdict, slot.bodyweight)}
+        </span>
+        suggerimento dall&apos;ultima seduta di {day.name}
+      </p>
+    );
+  }
+  return null;
 }
 
 function PrLine({ label, value }: { label: string; value: string }) {

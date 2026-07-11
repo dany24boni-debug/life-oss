@@ -44,6 +44,200 @@ afterEach(async () => {
   for (const db of dbs.splice(0)) await db.delete();
 });
 
+describe("SyncEngine — round-trip programmi (run-07)", () => {
+  it("programma + giorno + slot creati su A arrivano su B identici", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const program = must(
+      await a.repos.gym.createProgram({ name: "Scheda", is_active: true }),
+    );
+    const day = must(
+      await a.repos.gym.createProgramDay({
+        program_id: program.id,
+        name: "Torso A",
+        subtitle: "Petto + Schiena + Spalle + Core",
+        weekday: 2,
+      }),
+    );
+    const ex = must(
+      await a.repos.gym.createExercise({
+        name: "Panca piana",
+        muscle_group: "petto",
+      }),
+    );
+    const slot = must(
+      await a.repos.gym.createProgramSlot({
+        day_id: day.id,
+        exercise_id: ex.id,
+        section: "FORZA",
+        variant: "Bilanciere",
+        target_sets: 4,
+        target_reps: "3–5",
+        target_rir: "2/1/0",
+        rest_seconds: 270,
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.gym_programs.get(program.id)).toEqual(
+      await a.db.gym_programs.get(program.id),
+    );
+    expect(await b.db.gym_program_days.get(day.id)).toEqual(day);
+    expect(await b.db.gym_program_slots.get(slot.id)).toEqual(slot);
+    expect(remote.rowsOf("lo_gym_program_slots")).toHaveLength(1);
+
+    // LWW: B ritocca la prescrizione DOPO → vince al round-trip.
+    must(
+      await b.repos.gym.updateProgramSlot(slot.id, { target_rir: "1–2" }),
+    );
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    expect((await a.repos.gym.getProgramSlotById(slot.id))?.target_rir).toBe(
+      "1–2",
+    );
+
+    // A elimina il programma (cascade): le tombstone viaggiano tutte.
+    must(await a.repos.gym.softDeleteProgram(program.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.gym.getProgramById(program.id)).toBeNull();
+    expect(await b.repos.gym.getProgramDayById(day.id)).toBeNull();
+    expect(await b.repos.gym.getProgramSlotById(slot.id)).toBeNull();
+  });
+
+  it("sessione col giorno/voto e set con RIR/recupero/feeling: round-trip", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const program = must(await a.repos.gym.createProgram({ name: "S" }));
+    const day = must(
+      await a.repos.gym.createProgramDay({
+        program_id: program.id,
+        name: "Torso A",
+      }),
+    );
+    const ex = must(
+      await a.repos.gym.createExercise({
+        name: "Dip alle parallele",
+        muscle_group: "petto",
+      }),
+    );
+    const session = must(
+      await a.repos.gym.startSessionFromDay(
+        day.id,
+        "2026-07-10",
+        "2026-07-10T18:00:00.000Z",
+      ),
+    );
+    must(await a.repos.gym.updateSession(session.id, { rating_1_10: 8 }));
+    const set = must(
+      await a.repos.gym.addSet({
+        session_id: session.id,
+        exercise_id: ex.id,
+        weight_kg: null, // corpo libero: legale e sincronizzabile
+        reps: 10,
+        rir_done: 1,
+        rest_actual_s: 150,
+        feeling_1_10: 7,
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    const sessionOnB = await b.db.gym_sessions.get(session.id);
+    expect(sessionOnB?.program_day_id).toBe(day.id);
+    expect(sessionOnB?.rating_1_10).toBe(8);
+    const setOnB = await b.db.gym_sets.get(set.id);
+    expect(setOnB).toEqual(set);
+    expect(setOnB?.weight_kg).toBeNull();
+    expect(setOnB?.rir_done).toBe(1);
+  });
+
+  it("una riga sessione di forma PRE run-07 (senza campi nuovi) passa il pull", async () => {
+    const remote = new FakeRemote();
+    // Un client non aggiornato pusha una sessione SENZA le chiavi nuove
+    // (è ciò che arriva anche da un backup vecchio): il parse del pull
+    // deve materializzare i default, mai scartare la riga.
+    await remote.pushUpsert("lo_gym_sessions", [
+      {
+        id: "01980000-0000-7000-8000-0000000000aa",
+        date: "2026-07-01",
+        plan_id: null,
+        started_at: null,
+        finished_at: null,
+        notes: null,
+        created_at: "2026-07-01T18:00:00.000Z",
+        updated_at: "2026-07-01T18:00:00.000Z",
+        deleted_at: null,
+      },
+    ]);
+    const b = makeDevice(remote);
+    await b.engine.syncNow();
+    const row = await b.db.gym_sessions.get(
+      "01980000-0000-7000-8000-0000000000aa",
+    );
+    expect(row).not.toBeUndefined();
+    expect(row?.program_day_id).toBeNull();
+    expect(row?.rating_1_10).toBeNull();
+  });
+});
+
+describe("SyncEngine — round-trip lo_body + profilo (run-07 P4)", () => {
+  it("la pesata del giorno CONVERGE tra dispositivi (id derivato)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    must(await a.repos.body.upsertDay("2026-07-11", { weight_kg: 82.6 }));
+    await new Promise((r) => setTimeout(r, 5));
+    must(
+      await b.repos.body.upsertDay("2026-07-11", {
+        weight_kg: 82.4,
+        note: "mattina",
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_body")).toHaveLength(1);
+    const suA = await a.repos.body.getByDay("2026-07-11");
+    const suB = await b.repos.body.getByDay("2026-07-11");
+    expect(suA).toEqual(suB);
+    expect(suA?.weight_kg).toBe(82.4); // vince la scrittura più recente
+  });
+
+  it("i campi profilo di Settings viaggiano (lo_settings alterata)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    must(
+      await a.repos.settings.update({
+        height_cm: 180,
+        sex: "m",
+        birth_year: 1996,
+        activity_level: 3,
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    const onB = await b.repos.settings.get();
+    expect(onB.height_cm).toBe(180);
+    expect(onB.sex).toBe("m");
+    expect(onB.birth_year).toBe(1996);
+    expect(onB.activity_level).toBe(3);
+  });
+});
+
 describe("SyncEngine — round-trip lo_esami", () => {
   it("un esame creato su A arriva su B identico (push -> pull)", async () => {
     const remote = new FakeRemote();

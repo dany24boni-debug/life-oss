@@ -187,3 +187,14 @@ export function IconMoon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Bilancia pesapersone (modulo Corpo, run-07). */
+export function IconScale({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8.5 9.5a5 5 0 0 1 7 0" />
+      <path d="M12 9.5l1.5-2" />
+    </svg>
+  );
+}

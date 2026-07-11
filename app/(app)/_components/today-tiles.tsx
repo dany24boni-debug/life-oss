@@ -10,11 +10,13 @@
 
 import { StatCard } from "@/ui";
 import {
+  useBodyRecent,
   useCompletionByDay,
   useGymVolume,
   useStreak,
   useTasksSummary,
 } from "@/data/hooks";
+import { formatBodyDelta, formatBodyKg } from "../corpo/logic";
 import { formatKg } from "../gym/logic";
 import { completionPercent, fillDays, weekBounds } from "../stats/logic";
 import { APP_TIME_ZONE } from "./tasks/logic";
@@ -36,6 +38,14 @@ export function TodayTiles() {
 
   // Palestra della settimana in corso (lun -> oggi): sessioni e volume.
   const gym = useGymVolume(week.from, today);
+
+  // Peso corporeo (run-07 P4): tile compatto SOLO quando esistono dati.
+  const weights = useBodyRecent(today, 2);
+  const latestWeight = weights?.[0];
+  const weightDelta =
+    weights !== undefined && weights.length >= 2
+      ? Math.round((weights[0].weight_kg - weights[1].weight_kg) * 10) / 10
+      : null;
 
   return (
     <section aria-label="Statistiche di oggi" className="grid grid-cols-2 gap-3">
@@ -117,6 +127,17 @@ export function TodayTiles() {
                 : "Da lunedì a oggi."
         }
       />
+      {latestWeight !== undefined && latestWeight !== null ? (
+        <StatCard
+          label="Peso"
+          value={formatBodyKg(latestWeight.weight_kg)}
+          hint={
+            weightDelta !== null
+              ? `${formatBodyDelta(weightDelta)} dall'ultima pesata.`
+              : "Prima pesata registrata."
+          }
+        />
+      ) : null}
     </section>
   );
 }

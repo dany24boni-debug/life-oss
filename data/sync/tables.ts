@@ -17,11 +17,15 @@
 import type { Table } from "dexie";
 import type { LifeosDb } from "../db";
 import {
+  BodyEntrySchema,
   EveningCheckinSchema,
   ExamSchema,
   ExpenseSchema,
   GymExerciseSchema,
   GymPlanSchema,
+  GymProgramDaySchema,
+  GymProgramSchema,
+  GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
   LocalEventSchema,
@@ -44,8 +48,12 @@ export type LocalTableName =
   | "esami"
   | "spese"
   | "sera"
+  | "body"
   | "gym_exercises"
   | "gym_plans"
+  | "gym_programs"
+  | "gym_program_days"
+  | "gym_program_slots"
   | "gym_sessions"
   | "gym_sets"
   | "reminders"
@@ -106,6 +114,12 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     instantColumns: AUDIT,
   },
   {
+    local: "body",
+    remote: "lo_body",
+    parse: parserFor(BodyEntrySchema),
+    instantColumns: AUDIT,
+  },
+  {
     local: "gym_exercises",
     remote: "lo_gym_exercises",
     parse: parserFor(GymExerciseSchema),
@@ -115,6 +129,24 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     local: "gym_plans",
     remote: "lo_gym_plans",
     parse: parserFor(GymPlanSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "gym_programs",
+    remote: "lo_gym_programs",
+    parse: parserFor(GymProgramSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "gym_program_days",
+    remote: "lo_gym_program_days",
+    parse: parserFor(GymProgramDaySchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "gym_program_slots",
+    remote: "lo_gym_program_slots",
+    parse: parserFor(GymProgramSlotSchema),
     instantColumns: AUDIT,
   },
   {

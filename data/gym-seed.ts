@@ -31,7 +31,12 @@ type SeedRow = {
   rest: number;
 };
 
-function seedId(n: number): string {
+/**
+ * Id riservato del catalogo (prefisso `01970000-90aa-…`). Esportato dal
+ * run-07: il seme del programma Torso A (data/gym-programs.ts) referenzia
+ * gli esercizi del catalogo per id.
+ */
+export function seedExerciseId(n: number): string {
   return `01970000-90aa-7000-8000-00000000${n.toString(16).padStart(4, "0")}`;
 }
 
@@ -128,7 +133,7 @@ const ROWS: SeedRow[] = [
 
 /** Il catalogo come righe GymExercise complete e deterministiche. */
 export const GYM_SEED: readonly GymExercise[] = ROWS.map((row) => ({
-  id: seedId(row.n),
+  id: seedExerciseId(row.n),
   name: row.name,
   muscle_group: row.group,
   default_rest_seconds: row.rest,

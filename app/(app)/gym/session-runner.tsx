@@ -1,19 +1,14 @@
 "use client";
 
 /**
- * Il registro della sessione (B2.3) — usabile A METÀ allenamento, col
- * pollice sudato: target 44px+, stepper ±2,5 kg / ±1 rep, "duplica
- * ultima serie" come gesto principale. Loggare una serie = l'hai appena
- * finita: parte il recupero (default dell'esercizio, wake-safe: si
- * memorizza l'istante d'inizio e si rende la differenza — uno schermo
- * spento non congela il tempo; chime WebAudio quando l'app è aperta,
- * stesso pattern dei promemoria).
- *
- * La stessa superficie modifica le sessioni passate (prop `readonlyClock`
- * spenta): niente timer lì, solo i dati.
+ * Editor delle sessioni PASSATE (run-07: la seduta viva è la griglia,
+ * session-grid.tsx — questa superficie resta per correggere lo storico,
+ * v1 comprese). Stepper ±2,5 kg / ±1 rep, duplica ultima serie, note
+ * commit-on-blur. NIENTE timer qui: il recupero quieto vive nella
+ * griglia della seduta in corso.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Skeleton, useToast } from "@/ui";
 import {
   appRepos,
@@ -22,39 +17,10 @@ import {
   useSetsBySession,
 } from "@/data/hooks";
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
-import { ProgressBar } from "@/ui";
-import {
-  formatKg,
-  formatRestS,
-  nowInstant,
-  restRemainingS,
-  stepReps,
-  stepWeight,
-  totalVolumeKg,
-} from "./logic";
+import { formatKg, stepReps, stepWeight, totalVolumeKg } from "./logic";
 import { ExercisePicker } from "./exercise-picker";
 
-export type RestState = {
-  startedAtMs: number;
-  durationS: number;
-  exerciseName: string;
-} | null;
-
-export function SessionRunner({
-  session,
-  rest,
-  onRest,
-  live,
-  onFinish,
-}: {
-  session: GymSession;
-  /** Stato del recupero, sollevato allo screen (sopravvive ai tab). */
-  rest: RestState;
-  onRest: (next: RestState) => void;
-  /** true = sessione in corso (timer + concludi); false = modifica storica. */
-  live: boolean;
-  onFinish?: () => void;
-}) {
+export function SessionRunner({ session }: { session: GymSession }) {
   const toast = useToast();
   const sets = useSetsBySession(session.id);
   const exercises = useExercises();
@@ -67,7 +33,9 @@ export function SessionRunner({
     [exercises],
   );
 
-  // Gruppi della sessione: esercizi del piano (in ordine) + quelli con set.
+  // Gruppi della sessione: esercizi del piano v1 (in ordine) + quelli
+  // con set. Le sessioni nate da un giorno di programma mostrano
+  // semplicemente i loro set (la griglia è la superficie viva).
   const plan = (plans ?? []).find((p) => p.id === session.plan_id) ?? null;
   const groups = useMemo(() => {
     const ordered: string[] = [];
@@ -99,25 +67,14 @@ export function SessionRunner({
         reps = history[0].reps;
       }
     }
-    const at = nowInstant();
     const r = await repo.addSet({
       session_id: session.id,
       exercise_id: exercise.id,
       weight_kg: weight,
       reps,
-      done_at: live ? at.iso : null,
+      done_at: null,
     });
-    if (!r.ok) {
-      toast.show({ message: r.error.message, tone: "error" });
-      return;
-    }
-    if (live) {
-      onRest({
-        startedAtMs: at.ms,
-        durationS: exercise.default_rest_seconds ?? 90,
-        exerciseName: exercise.name,
-      });
-    }
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
   }
 
   async function patchSet(set: GymSet, patch: { weight_kg?: number | null; reps?: number }) {
@@ -148,12 +105,10 @@ export function SessionRunner({
 
   return (
     <div className="flex flex-col gap-5">
-      {live && rest ? <RestTimer rest={rest} onDone={() => onRest(null)} /> : null}
-
       {groups.length === 0 ? (
         <p className="em-body-sm text-[var(--em-text-3)]">
-          Aggiungi il primo esercizio: la prima serie riparte dai numeri
-          dell&apos;ultima volta.
+          Nessuna serie in questa sessione. Aggiungi un esercizio per
+          correggerla.
         </p>
       ) : null}
 
@@ -222,22 +177,9 @@ export function SessionRunner({
         />
       </div>
 
-      {live && onFinish ? (
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          onClick={onFinish}
-          disabled={sets.length === 0}
-        >
-          Concludi allenamento
-        </Button>
-      ) : null}
-      {!live ? (
-        <p className="em-body-sm text-[var(--em-text-3)]">
-          Volume della sessione: {formatKg(totalVolumeKg(sets))}
-        </p>
-      ) : null}
+      <p className="em-body-sm text-[var(--em-text-3)]">
+        Volume della sessione: {formatKg(totalVolumeKg(sets))}
+      </p>
 
       <ExercisePicker
         open={pickerOpen}
@@ -338,101 +280,4 @@ function StepButton({
       {children}
     </button>
   );
-}
-
-/* ── Timer di recupero ───────────────────────────────────────────────── */
-
-function RestTimer({
-  rest,
-  onDone,
-}: {
-  rest: NonNullable<RestState>;
-  onDone: () => void;
-}) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const chimed = useRef(false);
-
-  useEffect(() => {
-    chimed.current = false;
-    const tick = () => setNowMs(Date.now());
-    const iv = setInterval(tick, 500);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(iv);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [rest.startedAtMs]);
-
-  const remaining = restRemainingS(rest.startedAtMs, rest.durationS, nowMs);
-
-  useEffect(() => {
-    if (remaining === 0 && !chimed.current) {
-      chimed.current = true;
-      chime();
-    }
-  }, [remaining]);
-
-  return (
-    <div
-      role="timer"
-      aria-label="Recupero"
-      className="rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] p-3 shadow-[0_0_0_1px_var(--em-hairline)]"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="em-body-sm text-[var(--em-text-2)]">
-          Recupero · {rest.exerciseName}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="em-title em-num text-[var(--em-text)]">
-            {formatRestS(remaining)}
-          </span>
-          {remaining > 0 ? <span className="em-dot em-dot--live" aria-hidden="true" /> : null}
-        </div>
-      </div>
-      <div className="mt-2">
-        <ProgressBar
-          label="Recupero"
-          value={Math.min(
-            100,
-            Math.round(
-              ((rest.durationS - remaining) / Math.max(1, rest.durationS)) * 100,
-            ),
-          )}
-        />
-      </div>
-      <div className="mt-2 flex justify-end">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
-          {remaining === 0 ? "Fatto" : "Salta il recupero"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/** Stesso pattern WebAudio dei promemoria (reminders-host): enhancement. */
-function chime() {
-  try {
-    const Ctor =
-      window.AudioContext ??
-      (window as Window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctor) return;
-    const ctx = new Ctor();
-    if (ctx.state !== "running") {
-      void ctx.close();
-      return;
-    }
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 660;
-    gain.gain.value = 0.05;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-    osc.onended = () => void ctx.close();
-  } catch {
-    // Niente audio: il timer visivo resta la consegna vera.
-  }
 }

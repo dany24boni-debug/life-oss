@@ -294,6 +294,35 @@ export const CheckinPatchSchema = z
 export type CheckinPatch = z.infer<typeof CheckinPatchSchema>;
 
 // ============================================================
+// Corpo (run-07 prompt 4) — il peso corporeo del foglio (colonna
+// "Peso corp."), UNA riga per giorno per costruzione: id derivato
+// dalla data (`lifeos:body-day:<date>`, stesso disegno del modulo
+// Sera) — due dispositivi che pesano lo stesso giorno convergono
+// sulla stessa PK, il sync fonde con LWW.
+// ============================================================
+
+export const BodyWeightSchema = z.number().min(20).max(400);
+
+export const BodyEntrySchema = z.object({
+  id: UuidSchema,
+  /** Giorno della pesata (unico per costruzione: id derivato). */
+  date: IsoDaySchema,
+  weight_kg: BodyWeightSchema,
+  note: z.string().max(500).nullable(),
+  ...audit,
+});
+export type BodyEntry = z.infer<typeof BodyEntrySchema>;
+
+/** Patch dell'upsert per-giorno; alla creazione il peso è obbligatorio. */
+export const BodyPatchSchema = z
+  .object({
+    weight_kg: BodyWeightSchema,
+    note: z.string().max(500).nullable(),
+  })
+  .partial();
+export type BodyPatch = z.infer<typeof BodyPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 
@@ -376,12 +405,156 @@ export type PlanCreate = z.infer<typeof PlanCreateSchema>;
 export const PlanPatchSchema = z.object(planEditable).partial();
 export type PlanPatch = z.infer<typeof PlanPatchSchema>;
 
+// ============================================================
+// Programmi (run-07) — il modello del foglio reale di allenamento:
+// un programma (al più uno ATTIVO, invariante del repo) fatto di
+// giorni ("Torso A"), ognuno fatto di slot raggruppati in SEZIONI
+// (FORZA / IPERTROFIA / CORE — etichette libere, chip suggeriti,
+// solo raggruppamento visivo). Le prescrizioni restano TESTUALI
+// come sul foglio: reps "3–5", RIR "1", "1–2" o discendente
+// "2/1/0" — il testo è il dominio, non un numero costretto.
+// ============================================================
+
+const ProgramNameSchema = z.string().trim().min(1).max(120);
+/** Etichetta breve di sezione ("FORZA"): testo libero, mai un enum. */
+const SectionLabelSchema = z.string().trim().min(1).max(40);
+/** Prescrizione testuale del foglio: "3–5", "1–2", "2/1/0"… */
+const PrescriptionTextSchema = z.string().trim().min(1).max(20);
+
+export const GymProgramSchema = z.object({
+  id: UuidSchema,
+  name: ProgramNameSchema,
+  notes: NotesSchema.nullable(),
+  /** Al più uno attivo: lo garantisce il repo, non lo schema. */
+  is_active: z.boolean(),
+  ...audit,
+});
+export type GymProgram = z.infer<typeof GymProgramSchema>;
+
+const programEditable = {
+  name: ProgramNameSchema,
+  notes: NotesSchema.nullable(),
+  is_active: z.boolean(),
+};
+
+export const ProgramCreateSchema = z
+  .object(programEditable)
+  .partial()
+  .required({ name: true });
+export type ProgramCreate = z.infer<typeof ProgramCreateSchema>;
+
+export const ProgramPatchSchema = z.object(programEditable).partial();
+export type ProgramPatch = z.infer<typeof ProgramPatchSchema>;
+
+export const GymProgramDaySchema = z.object({
+  id: UuidSchema,
+  program_id: UuidSchema,
+  /** "Torso A". */
+  name: ProgramNameSchema,
+  /** "Petto + Schiena + Spalle + Core". */
+  subtitle: z.string().trim().min(1).max(200).nullable(),
+  /** Suggerimento del giorno feriale: 1 = lunedì … 7 = domenica. */
+  weekday: z.number().int().min(1).max(7).nullable(),
+  /** Ordine dentro il programma (drag to reorder). */
+  sort_order: z.number(),
+  ...audit,
+});
+export type GymProgramDay = z.infer<typeof GymProgramDaySchema>;
+
+const programDayEditable = {
+  program_id: UuidSchema,
+  name: ProgramNameSchema,
+  subtitle: z.string().trim().min(1).max(200).nullable(),
+  weekday: z.number().int().min(1).max(7).nullable(),
+  sort_order: z.number(),
+};
+
+export const ProgramDayCreateSchema = z
+  .object(programDayEditable)
+  .partial()
+  .required({ program_id: true, name: true });
+export type ProgramDayCreate = z.infer<typeof ProgramDayCreateSchema>;
+
+/** I giorni non migrano mai tra programmi: program_id fuori dal patch. */
+export const ProgramDayPatchSchema = z
+  .object(programDayEditable)
+  .partial()
+  .omit({ program_id: true });
+export type ProgramDayPatch = z.infer<typeof ProgramDayPatchSchema>;
+
+export const GymProgramSlotSchema = z.object({
+  id: UuidSchema,
+  day_id: UuidSchema,
+  /** Esercizio della libreria (seminata o custom). */
+  exercise_id: UuidSchema,
+  /** Sezione di raggruppamento visivo; null = fuori sezione. */
+  section: SectionLabelSchema.nullable(),
+  /** "Bilanciere", "Zavorrati", "Macchina"… */
+  variant: z.string().trim().min(1).max(80).nullable(),
+  target_sets: z.number().int().min(1).max(10),
+  /** Testo come sul foglio: "3–5"; null = senza obiettivo reps. */
+  target_reps: PrescriptionTextSchema.nullable(),
+  /** "1", "1–2" o discendente per-set "2/1/0". */
+  target_rir: PrescriptionTextSchema.nullable(),
+  rest_seconds: z.number().int().min(0).max(900).nullable(),
+  /**
+   * true = corpo libero: la griglia non chiede il carico (la zavorra
+   * resta possibile: il kg del set è comunque opzionale).
+   */
+  bodyweight: z.boolean(),
+  notes: z.string().max(280).nullable(),
+  /** Ordine dentro il giorno. */
+  sort_order: z.number(),
+  ...audit,
+});
+export type GymProgramSlot = z.infer<typeof GymProgramSlotSchema>;
+
+const programSlotEditable = {
+  day_id: UuidSchema,
+  exercise_id: UuidSchema,
+  section: SectionLabelSchema.nullable(),
+  variant: z.string().trim().min(1).max(80).nullable(),
+  target_sets: z.number().int().min(1).max(10),
+  target_reps: PrescriptionTextSchema.nullable(),
+  target_rir: PrescriptionTextSchema.nullable(),
+  rest_seconds: z.number().int().min(0).max(900).nullable(),
+  bodyweight: z.boolean(),
+  notes: z.string().max(280).nullable(),
+  sort_order: z.number(),
+};
+
+export const ProgramSlotCreateSchema = z
+  .object(programSlotEditable)
+  .partial()
+  .required({ day_id: true, exercise_id: true });
+export type ProgramSlotCreate = z.infer<typeof ProgramSlotCreateSchema>;
+
+/** Gli slot non migrano mai tra giorni: day_id fuori dal patch. */
+export const ProgramSlotPatchSchema = z
+  .object(programSlotEditable)
+  .partial()
+  .omit({ day_id: true });
+export type ProgramSlotPatch = z.infer<typeof ProgramSlotPatchSchema>;
+
+/** Voto generale della seduta, 1..10 — la colonna del foglio. */
+export const SessionRatingSchema = z.number().int().min(1).max(10);
+
+/**
+ * Campi run-07 di sessioni e set: `.default(null)` SOLO sullo schema
+ * entità (non sugli editable) — così le righe scritte prima del run-07
+ * (export JSON vecchi, righe remote di client non aggiornati) passano il
+ * parse del sync materializzando null, senza mai venire scartate.
+ */
 export const GymSessionSchema = z.object({
   id: UuidSchema,
   date: IsoDaySchema,
   plan_id: UuidSchema.nullable(),
+  /** Giorno di programma da cui è partita; null = libera (o v1). */
+  program_day_id: UuidSchema.nullable().default(null),
   started_at: IsoInstantSchema.nullable(),
   finished_at: IsoInstantSchema.nullable(),
+  /** Voto generale 1..10 (schermata di fine). */
+  rating_1_10: SessionRatingSchema.nullable().default(null),
   notes: NotesSchema.nullable(),
   ...audit,
 });
@@ -390,8 +563,10 @@ export type GymSession = z.infer<typeof GymSessionSchema>;
 const sessionEditable = {
   date: IsoDaySchema,
   plan_id: UuidSchema.nullable(),
+  program_day_id: UuidSchema.nullable(),
   started_at: IsoInstantSchema.nullable(),
   finished_at: IsoInstantSchema.nullable(),
+  rating_1_10: SessionRatingSchema.nullable(),
   notes: NotesSchema.nullable(),
 };
 
@@ -410,6 +585,13 @@ export type SessionPatch = z.infer<typeof SessionPatchSchema>;
  * calcolano con una query sull'indice exercise_id invece di scandire
  * tutte le sessioni.
  */
+/** RIR effettivo di un set (0..5). */
+export const RirDoneSchema = z.number().int().min(0).max(5);
+/** Sensazione del set (1..10) — la colonna Feeling del foglio. */
+export const FeelingSchema = z.number().int().min(1).max(10);
+/** Recupero REALE prima del set, in secondi (tetto generoso: 1h). */
+const RestActualSchema = z.number().int().min(0).max(3600);
+
 export const GymSetSchema = z.object({
   id: UuidSchema,
   session_id: UuidSchema,
@@ -419,6 +601,12 @@ export const GymSetSchema = z.object({
   /** Peso in kg; null = corpo libero. */
   weight_kg: z.number().min(0).max(2000).nullable(),
   reps: z.number().int().min(0).max(999),
+  /** RIR fatto; null = non registrato (mai obbligatorio). */
+  rir_done: RirDoneSchema.nullable().default(null),
+  /** Recupero reale prima di questo set; null = non registrato. */
+  rest_actual_s: RestActualSchema.nullable().default(null),
+  /** Feeling 1..10; null = non registrato. */
+  feeling_1_10: FeelingSchema.nullable().default(null),
   done_at: IsoInstantSchema.nullable(),
   ...audit,
 });
@@ -430,6 +618,9 @@ const setEditable = {
   set_number: z.number().int().min(1).max(99),
   weight_kg: z.number().min(0).max(2000).nullable(),
   reps: z.number().int().min(0).max(999),
+  rir_done: RirDoneSchema.nullable(),
+  rest_actual_s: RestActualSchema.nullable(),
+  feeling_1_10: FeelingSchema.nullable(),
   done_at: IsoInstantSchema.nullable(),
 };
 
@@ -484,6 +675,13 @@ export type ReminderPatch = z.infer<typeof ReminderPatchSchema>;
 export const ThemeSchema = z.enum(["dark", "light", "system"]);
 export type Theme = z.infer<typeof ThemeSchema>;
 
+/** Sesso biologico per le formule (Mifflin-St Jeor): solo stime. */
+export const SexSchema = z.enum(["m", "f"]);
+export type Sex = z.infer<typeof SexSchema>;
+
+/** Livello di attività 1 (sedentario) .. 5 (atleta). */
+export const ActivityLevelSchema = z.number().int().min(1).max(5);
+
 /**
  * Riga singola con id fisso "local". Il tema di default è "dark" (D5:
  * entrambi i temi esistono dai token, il dark resta il default).
@@ -492,12 +690,21 @@ export type Theme = z.infer<typeof ThemeSchema>;
  * ANTICIPO che non spezzano mai la streak. Lista di giorni civili, senza
  * duplicati per costruzione dell'adapter; cap generoso (2 anni di giorni
  * tutti protetti) solo come guardia anti-crescita-infinita.
+ *
+ * Profilo (run-07 prompt 4): altezza, sesso, anno di nascita, livello di
+ * attività — servono SOLO alle stime derivate (acqua, calorie,
+ * data/derived.ts). `.default(null)` sullo schema entità: le righe
+ * scritte prima del run-07 passano il parse del sync senza scarti.
  */
 export const SettingsSchema = z.object({
   id: z.literal("local"),
   display_name: z.string().trim().max(80).nullable(),
   theme: ThemeSchema,
   protected_days: z.array(IsoDaySchema).max(730),
+  height_cm: z.number().int().min(100).max(250).nullable().default(null),
+  sex: SexSchema.nullable().default(null),
+  birth_year: z.number().int().min(1900).max(2100).nullable().default(null),
+  activity_level: ActivityLevelSchema.nullable().default(null),
   ...audit,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -507,6 +714,10 @@ export const SettingsPatchSchema = z
     display_name: z.string().trim().max(80).nullable(),
     theme: ThemeSchema,
     protected_days: z.array(IsoDaySchema).max(730),
+    height_cm: z.number().int().min(100).max(250).nullable(),
+    sex: SexSchema.nullable(),
+    birth_year: z.number().int().min(1900).max(2100).nullable(),
+    activity_level: ActivityLevelSchema.nullable(),
   })
   .partial();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

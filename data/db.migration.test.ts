@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
-import { DB_NAME, LifeosDb, SCHEMA_V1 } from "./db";
+import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5 } from "./db";
 
 /**
  * Il test del "bump di schema": la garanzia che quando (prompt 08+) si
@@ -65,16 +65,21 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 5 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 7 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
-    // v3 (run-05, prompt 3): + esami. v4: + spese. v5: + sera.
-    expect(dbTest.verno).toBe(5);
+    // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
+    // programmi. v7 (run-07 P4): + body.
+    expect(dbTest.verno).toBe(7);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
+      "body",
       "esami",
       "events",
       "gym_exercises",
       "gym_plans",
+      "gym_program_days",
+      "gym_program_slots",
+      "gym_programs",
       "gym_sessions",
       "gym_sets",
       "reminders",
@@ -87,6 +92,98 @@ describe("schema bump v1 -> v2", () => {
     expect(DB_NAME).toBe("lifeos");
     dbTest.close();
     await Dexie.delete("schema-shape-test");
+  });
+
+  it("v5 → v6: sessioni e set sopravvivono, campi run-07 riempiti a null", async () => {
+    const name = "v5-to-v6-gym-survival";
+    // Simula un dispositivo run-05/06: db creato con la v5 reale.
+    const v5 = new Dexie(name);
+    v5.version(5).stores(SCHEMA_V5);
+    await v5.open();
+    const session = {
+      id: "01980000-0000-7000-8000-000000000101",
+      date: "2026-07-01",
+      plan_id: null,
+      started_at: "2026-07-01T18:00:00.000Z",
+      finished_at: "2026-07-01T19:00:00.000Z",
+      notes: "Petto",
+      created_at: "2026-07-01T18:00:00.000Z",
+      updated_at: "2026-07-01T19:00:00.000Z",
+      deleted_at: null,
+    };
+    const set = {
+      id: "01980000-0000-7000-8000-000000000102",
+      session_id: session.id,
+      exercise_id: "01970000-90aa-7000-8000-000000000001",
+      set_number: 1,
+      weight_kg: 80,
+      reps: 5,
+      done_at: null,
+      created_at: "2026-07-01T18:10:00.000Z",
+      updated_at: "2026-07-01T18:10:00.000Z",
+      deleted_at: null,
+    };
+    await v5.table("gym_sessions").add(session);
+    await v5.table("gym_sets").add(set);
+    v5.close();
+
+    const current = new LifeosDb(name);
+    await current.open();
+    expect(current.verno).toBe(7);
+
+    // Nulla si perde, e il backfill normalizza i campi nuovi a null.
+    const survivedSession = await current.gym_sessions.get(session.id);
+    expect(survivedSession).toEqual({
+      ...session,
+      program_day_id: null,
+      rating_1_10: null,
+    });
+    const survivedSet = await current.gym_sets.get(set.id);
+    expect(survivedSet).toEqual({
+      ...set,
+      rir_done: null,
+      rest_actual_s: null,
+      feeling_1_10: null,
+    });
+
+    // Le tabelle nuove sono subito usabili, indice compreso.
+    await current.body.add({
+      id: "01980000-0000-7000-8000-000000000301",
+      date: "2026-07-11",
+      weight_kg: 82.4,
+      note: null,
+      created_at: "2026-07-11T08:00:00.000Z",
+      updated_at: "2026-07-11T08:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(await current.body.where("date").equals("2026-07-11").count()).toBe(
+      1,
+    );
+    await current.gym_programs.add({
+      id: "01980000-0000-7000-8000-000000000201",
+      name: "Scheda",
+      notes: null,
+      is_active: true,
+      created_at: "2026-07-11T08:00:00.000Z",
+      updated_at: "2026-07-11T08:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(await current.gym_programs.count()).toBe(1);
+    // L'indice nuovo program_day_id funziona sulle sessioni nuove.
+    await current.gym_sessions.add({
+      ...session,
+      id: "01980000-0000-7000-8000-000000000103",
+      program_day_id: "01980000-0000-7000-8000-000000000202",
+      rating_1_10: 9,
+    });
+    const byDay = await current.gym_sessions
+      .where("program_day_id")
+      .equals("01980000-0000-7000-8000-000000000202")
+      .toArray();
+    expect(byDay).toHaveLength(1);
+
+    current.close();
+    await Dexie.delete(name);
   });
 
   it("un database scritto a v1 si apre alla versione corrente coi dati intatti", async () => {
@@ -115,10 +212,10 @@ describe("schema bump v1 -> v2", () => {
     await v1.table("tasks").add(row);
     v1.close();
 
-    // Apertura con la classe reale (v1..v5): upgrade additivo.
+    // Apertura con la classe reale (v1..v7): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(5);
+    expect(current.verno).toBe(7);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");
