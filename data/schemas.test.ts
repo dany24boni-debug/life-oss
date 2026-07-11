@@ -4,6 +4,9 @@ import {
   GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
+  HabitCreateSchema,
+  HabitLogSchema,
+  HabitSchema,
   HhmmSchema,
   IsoDaySchema,
   ProgramSlotCreateSchema,
@@ -267,5 +270,63 @@ describe("Eventi e Settings", () => {
         deleted_at: null,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("abitudini (run-08)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+  const base = {
+    id: uuidv7(),
+    name: "Acqua",
+    icon: "goccia",
+    kind: "quantity",
+    unit: "ml",
+    daily_target: 2000,
+    weekdays: null,
+    sort_order: 0,
+    archived_at: null,
+    created_at: now,
+    updated_at: now,
+    deleted_at: null,
+  };
+
+  it("HabitSchema: domini chiusi su kind, weekdays e obiettivo", () => {
+    expect(HabitSchema.safeParse(base).success).toBe(true);
+    expect(
+      HabitSchema.safeParse({ ...base, kind: "timer" }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, weekdays: [0] }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, weekdays: [] }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, daily_target: 0 }).success,
+    ).toBe(false);
+  });
+
+  it("HabitCreateSchema richiede nome e specie; kind fuori dal patch", () => {
+    expect(
+      HabitCreateSchema.safeParse({ name: "Lettura", kind: "counter" }).success,
+    ).toBe(true);
+    expect(HabitCreateSchema.safeParse({ name: "Lettura" }).success).toBe(
+      false,
+    );
+  });
+
+  it("HabitLogSchema: valore 0..1M, mai negativo", () => {
+    const log = {
+      id: uuidv7(),
+      habit_id: base.id,
+      date: "2026-07-12",
+      value: 830,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(HabitLogSchema.safeParse(log).success).toBe(true);
+    expect(HabitLogSchema.safeParse({ ...log, value: -1 }).success).toBe(false);
+    expect(HabitLogSchema.safeParse({ ...log, value: 0 }).success).toBe(true);
   });
 });

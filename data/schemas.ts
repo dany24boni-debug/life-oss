@@ -323,6 +323,95 @@ export const BodyPatchSchema = z
 export type BodyPatch = z.infer<typeof BodyPatchSchema>;
 
 // ============================================================
+// Abitudini (run-08 prompt 1) — il motore habits: abitudini
+// boolean / counter / quantity con obiettivo giornaliero e
+// programmazione per giorni feriali; log UNA riga per
+// (abitudine, giorno) per costruzione — id derivato
+// `lifeos:habit-log:<habit_id>:<date>` — così due dispositivi
+// che loggano lo stesso giorno convergono sulla stessa PK (LWW,
+// stesso disegno di Sera/Corpo).
+// ============================================================
+
+export const HabitKindSchema = z.enum(["boolean", "counter", "quantity"]);
+export type HabitKind = z.infer<typeof HabitKindSchema>;
+
+/** Chiave icona dal set curato Ember (la UI degrada le chiavi ignote). */
+const HabitIconSchema = z.string().trim().min(1).max(40);
+/** Unità delle quantità ("ml", "pagine"); breve, testo libero. */
+const HabitUnitSchema = z.string().trim().min(1).max(20);
+/** Obiettivo giornaliero (counter/quantity): positivo, tetto largo. */
+const HabitTargetSchema = z.number().positive().max(100_000);
+/** Giorno feriale ISO: 1 = lunedì … 7 = domenica. */
+const IsoWeekdaySchema = z.number().int().min(1).max(7);
+
+export const HabitSchema = z.object({
+  id: UuidSchema,
+  name: z.string().trim().min(1).max(120),
+  icon: HabitIconSchema,
+  kind: HabitKindSchema,
+  /** Solo per quantity; null per boolean/counter. */
+  unit: HabitUnitSchema.nullable(),
+  /**
+   * Obiettivo del giorno (counter/quantity). Null = nessun obiettivo
+   * fisso — per l'acqua seminata significa "segue il profilo"
+   * (waterTargetMl dal peso più recente); l'override manuale è
+   * semplicemente un valore qui.
+   */
+  daily_target: HabitTargetSchema.nullable(),
+  /**
+   * Giorni previsti (ISO 1-7, senza duplicati per costruzione del
+   * repo); null = tutti i giorni. I giorni NON previsti fanno da ponte
+   * nella streak per-abitudine, mai da rottura.
+   */
+  weekdays: z.array(IsoWeekdaySchema).min(1).max(7).nullable(),
+  /** Ordine manuale della board (drag to reorder). */
+  sort_order: z.number(),
+  /** Archiviata: sparisce dalla board, la storia resta (≠ eliminata). */
+  archived_at: IsoInstantSchema.nullable(),
+  ...audit,
+});
+export type Habit = z.infer<typeof HabitSchema>;
+
+/**
+ * `kind` è FUORI dagli editable: cambiare specie a un'abitudine
+ * cambierebbe il significato di tutta la sua storia (0/1 vs quantità).
+ */
+const habitEditable = {
+  name: z.string().trim().min(1).max(120),
+  icon: HabitIconSchema,
+  unit: HabitUnitSchema.nullable(),
+  daily_target: HabitTargetSchema.nullable(),
+  weekdays: z.array(IsoWeekdaySchema).min(1).max(7).nullable(),
+  sort_order: z.number(),
+};
+
+export const HabitCreateSchema = z
+  .object({ ...habitEditable, kind: HabitKindSchema })
+  .partial()
+  .required({ name: true, kind: true });
+export type HabitCreate = z.infer<typeof HabitCreateSchema>;
+
+export const HabitPatchSchema = z.object(habitEditable).partial();
+export type HabitPatch = z.infer<typeof HabitPatchSchema>;
+
+/**
+ * Valore del giorno: boolean come 0/1, counter come conteggio,
+ * quantity nell'unità dell'abitudine. Mai negativo; lo zero esplicito
+ * è legale (giorno azzerato, la riga resta).
+ */
+export const HabitValueSchema = z.number().min(0).max(1_000_000);
+
+export const HabitLogSchema = z.object({
+  id: UuidSchema,
+  habit_id: UuidSchema,
+  /** Giorno del log (unico per (abitudine, giorno): id derivato). */
+  date: IsoDaySchema,
+  value: HabitValueSchema,
+  ...audit,
+});
+export type HabitLog = z.infer<typeof HabitLogSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

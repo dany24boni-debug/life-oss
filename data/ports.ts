@@ -36,6 +36,10 @@ import type {
   GymProgramSlot,
   GymSession,
   GymSet,
+  Habit,
+  HabitCreate,
+  HabitLog,
+  HabitPatch,
   IsoDay,
   IsoInstant,
   LocalEvent,
@@ -217,6 +221,95 @@ export interface BodyRepo {
   softDeleteDay(date: IsoDay): Promise<Result<void>>;
   /** Undo del toast — semantica di EventsRepo.restore, per giorno. */
   restoreDay(date: IsoDay): Promise<Result<BodyEntry>>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Abitudini (run-08 prompt 1)
+// ============================================================
+
+/**
+ * Una voce della board del giorno: l'abitudine prevista con il suo log
+ * (se c'è), l'obiettivo EFFETTIVO (derivato per l'acqua: segue il
+ * profilo; 1 per le boolean) e il completamento già calcolato — la UI
+ * non rifà mai questa matematica.
+ */
+export type HabitBoardEntry = {
+  habit: Habit;
+  log: HabitLog | null;
+  /** Obiettivo effettivo del giorno; null = senza obiettivo. */
+  target: number | null;
+  /** Valore del giorno (0 se nessun log). */
+  value: number;
+  done: boolean;
+};
+
+export interface HabitsRepo {
+  create(input: HabitCreate): Promise<Result<Habit>>;
+  update(id: string, patch: HabitPatch): Promise<Result<Habit>>;
+  /** Archivia: sparisce dalla board, la storia resta. Idempotente. */
+  archive(id: string): Promise<Result<Habit>>;
+  unarchive(id: string): Promise<Result<Habit>>;
+  /**
+   * Tombstone all'abitudine E ai suoi log, tutti con lo STESSO
+   * deleted_at (pattern cascade dei programmi gym): l'undo revive solo
+   * le righe di quel cascade.
+   */
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast: revive abitudine + log del cascade. */
+  restore(id: string): Promise<Result<Habit>>;
+  /** sort_order = indice nell'array; id ignoti o cancellati saltati. */
+  reorder(orderedIds: string[]): Promise<Result<void>>;
+
+  getById(id: string): Promise<Habit | null>;
+  /** Vive per sort_order (poi created_at); archiviate solo su richiesta. */
+  listAll(opts?: { includeArchived?: boolean }): Promise<Habit[]>;
+
+  /**
+   * Imposta il valore ASSOLUTO del giorno (upsert per-giorno: id
+   * derivato da abitudine+data, una riga per costruzione; una tombstone
+   * del giorno viene rianimata — loggare È l'intento).
+   */
+  logDay(
+    habitId: string,
+    date: IsoDay,
+    value: number,
+  ): Promise<Result<HabitLog>>;
+  /**
+   * Incrementa il valore del giorno (delta anche negativo; il risultato
+   * è clampato a >= 0). Crea la riga del giorno se non esiste.
+   */
+  incrementDay(
+    habitId: string,
+    date: IsoDay,
+    delta: number,
+  ): Promise<Result<HabitLog>>;
+  getLog(habitId: string, date: IsoDay): Promise<HabitLog | null>;
+  /** I log vivi del giorno (tutte le abitudini). */
+  listLogsByDay(date: IsoDay): Promise<HabitLog[]>;
+  /** from <= date <= to, per giorno crescente (month heat, streak). */
+  listLogsRange(
+    habitId: string,
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<HabitLog[]>;
+
+  /**
+   * La board del giorno: ogni abitudine viva, non archiviata e PREVISTA
+   * quel giorno, col suo log e l'obiettivo effettivo, per sort_order.
+   */
+  dayBoard(date: IsoDay): Promise<HabitBoardEntry[]>;
+  /**
+   * Streak per-abitudine: contano i giorni COMPLETATI; i giorni protetti
+   * (Impostazioni) e i giorni NON previsti dallo schedule fanno da
+   * ponte. `today` è il giorno civile del chiamante (i log sono già
+   * date-keyed: nessuna conversione di timezone qui dentro).
+   */
+  habitStreak(
+    habitId: string,
+    opts: { today: IsoDay },
+  ): Promise<StreakSummary>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -458,6 +551,7 @@ export interface Repos {
   spese: SpeseRepo;
   sera: SeraRepo;
   body: BodyRepo;
+  habits: HabitsRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

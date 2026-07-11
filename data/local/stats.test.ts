@@ -231,3 +231,40 @@ describe("LocalStatsRepo — streak e giorni attivi (run-03)", () => {
     ).toEqual(["2026-07-10"]);
   });
 });
+
+describe("LocalStatsRepo — abitudini nella streak globale (run-08)", () => {
+  it("un'abitudine COMPLETATA fa contare il giorno; una a metà no", async () => {
+    const lettura = await must(
+      repos.habits.create({
+        name: "Lettura",
+        kind: "quantity",
+        unit: "pagine",
+        daily_target: 10,
+      }),
+    );
+    await must(repos.habits.logDay(lettura.id, "2026-07-10", 10)); // fatta
+    await must(repos.habits.logDay(lettura.id, "2026-07-11", 3)); // a metà
+
+    expect(
+      await repos.stats.activityDays("2026-07-09", "2026-07-12", "UTC"),
+    ).toEqual(["2026-07-10"]);
+
+    const s = await repos.stats.streak({ today: "2026-07-10", timeZone: "UTC" });
+    expect(s.todayCounts).toBe(true);
+  });
+
+  it("counter senza obiettivo: basta un valore > 0; abitudine eliminata non conta", async () => {
+    const habit = await must(
+      repos.habits.create({ name: "Flessioni", kind: "counter" }),
+    );
+    await must(repos.habits.incrementDay(habit.id, "2026-07-10", 1));
+    expect(
+      await repos.stats.activityDays("2026-07-10", "2026-07-10", "UTC"),
+    ).toEqual(["2026-07-10"]);
+
+    await must(repos.habits.softDelete(habit.id));
+    expect(
+      await repos.stats.activityDays("2026-07-10", "2026-07-10", "UTC"),
+    ).toEqual([]);
+  });
+});

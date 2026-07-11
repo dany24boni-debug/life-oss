@@ -22,7 +22,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useSyncExternalStore } from "react";
 import { getDb } from "./db";
 import { createLocalRepos } from "./local";
-import type { Repos } from "./ports";
+import type { HabitBoardEntry, Repos } from "./ports";
 import type {
   BodyEntry,
   EveningCheckin,
@@ -35,6 +35,8 @@ import type {
   GymProgramSlot,
   GymSession,
   GymSet,
+  Habit,
+  HabitLog,
   IsoDay,
   IsoInstant,
   LocalEvent,
@@ -192,6 +194,58 @@ export function useBodyRecent(
   return useLiveQuery(
     () => appRepos().body.listRecent(before, limit),
     [before, limit],
+  );
+}
+
+/* ── Abitudini (run-08 prompt 1) ─────────────────────────────────────── */
+
+/** Abitudini vive per sort_order; archiviate incluse solo su richiesta. */
+export function useHabits(includeArchived?: boolean): Habit[] | undefined {
+  return useLiveQuery(
+    () => appRepos().habits.listAll(includeArchived ? { includeArchived: true } : undefined),
+    [includeArchived],
+  );
+}
+
+/** Singola abitudine per id; null se assente o tombstone. */
+export function useHabit(id: string | null): Habit | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().habits.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** La board del giorno: abitudini previste + log + obiettivo effettivo. */
+export function useHabitBoard(date: IsoDay): HabitBoardEntry[] | undefined {
+  return useLiveQuery(() => appRepos().habits.dayBoard(date), [date]);
+}
+
+/** Log vivi dell'abitudine nel range (month heat della scheda). */
+export function useHabitLogsRange(
+  habitId: string | null,
+  from: IsoDay,
+  to: IsoDay,
+): HabitLog[] | undefined {
+  return useLiveQuery(
+    () =>
+      habitId
+        ? appRepos().habits.listLogsRange(habitId, from, to)
+        : Promise.resolve([]),
+    [habitId, from, to],
+  );
+}
+
+/** Streak per-abitudine (giorni protetti e non previsti fanno ponte). */
+export function useHabitStreak(
+  habitId: string | null,
+  today: IsoDay,
+): StreakSummary | undefined {
+  return useLiveQuery(
+    () =>
+      habitId
+        ? appRepos().habits.habitStreak(habitId, { today })
+        : Promise.resolve({ current: 0, best: 0, todayCounts: false }),
+    [habitId, today],
   );
 }
 

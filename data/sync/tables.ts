@@ -28,6 +28,8 @@ import {
   GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
+  HabitLogSchema,
+  HabitSchema,
   LocalEventSchema,
   ReminderSchema,
   SettingsSchema,
@@ -49,6 +51,8 @@ export type LocalTableName =
   | "spese"
   | "sera"
   | "body"
+  | "habits"
+  | "habit_logs"
   | "gym_exercises"
   | "gym_plans"
   | "gym_programs"
@@ -117,6 +121,18 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     local: "body",
     remote: "lo_body",
     parse: parserFor(BodyEntrySchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "habits",
+    remote: "lo_habits",
+    parse: parserFor(HabitSchema),
+    instantColumns: [...AUDIT, "archived_at"],
+  },
+  {
+    local: "habit_logs",
+    remote: "lo_habit_logs",
+    parse: parserFor(HabitLogSchema),
     instantColumns: AUDIT,
   },
   {

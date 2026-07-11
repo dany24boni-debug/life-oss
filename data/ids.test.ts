@@ -69,6 +69,14 @@ describe("deriveUuidV8 — golden (contratto di idempotenza)", () => {
         "lifeos-import:gym_sessions:aaaa1111-0000-4000-8000-000000000001",
       ),
     ).toBe("91a203fa-12a1-8068-90be-8ea08215136a");
+    // Prefisso habit-log (run-08): una riga per (abitudine, giorno) —
+    // la chiave è habit_id + data. Se questo assert fallisce, i log di
+    // due dispositivi smettono di convergere sulla stessa PK.
+    expect(
+      await deriveUuidV8(
+        "lifeos:habit-log:01970000-90ac-7000-8000-000000000001:2026-07-12",
+      ),
+    ).toBe("481cb061-399a-8a91-aa69-11ae34b725fd");
   });
 
   it("è deterministica e ha forma UUID v8 variant 10", async () => {
