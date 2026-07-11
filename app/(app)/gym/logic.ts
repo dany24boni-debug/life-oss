@@ -128,29 +128,9 @@ export function newRecords(
   return out;
 }
 
-/* ── Timer di recupero: matematica wake-safe ─────────────────────────── */
-
-/**
- * Secondi rimanenti: derivati SEMPRE da (adesso − startedAt), mai da un
- * contatore decrementato — un tab addormentato o uno schermo spento non
- * perdono il tempo (B2.3 "elapsed-time correctness in background tabs").
- */
-export function restRemainingS(
-  startedAtMs: number,
-  durationS: number,
-  nowMs: number,
-): number {
-  const elapsed = Math.floor((nowMs - startedAtMs) / 1000);
-  return Math.max(0, durationS - elapsed);
-}
-
-/** "1:32" per il timer; niente ore (i recuperi stanno sotto i 15 min). */
-export function formatRestS(s: number): string {
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, "0")}`;
-}
-
 /* ── Durata sessione e formati ───────────────────────────────────────── */
+/* (run-07: il countdown del recupero non esiste più — il trascorso
+   quieto vive in progression.ts, formatElapsed/suggestedRestS.) */
 
 /** Minuti tra started_at e finished_at; null senza entrambi gli estremi. */
 export function sessionDurationMin(

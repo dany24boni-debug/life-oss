@@ -225,6 +225,14 @@ describe("LocalGymRepo — programmi (run-07)", () => {
     await must(repo.createSession({ date: "2026-07-10" }));
     expect((await repo.nextUpDay())?.id).toBe(torso.id);
 
+    // La query per giorno di programma (run-07 P3) vede solo le sue.
+    const s2 = await must(
+      repo.startSessionFromDay(torso.id, "2026-07-11", "2026-07-11T18:00:00.000Z"),
+    );
+    const ofTorso = await repo.listSessionsByProgramDay(torso.id);
+    expect(ofTorso.map((s) => s.id)).toEqual([s2.id, s1.id]); // recenti prima
+    expect(await repo.listSessionsByProgramDay(gambe.id)).toHaveLength(1);
+
     // Senza programma attivo: nessun next-up.
     await must(repo.updateProgram(program.id, { is_active: false }));
     expect(await repo.nextUpDay()).toBeNull();

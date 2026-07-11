@@ -245,6 +245,37 @@ export function useNextUpDay(): GymProgramDay | null | undefined {
   return useLiveQuery(() => appRepos().gym.nextUpDay(), []);
 }
 
+/** Sessioni nate da un giorno di programma, più recenti prima. */
+export function useSessionsByProgramDay(
+  dayId: string | null,
+): GymSession[] | undefined {
+  return useLiveQuery(
+    () =>
+      dayId
+        ? appRepos().gym.listSessionsByProgramDay(dayId)
+        : Promise.resolve([]),
+    [dayId],
+  );
+}
+
+/** I giorni del programma attivo, ognuno coi suoi slot (per sort_order). */
+export function useActiveProgramSlots():
+  | Array<{ day: GymProgramDay; slots: GymProgramSlot[] }>
+  | undefined {
+  return useLiveQuery(async () => {
+    const gym = appRepos().gym;
+    const program = await gym.activeProgram();
+    if (!program) return [];
+    const days = await gym.listProgramDays(program.id);
+    return Promise.all(
+      days.map(async (day) => ({
+        day,
+        slots: await gym.listProgramSlots(day.id),
+      })),
+    );
+  }, []);
+}
+
 /** Sessioni del giorno (di solito zero o una). */
 export function useGymSessionsByDay(day: IsoDay): GymSession[] | undefined {
   return useLiveQuery(() => appRepos().gym.listSessionsByDay(day), [day]);

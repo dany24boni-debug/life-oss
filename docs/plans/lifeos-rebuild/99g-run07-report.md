@@ -117,6 +117,43 @@ Unico consumatore = gym-screen (dentro il set di modifica) → `git rm` + rimozi
 2. **Chips recupero su mobile, input testuale su desktop**: il brief chiede chips + custom E il flusso-foglio da tastiera; sul desktop l'input parse-ato ("4'") è più veloce dei chip, che restano nella scheda riga (dove vive anche la sezione). Entrambi passano dallo stesso `parseRestInput` testato.
 3. **Rinominare una sezione** = cambiarla sulle righe (la sezione è un'etichetta sugli slot, non un'entità): gesto per-riga dalla scheda; un rename-blocco è un raffinamento futuro.
 
-**Commit:** `feat(gym-v2): spreadsheet-fast program builder with sections and Torso A starter`
+**Commit:** `feat(gym-v2): spreadsheet-fast program builder with sections and Torso A starter` → `c1731de`
+
+---
+
+## Prompt 3 — Griglia di log + progressi (il cuore)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **705/705, 58 file** (+19 netti: +21 `progression.test.ts` nuovo, +1 assert `listSessionsByProgramDay` in gym.test.ts, **−2** countdown morti rimossi da logic.test.ts). Tre errori lint intermedi TUTTI meritevoli: `set-state-in-effect` sul chime (riscritto con l'idioma `useSyncExternalStore` del pwa-store), `Date.now()` impuro nel render (spostato nel gesto via `nowInstant()`, la stessa lezione v1), e il compilatore ha scovato un **bug vero di timing**: il prefill "dall'ultima volta" inizializzava lo stato PRIMA che la live query della storia arrivasse — ristrutturato con un loader che monta il form solo a storia caricata.
+
+**Dev-server DA OSPITE:** `/gym` **200** e `/` **200**; zero controlli nativi; nel grafo chunk servito della pagina: "Concludi allenamento" ✓, "Inizia:" ✓, "Conferma serie" ✓, "suggerito dal trascorso" ✓ — la griglia è raggiungibile dalla Torso A seminata (Programmi → Importa → Allenamento → "Inizia: Torso A"); **"Salta il recupero" ASSENTE da ogni chunk** (niente countdown, verificato).
+
+### 1. Flusso sessione — LA GRIGLIA (`session-grid.tsx`)
+
+- **Partenza**: StartPanel riscritto — primario **"Inizia: {next-up}"** (rotazione last-done, P1) col sottotitolo del giorno; chips "oppure: {altri giorni}"; "Sessione libera" ghost; senza programma attivo il fallback v1 "Inizia allenamento". **I bottoni "Da piano:" sono rimossi** (il ponte transitorio del P2 muore qui, come previsto). Oggi (`today-gym.tsx`, fence `_components` ✓): "Inizia: Torso A" a UN tap (startSessionFromDay + push a /gym), sottotitolo del giorno come riga; fallback v1 senza programmi; sessioni in corso/fatte come prima.
+- **Griglia**: righe = slot nei GRUPPI di sezione (stesso raggruppamento consecutivo del builder), N celle per target_sets. Cella fantasma = obiettivo nella lingua del foglio ("3–5 @RIR1", RIR discendente risolto PER-INDICE: la terza di "2/1/0" mostra @RIR0 — `ghostLabel` testata); cella confermata = **"62,5 × 9"** (o "× 12" a corpo libero), tap per correggerla. **"+"** in coda a ogni riga (serie extra); "+ Aggiungi esercizio" (picker con creazione inline) crea righe al volo — i set fuori scheda diventano righe proprie, tutto in `buildGridRows` (pura, testata: fatte/fantasma/extra/orfani/pending).
+- **Micro-editor** (BottomSheet mobile / Modal desktop): FAST PATH = **peso** stepper ±2,5 (prefill: serie in modifica → cella precedente → ultima volta in storia, ora ATTENDIBILE grazie al loader) — **nascosto a corpo libero** — e **reps** stepper. **"Altro"** collassato, MAI bloccante: **RIR fatto** chips 0-5, **Feeling** chips 1-10, **Recupero reale** prefillato dal trascorso vero (calcolato al tap, salvato di default sulle serie nuove — è un dato misurato, come sul foglio; oltre l'ora = pausa, null) e modificabile ("2'30", parse dedicato 0..3600 testato); a corpo libero qui compare la **zavorra facoltativa** (kg opzionali, come da brief). Conferma → `addSet` con done_at; "Elimina serie" con **undo = ricreazione identica** (il port non ha restoreSet e la fence P3 consente solo query additive sul data layer — documentato).
+- **Recupero QUIETO**: chip in testa — **trascorso** dall'ultima serie confermata + target dello slot ("2:10 / 4'30"), sale e basta, **nessun countdown**; salvia quando il target è raggiunto. **Chime opzionale** al raggiungimento: campanella sul chip, impostazione **per-dispositivo** (localStorage `lifeos.gym.chime`, default **OFF**, pattern del tema D5 — nessun campo Settings: fuori fence e semanticamente giusto, l'audio è del device). Il timer countdown v1 è MORTO: `session-runner.tsx` ridotto a editor dello storico (niente RestState/RestTimer/chime), e `restRemainingS`/`formatRestS` cancellate grep-gated da logic.ts (consumatori: solo i propri test, quotato sopra nel run log).
+- **Schermata di fine** (gym-screen, FinishBody): **Volume · Durata · Aderenza** ("21/24"; per le libere "N serie" — previste = `plannedSetCount(slots)`, pura, fixture 24 testata), record battuti (invariato), **Voto seduta 1-10 one-tap** (chips → `rating_1_10`, ri-tap per togliere), note commit-on-blur. Il campo "Peso di oggi" arriva col prompt 4, qui.
+
+### 2. Tabella Progressi per esercizio (`progress-table.tsx` + scheda esercizio)
+
+`buildProgressTable` (pura, testata): colonne = ultime 10 sedute (più recenti PRIMA, scroll orizzontale con prima colonna sticky), righe di testata **Volume** · **e1RM** (Brzycki esistente, set migliore, mai riscritto) · **Δ vs precedente** (kg a 0,1: **▲ salvia** / **▼ segnale** / **=** neutro; primo = "—"); righe **Set 1..n** con "peso × reps" + **RIR piccolo** se registrato + **punto ember sui PR di carico** (battere il massimo di TUTTE le sedute precedenti; mai alla prima; eguagliare non basta — testato). Sedute fuori mappa-date escluse; corpo libero → e1RM "—". Montata nella scheda esercizio sotto sparkline e PR ("Le ultime sedute"). La riga **Forza Rel.** arriva col prompt 4 (serve il peso corporeo).
+
+### 3. Verdetto AUMENTA / RESTA (`progression.ts`, puro)
+
+`parseRepsRange` ("3–5"/"3-5"/"12"; testo libero → nessun giudizio), `parseRirFloors` ("1"→[1]; "1–2"→[1], pavimento del range; **"2/1/0"→[2,1,0]** per-indice, l'ultimo copre la coda), `verdictForSlot`: **AUMENTA** solo se tutte le serie previste fatte E ogni serie al TETTO del range E RIR fatto (quando registrato) ≤ pavimento del SUO indice; altrimenti RESTA; senza range/storia nessun verdetto. **Caso della fixture testato**: Laterali 3×15–20 RIR 2/1/0 — reps 20/20/20 con RIR 2/1/0 → AUMENTA; terza serie a RIR 1 (>0) → RESTA. Chip **"AUMENTA +2,5 kg"** (solo "AUMENTA" a corpo libero) mostrato: sulla riga della griglia della seduta SUCCESSIVA (giudica l'ultima seduta COMPLETATA del giorno, mai quella in corso) e nella scheda esercizio ("suggerimento dall'ultima seduta di {giorno}") — microcopy onesta ("sugg." / title "Suggerimento, non un ordine.").
+
+### 4. Oggi + dati
+
+- Oggi: sopra. Le sessioni v1 (senza program_day) rendono ovunque: griglia libera, storico, Oggi (nessun ramo speciale: program_day_id null = riga libera).
+- **Data layer (fence "additive queries only" rispettata: diff data/ = +53/−0):** `listSessionsByProgramDay(dayId)` (port + local, usa l'indice v6, testata) e hooks `useSessionsByProgramDay` + `useActiveProgramSlots` (giorni+slot del programma attivo — verdetto nella scheda esercizio).
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓. Logica pura testata ✓ (rotazione P1; aderenza; verdetto col caso "2/1/0"; stati delle celle; matematica Δ; in più: parse prescrizioni, PR dots, recupero suggerito/elapsed).
+- Dev-server ospite `/gym` 200 con griglia raggiungibile dalla Torso A seminata ✓ (stringhe della griglia nel grafo chunk, tab+starter già verificati al P2).
+- **NESSUN countdown da nessuna parte** ✓ (codice v1 cancellato, chunk serviti puliti).
+
+**Commit:** `feat(gym-v2): set log grid with quiet rest, progress table with e1RM delta, AUMENTA/RESTA verdict`
 
 ---

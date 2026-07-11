@@ -308,6 +308,12 @@ export interface GymRepo {
   getSessionById(id: string): Promise<GymSession | null>;
   listSessionsByDay(date: IsoDay): Promise<GymSession[]>;
   listSessionsRange(from: IsoDay, to: IsoDay): Promise<GymSession[]>;
+  /**
+   * Sessioni vive nate da un giorno di programma, più recenti prima
+   * (run-07 prompt 3: verdetto AUMENTA/RESTA e griglia leggono qui
+   * l'ultima seduta completata del giorno).
+   */
+  listSessionsByProgramDay(dayId: string): Promise<GymSession[]>;
 
   // Set
   addSet(input: SetCreate): Promise<Result<GymSet>>;

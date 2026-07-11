@@ -831,6 +831,22 @@ export class LocalGymRepo implements GymRepo {
       .sort((a, b) => a.date.localeCompare(b.date) || byCreated(a, b));
   }
 
+  async listSessionsByProgramDay(dayId: string): Promise<GymSession[]> {
+    const rows = await this.db.gym_sessions
+      .where("program_day_id")
+      .equals(dayId)
+      .toArray();
+    return rows
+      .filter(alive)
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.started_at ?? b.created_at).localeCompare(
+            a.started_at ?? a.created_at,
+          ),
+      );
+  }
+
   // ── Set ──────────────────────────────────────────────────────────────
 
   addSet(input: SetCreate): Promise<Result<GymSet>> {

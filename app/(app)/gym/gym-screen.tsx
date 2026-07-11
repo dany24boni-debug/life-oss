@@ -34,16 +34,18 @@ import {
 } from "@/ui/calendar-core";
 import {
   appRepos,
+  useActiveProgram,
   useExercises,
   useGymSession,
   useGymSessionsByDay,
   useGymSessionsRange,
-  usePlans,
+  useNextUpDay,
+  useProgramDays,
 } from "@/data/hooks";
 import { getDb, hasIndexedDb } from "@/data/db";
 import { convertPlansToPrograms } from "@/data/gym-programs";
 import { seedGymExercises } from "@/data/gym-seed";
-import type { GymExercise, GymPlan, GymSession } from "@/data/schemas";
+import type { GymExercise, GymProgramDay, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
 import { useToday } from "../_components/tasks/screen-hooks";
@@ -58,20 +60,25 @@ import {
   type NewRecord,
 } from "./logic";
 import { ProgramsPanel } from "./programs-panel";
-import { SessionRunner, type RestState } from "./session-runner";
+import { plannedSetCount } from "./progression";
+import { SessionGrid } from "./session-grid";
+import { SessionRunner } from "./session-runner";
 
 type FinishSummary = {
+  sessionId: string;
   volumeKg: number;
   durationMin: number | null;
   records: NewRecord[];
   exerciseNames: Map<string, string>;
+  /** Serie fatte / previste; previste null per le sessioni libere. */
+  doneSets: number;
+  plannedSets: number | null;
 };
 
 export function GymScreen({ authed }: { authed: boolean }) {
   const toast = useToast();
   const today = useToday();
   const todaySessions = useGymSessionsByDay(today);
-  const plans = usePlans();
   const exercises = useExercises();
 
   // Semina idempotente del catalogo + conversione una-tantum dei piani
@@ -83,8 +90,6 @@ export function GymScreen({ authed }: { authed: boolean }) {
     }
   }, []);
 
-  // Timer di recupero sopra i Tabs (i pannelli si smontano).
-  const [rest, setRest] = useState<RestState>(null);
   const [finish, setFinish] = useState<FinishSummary | null>(null);
   const [detailExercise, setDetailExercise] = useState<GymExercise | null>(null);
   const [createExercise, setCreateExercise] = useState(false);
@@ -95,12 +100,16 @@ export function GymScreen({ authed }: { authed: boolean }) {
   const doneToday =
     (todaySessions ?? []).find((s) => s.finished_at !== null) ?? null;
 
-  async function startSession(plan?: GymPlan) {
+  async function startFree() {
     const r = await appRepos().gym.createSession({
       date: today,
       started_at: new Date().toISOString(),
-      ...(plan ? { plan_id: plan.id } : {}),
     });
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  async function startFromDay(day: GymProgramDay) {
+    const r = await appRepos().gym.startSessionFromDay(day.id, today);
     if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
   }
 
@@ -112,9 +121,8 @@ export function GymScreen({ authed }: { authed: boolean }) {
       toast.show({ message: r.error.message, tone: "error" });
       return;
     }
-    setRest(null);
 
-    // Riepilogo: volume, durata, record battuti rispetto alla storia.
+    // Riepilogo: volume, durata, aderenza, record battuti sulla storia.
     const sets = await repo.listSetsBySession(session.id);
     const exerciseIds = [...new Set(sets.map((s) => s.exercise_id))];
     const prior = (
@@ -128,11 +136,18 @@ export function GymScreen({ authed }: { authed: boolean }) {
     for (const id of exerciseIds) {
       names.set(id, (await repo.getExerciseById(id))?.name ?? "Esercizio");
     }
+    const plannedSets =
+      session.program_day_id !== null
+        ? plannedSetCount(await repo.listProgramSlots(session.program_day_id))
+        : null;
     setFinish({
+      sessionId: session.id,
       volumeKg: totalVolumeKg(sets),
       durationMin: sessionDurationMin(session.started_at, finishedAt),
       records: newRecords(sets, prior),
       exerciseNames: names,
+      doneSets: sets.length,
+      plannedSets,
     });
   }
 
@@ -154,19 +169,16 @@ export function GymScreen({ authed }: { authed: boolean }) {
               loading ? (
                 <Skeleton className="h-24 w-full" />
               ) : active ? (
-                <SessionRunner
+                <SessionGrid
                   session={active}
-                  rest={rest}
-                  onRest={setRest}
-                  live
                   onFinish={() => void finishSession(active)}
                 />
               ) : (
                 <StartPanel
                   authed={authed}
                   doneToday={doneToday}
-                  plans={plans ?? []}
-                  onStart={(plan) => void startSession(plan)}
+                  onStartFree={() => void startFree()}
+                  onStartDay={(day) => void startFromDay(day)}
                 />
               )
             ) : null}
@@ -214,50 +226,124 @@ export function GymScreen({ authed }: { authed: boolean }) {
           </Button>
         }
       >
-        {finish ? (
-          <div className="flex flex-col gap-3">
-            <dl className="grid grid-cols-2 gap-3">
-              <div>
-                <dt className="em-eyebrow">Volume</dt>
-                <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
-                  {formatKg(finish.volumeKg)}
-                </dd>
-              </div>
-              <div>
-                <dt className="em-eyebrow">Durata</dt>
-                <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
-                  {finish.durationMin !== null ? `${finish.durationMin} min` : "—"}
-                </dd>
-              </div>
-            </dl>
-            {finish.records.length > 0 ? (
-              <div>
-                <p className="em-eyebrow">Record battuti</p>
-                <ul className="mt-1 flex flex-col gap-1">
-                  {finish.records.map((r) => (
-                    <li
-                      key={`${r.exercise_id}-${r.kind}`}
-                      className="em-body-sm text-[var(--em-text)]"
-                    >
-                      {finish.exerciseNames.get(r.exercise_id)} — nuovo massimo
-                      di {r.kind}:{" "}
-                      <span className="em-num font-semibold">
-                        {r.kind === "ripetizioni"
-                          ? r.value
-                          : formatKg(r.value)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="em-body-sm text-[var(--em-text-3)]">
-                Nessun record oggi — la costanza vale più del picco.
-              </p>
-            )}
-          </div>
-        ) : null}
+        {finish ? <FinishBody finish={finish} /> : null}
       </Modal>
+    </div>
+  );
+}
+
+/* ── Schermata di fine: numeri, voto, note ───────────────────────────── */
+
+function FinishBody({ finish }: { finish: FinishSummary }) {
+  const toast = useToast();
+  const session = useGymSession(finish.sessionId);
+  const [notes, setNotes] = useState(session?.notes ?? "");
+
+  async function rate(rating: number) {
+    const r = await appRepos().gym.updateSession(finish.sessionId, {
+      rating_1_10: session?.rating_1_10 === rating ? null : rating,
+    });
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  async function commitNotes() {
+    const value = notes.trim() === "" ? null : notes;
+    if (value === (session?.notes ?? null)) return;
+    const r = await appRepos().gym.updateSession(finish.sessionId, {
+      notes: value,
+    });
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="grid grid-cols-3 gap-3">
+        <div>
+          <dt className="em-eyebrow">Volume</dt>
+          <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+            {formatKg(finish.volumeKg)}
+          </dd>
+        </div>
+        <div>
+          <dt className="em-eyebrow">Durata</dt>
+          <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+            {finish.durationMin !== null ? `${finish.durationMin} min` : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="em-eyebrow">Aderenza</dt>
+          <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+            {finish.plannedSets !== null
+              ? `${finish.doneSets}/${finish.plannedSets}`
+              : `${finish.doneSets} serie`}
+          </dd>
+        </div>
+      </dl>
+
+      {finish.records.length > 0 ? (
+        <div>
+          <p className="em-eyebrow">Record battuti</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {finish.records.map((r) => (
+              <li
+                key={`${r.exercise_id}-${r.kind}`}
+                className="em-body-sm text-[var(--em-text)]"
+              >
+                {finish.exerciseNames.get(r.exercise_id)} — nuovo massimo di{" "}
+                {r.kind}:{" "}
+                <span className="em-num font-semibold">
+                  {r.kind === "ripetizioni" ? r.value : formatKg(r.value)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="em-body-sm text-[var(--em-text-3)]">
+          Nessun record oggi — la costanza vale più del picco.
+        </p>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <p className="em-eyebrow">Voto seduta</p>
+        <div
+          className="flex flex-wrap gap-1"
+          role="group"
+          aria-label="Voto della seduta, da 1 a 10"
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={session?.rating_1_10 === v}
+              onClick={() => void rate(v)}
+              className={
+                session?.rating_1_10 === v
+                  ? "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-ember-tint)] font-semibold text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+                  : "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+              }
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="finish-notes" className="em-eyebrow">
+          Note
+        </label>
+        <textarea
+          id="finish-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={() => void commitNotes()}
+          rows={2}
+          maxLength={2000}
+          className="em-body mt-1.5 w-full rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] p-3 text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline)] outline-none transition-shadow duration-[var(--em-dur-control)] placeholder:text-[var(--em-text-3)] focus:shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+          placeholder="Com'è andata?"
+        />
+      </div>
     </div>
   );
 }
@@ -267,14 +353,19 @@ export function GymScreen({ authed }: { authed: boolean }) {
 function StartPanel({
   authed,
   doneToday,
-  plans,
-  onStart,
+  onStartFree,
+  onStartDay,
 }: {
   authed: boolean;
   doneToday: GymSession | null;
-  plans: GymPlan[];
-  onStart: (plan?: GymPlan) => void;
+  onStartFree: () => void;
+  onStartDay: (day: GymProgramDay) => void;
 }) {
+  const nextUp = useNextUpDay();
+  const program = useActiveProgram();
+  const days = useProgramDays(program?.id ?? null);
+  const others = (days ?? []).filter((d) => d.id !== nextUp?.id);
+
   return (
     <div className="flex flex-col gap-4">
       {doneToday ? (
@@ -282,16 +373,54 @@ function StartPanel({
           Oggi ti sei già allenato. Un&apos;altra sessione? Nessuno ti ferma.
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" variant="primary" size="lg" onClick={() => onStart()}>
-          Inizia allenamento
-        </Button>
-        {plans.map((p) => (
-          <Button key={p.id} type="button" size="lg" onClick={() => onStart(p)}>
-            Da piano: {p.name}
+
+      {nextUp ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={() => onStartDay(nextUp)}
+            >
+              Inizia: {nextUp.name}
+            </Button>
+            {nextUp.subtitle ? (
+              <p className="em-body-sm mt-1.5 text-[var(--em-text-3)]">
+                {nextUp.subtitle}
+              </p>
+            ) : null}
+          </div>
+          {others.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="em-body-sm text-[var(--em-text-3)]">
+                oppure:
+              </span>
+              {others.map((day) => (
+                <button
+                  key={day.id}
+                  type="button"
+                  onClick={() => onStartDay(day)}
+                  className="em-body-sm h-11 rounded-full bg-[var(--em-surface-2)] px-3.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+                >
+                  {day.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div>
+            <Button type="button" variant="ghost" onClick={onStartFree}>
+              Sessione libera
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="primary" size="lg" onClick={onStartFree}>
+            Inizia allenamento
           </Button>
-        ))}
-      </div>
+        </div>
+      )}
       {authed ? <EmptyHistoryImportPrompt /> : null}
     </div>
   );
@@ -386,7 +515,7 @@ function HistoryPanel({
   );
 }
 
-/** Sessione passata: stesso runner, senza timer né concludi. */
+/** Sessione passata: l'editor storico (senza timer, per costruzione). */
 function HistorySessionSheet({
   sessionId,
   onClose,
@@ -401,14 +530,7 @@ function HistorySessionSheet({
       onClose={onClose}
       title={session ? `Sessione · ${formatDayShort(session.date)}` : "Sessione"}
     >
-      {session ? (
-        <SessionRunner
-          session={session}
-          rest={null}
-          onRest={() => {}}
-          live={false}
-        />
-      ) : null}
+      {session ? <SessionRunner session={session} /> : null}
     </Modal>
   );
 }

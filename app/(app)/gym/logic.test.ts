@@ -4,9 +4,7 @@ import {
   computePRs,
   exerciseTrend,
   formatKg,
-  formatRestS,
   newRecords,
-  restRemainingS,
   sessionDurationMin,
   sparklinePath,
   stepReps,
@@ -132,22 +130,6 @@ describe("newRecords — record battuti nella sessione", () => {
     const prior = [set({ weight_kg: 80, reps: 5, session_id: "vecchia" })];
     const current = [set({ weight_kg: 80, reps: 5, session_id: "nuova" })];
     expect(newRecords(current, prior)).toHaveLength(0);
-  });
-});
-
-describe("timer di recupero — matematica wake-safe", () => {
-  it("il rimanente deriva dagli istanti, non da un contatore", () => {
-    const start = Date.parse("2026-07-10T10:00:00.000Z");
-    expect(restRemainingS(start, 90, start)).toBe(90);
-    expect(restRemainingS(start, 90, start + 30_000)).toBe(60);
-    // Schermo spento per 2 minuti: al risveglio il tempo è passato davvero.
-    expect(restRemainingS(start, 90, start + 120_000)).toBe(0);
-  });
-
-  it("formato m:ss", () => {
-    expect(formatRestS(92)).toBe("1:32");
-    expect(formatRestS(5)).toBe("0:05");
-    expect(formatRestS(0)).toBe("0:00");
   });
 });
 
