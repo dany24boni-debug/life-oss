@@ -29,6 +29,9 @@ import type {
   ExpensePatch,
   GymExercise,
   GymPlan,
+  GymProgram,
+  GymProgramDay,
+  GymProgramSlot,
   GymSession,
   GymSet,
   IsoDay,
@@ -37,6 +40,12 @@ import type {
   MuscleGroup,
   PlanCreate,
   PlanPatch,
+  ProgramCreate,
+  ProgramDayCreate,
+  ProgramDayPatch,
+  ProgramPatch,
+  ProgramSlotCreate,
+  ProgramSlotPatch,
   Reminder,
   ReminderCreate,
   ReminderPatch,
@@ -195,12 +204,101 @@ export interface GymRepo {
   /** Ordinati per nome; filtro opzionale per gruppo muscolare. */
   listExercises(opts?: { group?: MuscleGroup }): Promise<GymExercise[]>;
 
-  // Piani
+  // Piani (v1 — restano leggibili: le sessioni storiche li referenziano;
+  // la conversione una-tantum in programmi vive in data/gym-programs.ts)
   createPlan(input: PlanCreate): Promise<Result<GymPlan>>;
   updatePlan(id: string, patch: PlanPatch): Promise<Result<GymPlan>>;
   softDeletePlan(id: string): Promise<Result<void>>;
   getPlanById(id: string): Promise<GymPlan | null>;
   listPlans(): Promise<GymPlan[]>;
+
+  // Programmi (run-07) — il modello del foglio: programma → giorni → slot.
+  createProgram(input: ProgramCreate): Promise<Result<GymProgram>>;
+  /**
+   * Patch mirata; `is_active: true` disattiva ogni altro programma nella
+   * stessa transazione (al più uno attivo, invariante del repo).
+   */
+  updateProgram(id: string, patch: ProgramPatch): Promise<Result<GymProgram>>;
+  /**
+   * Tombstone al programma E ai suoi giorni/slot vivi, tutti con lo
+   * STESSO deleted_at: è il marchio che permette all'undo di distinguere
+   * il cascade dalle cancellazioni fatte prima, singolarmente.
+   */
+  softDeleteProgram(id: string): Promise<Result<void>>;
+  /**
+   * Undo del toast: revive il programma e le righe del suo cascade
+   * (deleted_at identico). Idempotente su righe vive.
+   */
+  restoreProgram(id: string): Promise<Result<GymProgram>>;
+  /** Copia profonda (giorni + slot), nome con " (copia)", mai attiva. */
+  duplicateProgram(id: string): Promise<Result<GymProgram>>;
+  getProgramById(id: string): Promise<GymProgram | null>;
+  /** Programmi vivi: l'attivo per primo, poi per nome. */
+  listPrograms(): Promise<GymProgram[]>;
+  /**
+   * Il programma attivo. Un merge di sync può far coesistere più attivi:
+   * vince l'`updated_at` più recente (deterministico su ogni device).
+   */
+  activeProgram(): Promise<GymProgram | null>;
+
+  // Giorni di programma
+  createProgramDay(input: ProgramDayCreate): Promise<Result<GymProgramDay>>;
+  updateProgramDay(
+    id: string,
+    patch: ProgramDayPatch,
+  ): Promise<Result<GymProgramDay>>;
+  /** Cascade sugli slot del giorno (stesso deleted_at, come i programmi). */
+  softDeleteProgramDay(id: string): Promise<Result<void>>;
+  restoreProgramDay(id: string): Promise<Result<GymProgramDay>>;
+  /** Copia il giorno e i suoi slot, in coda al programma. */
+  duplicateProgramDay(id: string): Promise<Result<GymProgramDay>>;
+  getProgramDayById(id: string): Promise<GymProgramDay | null>;
+  /** Giorni vivi del programma, per sort_order (poi created_at). */
+  listProgramDays(programId: string): Promise<GymProgramDay[]>;
+  /** sort_order = indice nell'array; id ignoti o d'altri programmi saltati. */
+  reorderProgramDays(
+    programId: string,
+    orderedIds: string[],
+  ): Promise<Result<void>>;
+
+  // Slot (le righe della tabella-foglio)
+  createProgramSlot(
+    input: ProgramSlotCreate,
+  ): Promise<Result<GymProgramSlot>>;
+  updateProgramSlot(
+    id: string,
+    patch: ProgramSlotPatch,
+  ): Promise<Result<GymProgramSlot>>;
+  softDeleteProgramSlot(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restoreProgramSlot(id: string): Promise<Result<GymProgramSlot>>;
+  /** Duplica la riga subito SOTTO l'originale (sort_order intermedio). */
+  duplicateProgramSlot(id: string): Promise<Result<GymProgramSlot>>;
+  getProgramSlotById(id: string): Promise<GymProgramSlot | null>;
+  /** Slot vivi del giorno, per sort_order (poi created_at). */
+  listProgramSlots(dayId: string): Promise<GymProgramSlot[]>;
+  reorderProgramSlots(
+    dayId: string,
+    orderedIds: string[],
+  ): Promise<Result<void>>;
+
+  /**
+   * Crea la seduta del giorno di programma: session.program_day_id =
+   * dayId, started_at = adesso (o l'istante passato). Le righe
+   * pianificate della griglia NASCONO dagli slot del giorno al render —
+   * nessun set fantasma pre-creato (l'aderenza "fatte/previste" resta
+   * onesta).
+   */
+  startSessionFromDay(
+    dayId: string,
+    date: IsoDay,
+    startedAt?: IsoInstant,
+  ): Promise<Result<GymSession>>;
+  /**
+   * Il prossimo giorno del programma attivo per rotazione last-done:
+   * senza storia il primo; dopo l'ultimo si ricomincia dal primo.
+   */
+  nextUpDay(): Promise<GymProgramDay | null>;
 
   // Sessioni
   createSession(input: SessionCreate): Promise<Result<GymSession>>;

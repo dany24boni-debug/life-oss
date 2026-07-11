@@ -30,6 +30,9 @@ function set(over: Partial<GymSet>): GymSet {
     set_number: 1,
     weight_kg: 60,
     reps: 8,
+    rir_done: null,
+    rest_actual_s: null,
+    feeling_1_10: null,
     done_at: null,
     ...AUDIT,
     ...over,
@@ -68,6 +71,41 @@ describe("volume e PR", () => {
       maxSessionVolumeKg: null,
       best1RmKg: null,
     });
+  });
+
+  it("sessione TUTTA a corpo libero: volume 0, PR di peso/1RM null, MAI NaN", () => {
+    // Il contratto run-07: i set senza peso sono prima classe (bodyweight)
+    // e la matematica li salta senza mai produrre NaN.
+    const sets = [
+      set({ weight_kg: null, reps: 10, session_id: "s1" }),
+      set({ weight_kg: null, reps: 8, session_id: "s1" }),
+    ];
+    expect(totalVolumeKg(sets)).toBe(0);
+    expect(Number.isNaN(totalVolumeKg(sets))).toBe(false);
+    const prs = computePRs(sets);
+    expect(prs).toEqual({
+      maxWeightKg: null,
+      maxReps: 10,
+      maxSessionVolumeKg: null, // un volume 0 non è un PR
+      best1RmKg: null,
+    });
+    for (const v of Object.values(prs)) {
+      expect(v === null || Number.isFinite(v)).toBe(true);
+    }
+  });
+
+  it("newRecords su storie a corpo libero: solo reps, niente NaN", () => {
+    const prior = [set({ weight_kg: null, reps: 8, session_id: "vecchia" })];
+    const current = [set({ weight_kg: null, reps: 10, session_id: "nuova" })];
+    const records = newRecords(current, prior);
+    expect(records).toEqual([
+      {
+        exercise_id: "01980000-0000-7000-8000-0000000000ee",
+        kind: "ripetizioni",
+        value: 10,
+      },
+    ]);
+    for (const r of records) expect(Number.isFinite(r.value)).toBe(true);
   });
 });
 

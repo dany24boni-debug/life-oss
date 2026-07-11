@@ -29,6 +29,9 @@ import type {
   Expense,
   GymExercise,
   GymPlan,
+  GymProgram,
+  GymProgramDay,
+  GymProgramSlot,
   GymSession,
   GymSet,
   IsoDay,
@@ -189,6 +192,57 @@ export function useExercises(group?: MuscleGroup): GymExercise[] | undefined {
 /** Piani ordinati per nome. */
 export function usePlans(): GymPlan[] | undefined {
   return useLiveQuery(() => appRepos().gym.listPlans(), []);
+}
+
+/* ── Programmi (run-07) ──────────────────────────────────────────────── */
+
+/** Programmi vivi: l'attivo per primo, poi per nome. */
+export function usePrograms(): GymProgram[] | undefined {
+  return useLiveQuery(() => appRepos().gym.listPrograms(), []);
+}
+
+/** Il programma attivo (al più uno); null se nessuno. */
+export function useActiveProgram(): GymProgram | null | undefined {
+  return useLiveQuery(() => appRepos().gym.activeProgram(), []);
+}
+
+/** Giorni vivi del programma, per sort_order. */
+export function useProgramDays(
+  programId: string | null,
+): GymProgramDay[] | undefined {
+  return useLiveQuery(
+    () =>
+      programId
+        ? appRepos().gym.listProgramDays(programId)
+        : Promise.resolve([]),
+    [programId],
+  );
+}
+
+/** Slot vivi del giorno, per sort_order (le righe della tabella-foglio). */
+export function useProgramSlots(
+  dayId: string | null,
+): GymProgramSlot[] | undefined {
+  return useLiveQuery(
+    () =>
+      dayId ? appRepos().gym.listProgramSlots(dayId) : Promise.resolve([]),
+    [dayId],
+  );
+}
+
+/** Singolo giorno di programma; null se assente o tombstone. */
+export function useProgramDay(
+  id: string | null,
+): GymProgramDay | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().gym.getProgramDayById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** Il prossimo giorno del programma attivo (rotazione last-done). */
+export function useNextUpDay(): GymProgramDay | null | undefined {
+  return useLiveQuery(() => appRepos().gym.nextUpDay(), []);
 }
 
 /** Sessioni del giorno (di solito zero o una). */
