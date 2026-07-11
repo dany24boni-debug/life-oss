@@ -30,6 +30,7 @@
 
 import Dexie, { type Table } from "dexie";
 import type {
+  BodyEntry,
   EveningCheckin,
   Exam,
   Expense,
@@ -101,6 +102,17 @@ export const SCHEMA_V6 = {
   gym_program_slots: "id, day_id, updated_at",
 } as const;
 
+/**
+ * v7 = v6 + body (run-07 prompt 4): peso corporeo per giorno, id
+ * derivato dalla data. Solo additiva; i campi profilo nuovi di Settings
+ * NON richiedono migrazione (il repo fonde i default alla lettura, lo
+ * schema li materializza al parse — pattern di protected_days).
+ */
+export const SCHEMA_V7 = {
+  ...SCHEMA_V6,
+  body: "id, date, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -110,6 +122,7 @@ export class LifeosDb extends Dexie {
   esami!: Table<Exam, string>;
   spese!: Table<Expense, string>;
   sera!: Table<EveningCheckin, string>;
+  body!: Table<BodyEntry, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
   gym_programs!: Table<GymProgram, string>;
@@ -153,6 +166,7 @@ export class LifeosDb extends Dexie {
             }),
         ]).then(() => undefined),
       );
+    this.version(7).stores(SCHEMA_V7);
   }
 }
 

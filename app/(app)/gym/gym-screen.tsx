@@ -35,10 +35,12 @@ import {
 import {
   appRepos,
   useActiveProgram,
+  useBodyDay,
   useExercises,
   useGymSession,
   useGymSessionsByDay,
   useGymSessionsRange,
+  useLatestBody,
   useNextUpDay,
   useProgramDays,
 } from "@/data/hooks";
@@ -48,6 +50,7 @@ import { seedGymExercises } from "@/data/gym-seed";
 import type { GymExercise, GymProgramDay, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
+import { WeightQuickEntry } from "../corpo/corpo-screen";
 import { useToday } from "../_components/tasks/screen-hooks";
 import { ExerciseDetailSheet } from "./exercise-detail";
 import { groupLabel } from "./exercise-picker";
@@ -344,6 +347,28 @@ function FinishBody({ finish }: { finish: FinishSummary }) {
           placeholder="Com'è andata?"
         />
       </div>
+
+      {/* La colonna "Peso corp." del foglio (run-07 P4): la pesata del
+          giorno si registra QUI, a fine seduta — scrive un BodyEntry. */}
+      <FinishWeightField />
+    </div>
+  );
+}
+
+function FinishWeightField() {
+  const today = useToday();
+  const entry = useBodyDay(today);
+  const latest = useLatestBody();
+  if (entry === undefined || latest === undefined) return null;
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-[var(--em-hairline)] pt-3">
+      <p className="em-eyebrow">Peso di oggi</p>
+      <WeightQuickEntry
+        date={today}
+        current={entry}
+        fallbackKg={latest?.weight_kg ?? 80}
+        compact
+      />
     </div>
   );
 }

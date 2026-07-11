@@ -154,6 +154,43 @@ Unico consumatore = gym-screen (dentro il set di modifica) → `git rm` + rimozi
 - Dev-server ospite `/gym` 200 con griglia raggiungibile dalla Torso A seminata ✓ (stringhe della griglia nel grafo chunk, tab+starter già verificati al P2).
 - **NESSUN countdown da nessuna parte** ✓ (codice v1 cancellato, chunk serviti puliti).
 
-**Commit:** `feat(gym-v2): set log grid with quiet rest, progress table with e1RM delta, AUMENTA/RESTA verdict`
+**Commit:** `feat(gym-v2): set log grid with quiet rest, progress table with e1RM delta, AUMENTA/RESTA verdict` → `a1bbec0`
+
+---
+
+## Prompt 4 — Corpo + profilo (la colonna Peso corp. del foglio, cablata)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ (`ƒ /corpo`) · sentinels ✓ · test **730/730, 60 file** (+25: 12 `data/derived.test.ts`, 5 `data/local/body.test.ts`, 4 `app/(app)/corpo/logic.test.ts`, +2 round-trip in engine-modules, +1 Forza Rel. in progression.test, +1 settings pre-run-07 in schemas.test). **Dev-server DA OSPITE:** `/corpo` **200** (Peso di oggi / Trend / Storico nell'HTML) e `/impostazioni` **200** (card Profilo con la riga "stime"); zero controlli nativi su entrambe.
+
+### Dati
+
+- **`BodyEntry`** date-keyed: id **derivato canonico** `deriveUuidV8("lifeos:body-day:<date>")` (stesso disegno di Sera — una pesata per giorno PER COSTRUZIONE, convergenza cross-device testata su FakeRemote: una sola riga remota, vince la scrittura più recente), `weight_kg` 20-400, nota ≤500. `BodyRepo`: `upsertDay` (creazione richiede il peso; ripesarsi rianima una tombstone), `getByDay`, `latest`, `listRange` (asc, grafico), `listRecent` (desc, storico), `softDeleteDay`/`restoreDay` (undo), purge. Cablato in `createLocalRepos`, `withMutationSignal`, hooks (`useBodyDay`/`useLatestBody`/`useBodyRange`/`useBodyRecent`).
+- **Profilo su Settings**: `height_cm` 100-250, `sex` "m"/"f", `birth_year` 1900-2100, `activity_level` 1-5 — tutti nullable con `.default(null)` sull'entità (una riga settings pre-run-07 passa il parse coi default: testato; il campo mancante nel brief tra height e birth_year è il SESSO — indispensabile a Mifflin-St Jeor, delta dichiarato). `DEFAULT_SETTINGS` esteso; il merge-alla-lettura esistente copre le righe vecchie senza migrazione Dexie (pattern protected_days).
+- **Dexie v7** additiva (`body: "id, date, updated_at"`); survival test aggiornati (verno 7, elenco tabelle, tabella body subito usabile sul db migrato v5→v7).
+- **`data/derived.ts`** (puro, ESPORTATO per il run-08, testato su valori noti): `waterTargetMl` (35 ml/kg clamp 1500-4000: 80→2800, 40→1500, 120→4000), `bmrMifflinKcal` (uomo 80/180/30 = **1780** esatto; donna 60/165/25 = 1345,25), `calorieTargetKcal` (TDEE ×[1.2, 1.375, 1.55, 1.725, 1.9] → deficit −500 / mantenimento / surplus +300, ai 10 kcal, **pavimento onesto 1200**: profilo minuto in deficit → 1200 testato; profilo incompleto → null, mai numeri inventati), `relativeStrength` (e1RM/peso, 2 decimali).
+- **Migrazione 0025 SCRITTA, NON applicata**: `lo_body` (check 20-400, blocco per-tabella 0019, niente unique(user_id,date) — garanzia client, commentato), `ALTER lo_settings` ×4 coi check, **`lo_push` ridichiarata con l'allowlist a 15** (…+lo_body). Round-trip lo_body ✓ e campi profilo che viaggiano su lo_settings ✓ (FakeRemote).
+
+### Superfici
+
+- **`/corpo`** (nuova, guest-first): **Peso di oggi** — stepper **±0,1** (dominio 20..400, niente scie di float: testato) prefillato dall'ultima pesata, salvataggio ESPLICITO (una pesata è un dato, non un gesto), chip "registrato", riga "Ultima pesata"; **Trend** — finestre **7/30/90** a chips, polyline + **banda min-max reale** della finestra (rettangolo quieto + caption "min · max"; `buildWeightChart` pura testata: scala, banda, piatto-a-metà, vuoto); **Storico** — pesate recenti con **delta** verso la precedente ("−0,3 kg" salvia), nota, "Mostra altre"; scheda pesata (BottomSheet/Modal) con stepper, nota commit-on-blur, **elimina con undo** (restoreDay).
+- **Impostazioni → Profilo** (`profile-section.tsx`): altezza/anno (input numerici commit-on-blur clampati), sesso e attività a chips (Sedentario…Atleta, toggle per azzerare), la riga onesta *"sono stime di formula, non prescrizioni"*, e l'anteprima viva quando i dati bastano ("Stime di oggi: acqua ~2,9 l · mantenimento ~2.760 kcal") — la validazione visiva del cablaggio per lo smoke di Davide; run-08 costruirà qui sopra.
+- **Cablaggio gym (SOLO wiring, diff +82/−1):** la **schermata di fine** guadagna "Peso di oggi" (riusa `WeightQuickEntry` di /corpo — scrive un BodyEntry vero, compatto); la **tabella Progressi** guadagna la riga **"Forza Rel."** (`relativeStrength(e1RM, peso del GIORNO della seduta)`, "×0,94", trattino dove manca la pesata) accesa dalla scheda esercizio via `useBodyRange` 12 mesi. **Acceptance "Forza Rel. renders with seeded data in a test"**: test a livello logico (niente RTL nel repo, interpretazione dichiarata) — `buildProgressTable` + `relativeStrength` con dati seminati: colonna con pesata → ×0,94 (valore noto), senza → null/trattino.
+- **Rail/Moduli**: `IconScale` nuova; Rail "Moduli" → …, Corpo; card Moduli di Impostazioni idem. **Oggi**: quinto tile compatto "Peso" SOLO quando esistono dati (ultima pesata + delta dalla precedente).
+
+### Importer legacy: SKIP dichiarato (audit)
+
+Il brief lo chiede "ONLY if a legacy table with weights actually exists". Audit delle migrazioni:
+```
+$ grep -rni "weight|peso|body" supabase/migrations/*.sql | grep -i "create table|weight_kg"
+0006_phase3_modules.sql:  weight_kg …   ← è gym_workouts (carico esercizi, GIÀ importato dal run-04)
+0005_phase2_schema.sql:   weight text check (weight in ('HEAVY','MEDIUM','LIGHT'))  ← enum di priorità, non peso corporeo
+```
+`app/body/page.tsx` legacy calcola volume dai gym_workouts — **nessuna tabella di pesi corporei è mai esistita** → nessun importer, annotato anche nell'header di 0025. Niente inventato.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓. Formule derivate testate su valori noti ✓. `/corpo` 200 da ospite ✓. Migrazione presente NON applicata ✓. Round-trip `lo_body` ✓. Forza Rel. con dati seminati in un test ✓ (interpretazione logica documentata).
+
+**Commit:** `feat(corpo): date-keyed body metrics, profile with derived targets, Forza Relativa in gym progress`
 
 ---

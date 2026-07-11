@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconExam,
   IconMoon,
+  IconScale,
   IconWallet,
 } from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
@@ -13,6 +14,7 @@ import { GymImportButton } from "../gym/import-button";
 import { SeraImportButton } from "../sera/import-button";
 import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
+import { ProfileSection } from "./profile-section";
 import { ProtectedDays } from "./protected-days";
 import { ThemeSection } from "./theme-section";
 
@@ -44,6 +46,12 @@ const MODULE_LINKS: Array<{
     label: "Sera",
     desc: "Check-in serale e diario",
     icon: IconMoon,
+  },
+  {
+    href: "/corpo",
+    label: "Corpo",
+    desc: "Peso corporeo e trend",
+    icon: IconScale,
   },
 ];
 
@@ -239,6 +247,9 @@ export default async function ImpostazioniPage() {
           </div>
         </section>
       ) : null}
+
+      {/* Profilo per le stime derivate (run-07 prompt 4). */}
+      <ProfileSection />
 
       {/* Tema per-dispositivo (run-05 prompt 6, D5). */}
       <ThemeSection />

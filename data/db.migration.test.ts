@@ -65,12 +65,14 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 6 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 7 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
-    // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): + programmi.
-    expect(dbTest.verno).toBe(6);
+    // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
+    // programmi. v7 (run-07 P4): + body.
+    expect(dbTest.verno).toBe(7);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
+      "body",
       "esami",
       "events",
       "gym_exercises",
@@ -127,7 +129,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(6);
+    expect(current.verno).toBe(7);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -145,6 +147,18 @@ describe("schema bump v1 -> v2", () => {
     });
 
     // Le tabelle nuove sono subito usabili, indice compreso.
+    await current.body.add({
+      id: "01980000-0000-7000-8000-000000000301",
+      date: "2026-07-11",
+      weight_kg: 82.4,
+      note: null,
+      created_at: "2026-07-11T08:00:00.000Z",
+      updated_at: "2026-07-11T08:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(await current.body.where("date").equals("2026-07-11").count()).toBe(
+      1,
+    );
     await current.gym_programs.add({
       id: "01980000-0000-7000-8000-000000000201",
       name: "Scheda",
@@ -198,10 +212,10 @@ describe("schema bump v1 -> v2", () => {
     await v1.table("tasks").add(row);
     v1.close();
 
-    // Apertura con la classe reale (v1..v6): upgrade additivo.
+    // Apertura con la classe reale (v1..v7): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(6);
+    expect(current.verno).toBe(7);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

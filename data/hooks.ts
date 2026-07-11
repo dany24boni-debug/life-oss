@@ -24,6 +24,7 @@ import { getDb } from "./db";
 import { createLocalRepos } from "./local";
 import type { Repos } from "./ports";
 import type {
+  BodyEntry,
   EveningCheckin,
   Exam,
   Expense,
@@ -156,6 +157,40 @@ export function useCheckinHistory(
 ): EveningCheckin[] | undefined {
   return useLiveQuery(
     () => appRepos().sera.listRecent(before, limit),
+    [before, limit],
+  );
+}
+
+/* ── Corpo (run-07 prompt 4) ─────────────────────────────────────────── */
+
+/** La pesata del giorno; null se non registrata. */
+export function useBodyDay(date: IsoDay): BodyEntry | null | undefined {
+  return useLiveQuery(async () => {
+    const row = await appRepos().body.getByDay(date);
+    return row ?? null;
+  }, [date]);
+}
+
+/** L'ultima pesata viva; null senza dati. */
+export function useLatestBody(): BodyEntry | null | undefined {
+  return useLiveQuery(() => appRepos().body.latest(), []);
+}
+
+/** Pesate nel range, per giorno crescente (grafico del trend). */
+export function useBodyRange(
+  from: IsoDay,
+  to: IsoDay,
+): BodyEntry[] | undefined {
+  return useLiveQuery(() => appRepos().body.listRange(from, to), [from, to]);
+}
+
+/** Storico pesate fino a `before` incluso, dalla più recente. */
+export function useBodyRecent(
+  before: IsoDay,
+  limit: number,
+): BodyEntry[] | undefined {
+  return useLiveQuery(
+    () => appRepos().body.listRecent(before, limit),
     [before, limit],
   );
 }

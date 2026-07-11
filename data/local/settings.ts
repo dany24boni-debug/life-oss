@@ -24,6 +24,10 @@ export const DEFAULT_SETTINGS: Settings = {
   display_name: null,
   theme: "dark",
   protected_days: [],
+  height_cm: null,
+  sex: null,
+  birth_year: null,
+  activity_level: null,
   created_at: EPOCH,
   updated_at: EPOCH,
   deleted_at: null,
@@ -58,6 +62,14 @@ export class LocalSettingsRepo implements SettingsRepo {
           // Ordinati e senza duplicati per costruzione: chi legge (motore
           // streak, UI) non deve difendersi.
           protected_days: [...new Set(v.data.protected_days)].sort(),
+        }),
+        ...(v.data.height_cm !== undefined && { height_cm: v.data.height_cm }),
+        ...(v.data.sex !== undefined && { sex: v.data.sex }),
+        ...(v.data.birth_year !== undefined && {
+          birth_year: v.data.birth_year,
+        }),
+        ...(v.data.activity_level !== undefined && {
+          activity_level: v.data.activity_level,
         }),
         created_at: current.created_at === EPOCH ? now : current.created_at,
         updated_at: now,

@@ -15,6 +15,8 @@
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
 import type {
+  BodyEntry,
+  BodyPatch,
   CheckinPatch,
   EveningCheckin,
   EventCreate,
@@ -187,6 +189,34 @@ export interface SeraRepo {
   getByDay(date: IsoDay): Promise<EveningCheckin | null>;
   /** Check-in vivi con date < before, dal più recente, al massimo limit. */
   listRecent(before: IsoDay, limit: number): Promise<EveningCheckin[]>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Corpo (run-07 prompt 4)
+// ============================================================
+
+export interface BodyRepo {
+  /**
+   * Crea-o-aggiorna la pesata del giorno (una riga per giorno per
+   * costruzione: id derivato dalla data, come Sera). Alla CREAZIONE il
+   * peso è obbligatorio; una tombstone del giorno viene rianimata
+   * (ripesarsi È l'intento).
+   */
+  upsertDay(date: IsoDay, patch: BodyPatch): Promise<Result<BodyEntry>>;
+
+  getByDay(date: IsoDay): Promise<BodyEntry | null>;
+  /** L'ultima pesata viva (giorno più recente); null senza dati. */
+  latest(): Promise<BodyEntry | null>;
+  /** from <= date <= to, per giorno CRESCENTE (il grafico legge qui). */
+  listRange(from: IsoDay, to: IsoDay): Promise<BodyEntry[]>;
+  /** Pesate vive con date <= before, dalla più recente, al massimo limit. */
+  listRecent(before: IsoDay, limit: number): Promise<BodyEntry[]>;
+  /** Tombstone alla pesata del giorno (undo: restoreDay). */
+  softDeleteDay(date: IsoDay): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore, per giorno. */
+  restoreDay(date: IsoDay): Promise<Result<BodyEntry>>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -427,6 +457,7 @@ export interface Repos {
   esami: EsamiRepo;
   spese: SpeseRepo;
   sera: SeraRepo;
+  body: BodyRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

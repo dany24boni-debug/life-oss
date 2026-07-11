@@ -294,6 +294,35 @@ export const CheckinPatchSchema = z
 export type CheckinPatch = z.infer<typeof CheckinPatchSchema>;
 
 // ============================================================
+// Corpo (run-07 prompt 4) — il peso corporeo del foglio (colonna
+// "Peso corp."), UNA riga per giorno per costruzione: id derivato
+// dalla data (`lifeos:body-day:<date>`, stesso disegno del modulo
+// Sera) — due dispositivi che pesano lo stesso giorno convergono
+// sulla stessa PK, il sync fonde con LWW.
+// ============================================================
+
+export const BodyWeightSchema = z.number().min(20).max(400);
+
+export const BodyEntrySchema = z.object({
+  id: UuidSchema,
+  /** Giorno della pesata (unico per costruzione: id derivato). */
+  date: IsoDaySchema,
+  weight_kg: BodyWeightSchema,
+  note: z.string().max(500).nullable(),
+  ...audit,
+});
+export type BodyEntry = z.infer<typeof BodyEntrySchema>;
+
+/** Patch dell'upsert per-giorno; alla creazione il peso è obbligatorio. */
+export const BodyPatchSchema = z
+  .object({
+    weight_kg: BodyWeightSchema,
+    note: z.string().max(500).nullable(),
+  })
+  .partial();
+export type BodyPatch = z.infer<typeof BodyPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 
@@ -646,6 +675,13 @@ export type ReminderPatch = z.infer<typeof ReminderPatchSchema>;
 export const ThemeSchema = z.enum(["dark", "light", "system"]);
 export type Theme = z.infer<typeof ThemeSchema>;
 
+/** Sesso biologico per le formule (Mifflin-St Jeor): solo stime. */
+export const SexSchema = z.enum(["m", "f"]);
+export type Sex = z.infer<typeof SexSchema>;
+
+/** Livello di attività 1 (sedentario) .. 5 (atleta). */
+export const ActivityLevelSchema = z.number().int().min(1).max(5);
+
 /**
  * Riga singola con id fisso "local". Il tema di default è "dark" (D5:
  * entrambi i temi esistono dai token, il dark resta il default).
@@ -654,12 +690,21 @@ export type Theme = z.infer<typeof ThemeSchema>;
  * ANTICIPO che non spezzano mai la streak. Lista di giorni civili, senza
  * duplicati per costruzione dell'adapter; cap generoso (2 anni di giorni
  * tutti protetti) solo come guardia anti-crescita-infinita.
+ *
+ * Profilo (run-07 prompt 4): altezza, sesso, anno di nascita, livello di
+ * attività — servono SOLO alle stime derivate (acqua, calorie,
+ * data/derived.ts). `.default(null)` sullo schema entità: le righe
+ * scritte prima del run-07 passano il parse del sync senza scarti.
  */
 export const SettingsSchema = z.object({
   id: z.literal("local"),
   display_name: z.string().trim().max(80).nullable(),
   theme: ThemeSchema,
   protected_days: z.array(IsoDaySchema).max(730),
+  height_cm: z.number().int().min(100).max(250).nullable().default(null),
+  sex: SexSchema.nullable().default(null),
+  birth_year: z.number().int().min(1900).max(2100).nullable().default(null),
+  activity_level: ActivityLevelSchema.nullable().default(null),
   ...audit,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -669,6 +714,10 @@ export const SettingsPatchSchema = z
     display_name: z.string().trim().max(80).nullable(),
     theme: ThemeSchema,
     protected_days: z.array(IsoDaySchema).max(730),
+    height_cm: z.number().int().min(100).max(250).nullable(),
+    sex: SexSchema.nullable(),
+    birth_year: z.number().int().min(1900).max(2100).nullable(),
+    activity_level: ActivityLevelSchema.nullable(),
   })
   .partial();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

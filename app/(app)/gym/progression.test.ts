@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { relativeStrength } from "@/data/derived";
 import type { GymProgramSlot, GymSet } from "@/data/schemas";
 import {
   buildGridRows,
@@ -311,6 +312,25 @@ describe("tabella Progressi: colonne, e1RM, Δ, punti PR", () => {
     expect(table.columns[0].e1rmKg).toBeNull();
     expect(table.columns[0].deltaE1rmKg).toBeNull();
     expect(table.columns[0].volumeKg).toBe(0);
+  });
+
+  it("riga Forza Rel. (run-07 P4): e1RM / peso del giorno, trattino dove manca", () => {
+    // Dati seminati: due sedute, peso corporeo registrato solo per la
+    // seconda — la riga si calcola per colonna e mette il trattino
+    // (null) dove il peso del giorno non c'è.
+    const sets = [
+      set({ session_id: "s1", weight_kg: 60, reps: 8, set_number: 1 }),
+      set({ session_id: "s2", weight_kg: 62.5, reps: 8, set_number: 1 }),
+    ];
+    const table = buildProgressTable(sets, dates);
+    const weightByDate = new Map([["2026-07-08", 82.4]]); // solo s2
+    const rel = table.columns.map((c) =>
+      relativeStrength(c.e1rmKg, weightByDate.get(c.date) ?? null),
+    );
+    // Colonne più recenti prima: [s2, s1].
+    // e1RM s2 = 62,5 × 36/29 ≈ 77,59 → / 82,4 ≈ 0,94.
+    expect(rel[0]).toBeCloseTo(0.94, 5);
+    expect(rel[1]).toBeNull();
   });
 
   it("taglio alle ultime N colonne (default 10)", () => {

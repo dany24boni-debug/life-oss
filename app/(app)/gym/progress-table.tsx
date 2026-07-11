@@ -11,6 +11,7 @@
  */
 
 import { cx } from "@/ui";
+import { relativeStrength } from "@/data/derived";
 import type { GymSet } from "@/data/schemas";
 import { formatDayShort } from "@/ui/calendar-core";
 import { formatKg } from "./logic";
@@ -20,14 +21,25 @@ import {
   formatKgShort,
 } from "./progression";
 
+const REL = new Intl.NumberFormat("it-IT", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function ProgressTable({
   sets,
   dateBySession,
+  weightByDate,
 }: {
   /** Tutti i set dell'esercizio (qualsiasi ordine). */
   sets: readonly GymSet[];
   /** session_id → giorno civile (le sedute fuori mappa restano fuori). */
   dateBySession: ReadonlyMap<string, string>;
+  /**
+   * Giorno → peso corporeo (run-07 P4): accende la riga "Forza Rel."
+   * (e1RM / peso del giorno della seduta; trattino dove manca).
+   */
+  weightByDate?: ReadonlyMap<string, number>;
 }) {
   const table = buildProgressTable(sets, dateBySession);
   if (table.columns.length === 0) {
@@ -79,6 +91,18 @@ export function ProgressTable({
               </td>
             ))}
           </tr>
+          {weightByDate !== undefined ? (
+            <MetaRow
+              label="Forza Rel."
+              cells={table.columns.map((c) => {
+                const rel = relativeStrength(
+                  c.e1rmKg,
+                  weightByDate.get(c.date) ?? null,
+                );
+                return rel !== null ? `×${REL.format(rel)}` : "—";
+              })}
+            />
+          ) : null}
           {Array.from({ length: table.maxSets }, (_, i) => (
             <tr key={`set:${i}`}>
               <RowLabel label={`Set ${i + 1}`} />

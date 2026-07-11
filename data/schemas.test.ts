@@ -238,4 +238,34 @@ describe("Eventi e Settings", () => {
         .success,
     ).toBe(false);
   });
+
+  it("settings pre run-07 (senza profilo): parse coi default, mai scarto", () => {
+    const now = new Date().toISOString();
+    const parsed = SettingsSchema.safeParse({
+      id: "local",
+      display_name: null,
+      theme: "dark",
+      protected_days: [],
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    });
+    expect(parsed.success && parsed.data.height_cm).toBeNull();
+    expect(parsed.success && parsed.data.sex).toBeNull();
+    expect(parsed.success && parsed.data.birth_year).toBeNull();
+    expect(parsed.success && parsed.data.activity_level).toBeNull();
+    // I domini del profilo restano chiusi.
+    expect(
+      SettingsSchema.safeParse({
+        id: "local",
+        display_name: null,
+        theme: "dark",
+        protected_days: [],
+        height_cm: 90,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+      }).success,
+    ).toBe(false);
+  });
 });

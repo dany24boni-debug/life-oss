@@ -188,6 +188,56 @@ describe("SyncEngine — round-trip programmi (run-07)", () => {
   });
 });
 
+describe("SyncEngine — round-trip lo_body + profilo (run-07 P4)", () => {
+  it("la pesata del giorno CONVERGE tra dispositivi (id derivato)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    must(await a.repos.body.upsertDay("2026-07-11", { weight_kg: 82.6 }));
+    await new Promise((r) => setTimeout(r, 5));
+    must(
+      await b.repos.body.upsertDay("2026-07-11", {
+        weight_kg: 82.4,
+        note: "mattina",
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_body")).toHaveLength(1);
+    const suA = await a.repos.body.getByDay("2026-07-11");
+    const suB = await b.repos.body.getByDay("2026-07-11");
+    expect(suA).toEqual(suB);
+    expect(suA?.weight_kg).toBe(82.4); // vince la scrittura più recente
+  });
+
+  it("i campi profilo di Settings viaggiano (lo_settings alterata)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    must(
+      await a.repos.settings.update({
+        height_cm: 180,
+        sex: "m",
+        birth_year: 1996,
+        activity_level: 3,
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    const onB = await b.repos.settings.get();
+    expect(onB.height_cm).toBe(180);
+    expect(onB.sex).toBe("m");
+    expect(onB.birth_year).toBe(1996);
+    expect(onB.activity_level).toBe(3);
+  });
+});
+
 describe("SyncEngine — round-trip lo_esami", () => {
   it("un esame creato su A arriva su B identico (push -> pull)", async () => {
     const remote = new FakeRemote();

@@ -21,6 +21,7 @@ import {
 import {
   appRepos,
   useActiveProgramSlots,
+  useBodyRange,
   useGymSessionsRange,
   useSetsByExercise,
 } from "@/data/hooks";
@@ -206,10 +207,15 @@ function ExerciseProgress({ exercise }: { exercise: GymExercise }) {
   const today = todayLocal();
   const sets = useSetsByExercise(exercise.id, 500);
   const sessions = useGymSessionsRange(addMonths(today, -12), today);
+  // Peso corporeo per giorno (run-07 P4): la riga "Forza Rel.".
+  const bodyEntries = useBodyRange(addMonths(today, -12), today);
 
   const loading = sets === undefined || sessions === undefined;
   const prs = computePRs(sets ?? []);
   const days = new Map((sessions ?? []).map((s) => [s.id, s.date] as const));
+  const weightByDate = new Map(
+    (bodyEntries ?? []).map((e) => [e.date, e.weight_kg] as const),
+  );
   const trend = exerciseTrend(sets ?? [], days);
   const path = sparklinePath(trend, 280, 48);
 
@@ -252,7 +258,13 @@ function ExerciseProgress({ exercise }: { exercise: GymExercise }) {
 
       <div className="flex flex-col gap-1.5 pt-1">
         <p className="em-eyebrow">Le ultime sedute</p>
-        {loading ? null : <ProgressTable sets={sets ?? []} dateBySession={days} />}
+        {loading ? null : (
+          <ProgressTable
+            sets={sets ?? []}
+            dateBySession={days}
+            weightByDate={weightByDate}
+          />
+        )}
       </div>
     </div>
   );
