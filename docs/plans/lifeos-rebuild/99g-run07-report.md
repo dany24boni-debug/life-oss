@@ -191,6 +191,65 @@ $ grep -rni "weight|peso|body" supabase/migrations/*.sql | grep -i "create table
 
 - Quattro check verdi ✓. Formule derivate testate su valori noti ✓. `/corpo` 200 da ospite ✓. Migrazione presente NON applicata ✓. Round-trip `lo_body` ✓. Forza Rel. con dati seminati in un test ✓ (interpretazione logica documentata).
 
-**Commit:** `feat(corpo): date-keyed body metrics, profile with derived targets, Forza Relativa in gym progress`
+**Commit:** `feat(corpo): date-keyed body metrics, profile with derived targets, Forza Relativa in gym progress` → `649bd85`
 
 ---
+
+## Chiusura
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ 2ab9f58) | 54 | **648** | — |
+| Prompt 1 (dominio programmi) | 55 | **679** | +31 |
+| Prompt 2 (builder) | 56 | **686** | +7 |
+| Prompt 3 (griglia + progressi) | 58 | **705** | +21 nuovi, −2 countdown morti |
+| Prompt 4 (corpo + profilo) | 60 | **730** | +25 |
+
+Verifica finale a HEAD: lint ✓ · typecheck ✓ · sentinels ✓ · **730/730** ✓ · build ✓ — tutto in un colpo, albero pulito.
+
+### Commit del branch (`feat/run-07`, off `main` @ `2ab9f58`)
+
+```
+fadbb5a  feat(gym-v2): program domain modeled on the real sheet (sections, variants, textual RIR, per-set feeling)
+c1731de  feat(gym-v2): spreadsheet-fast program builder with sections and Torso A starter
+a1bbec0  feat(gym-v2): set log grid with quiet rest, progress table with e1RM delta, AUMENTA/RESTA verdict
+649bd85  feat(corpo): date-keyed body metrics, profile with derived targets, Forza Relativa in gym progress
+```
+Mai pushato, mai mergiato, `main` intatta. Zero dipendenze nuove (`package.json` intatto). Nessuno script Management API eseguito, nessuna migrazione applicata. Zero emoji nel codice.
+
+### Delta vs brief (riepilogo; ognuno argomentato nel suo prompt)
+
+1. **`weight_kg` era GIÀ nullable** (schema v1 + 0019): "weight becomes nullable" si è tradotto in verifica + test anti-NaN.
+2. **`app/(app)/gym/importer.ts` toccato al P1** (fuori fence alla lettera): 7 righe, tutte `campo: null` — il ripple di tipo della sanzionata evoluzione di sessioni/set; id derivati e golden test INTATTI.
+3. **Export/import JSON reso retro-compatibile** (`.default([])` per tabella): un backup run-06 (11 tabelle) sarebbe stato rifiutato dall'app run-07 (15) — regressione latente pre-esistente, chiusa in nome dello ZERO DATA LOSS.
+4. **"startSessionFromDay materializing planned rows"** interpretato come: la seduta nasce legata al giorno, le righe pianificate della griglia NASCONO dagli slot al render — nessun set fantasma persistito (l'aderenza fatte/previste resterebbe altrimenti sempre 100%).
+5. **Conversione piani v1 → UN programma** ("I miei piani") con un giorno per piano — la lettura che fa funzionare subito la rotazione next-up; id derivati costanti → i device convergono per costruzione.
+6. **Chime del recupero = impostazione per-dispositivo** (localStorage, default OFF, toggle sul chip): la fence P3 concedeva solo query additive sul data layer, e l'audio è semanticamente del device (precedente: tema D5).
+7. **Il campo mancante nel brief tra height_cm e birth_year è il sesso** (indispensabile a Mifflin-St Jeor): aggiunto come `sex "m"/"f"` nullable.
+8. **Nessun importer pesi legacy**: l'audit (quotato al P4) prova che una tabella di pesi corporei non è mai esistita — skip onesto, come il brief chiede.
+9. **"Forza Rel. renders in a test"** = test a livello logico (il repo non ha un framework di render-testing): valori della riga calcolati da dati seminati, valore noto ×0,94 verificato.
+10. **Undo dell'eliminazione set = ricreazione identica** (il port non ha restoreSet; fence P3 additive-only): stessi valori, id nuovo, riga indistinguibile.
+11. Caveat noto di schema-evolution (non nuovo di questo run): un client NON aggiornato che modifica una riga evoluta dopo che un client nuovo ha valorizzato i campi nuovi li azzererebbe al push (zod strip + jsonb null). Rimedio pratico: aggiornare tutti i device dopo il deploy — un utente solo, finestra minima.
+
+### GATE DI DAVIDE (in ordine — la sessione non tocca mai il vivo)
+
+1. **Review + merge**: leggi il diff di `feat/run-07`, poi `git merge --no-ff feat/run-07` su `main`.
+2. **Backup PRIMA**: export JSON da Impostazioni su ogni dispositivo con dati.
+3. **Applica le migrazioni IN ORDINE** — prima le pendenti 0019→0023 (se non già applicate, vedi gate run-06), POI le nuove:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0024_lo_gym_programs.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0025_lo_body_profile.sql
+   ```
+   (Ognuna ridichiara `lo_push` con l'allowlist estesa — 0025 è l'ultima, con 15 tabelle. `scripts/verify-schema.mjs` per confermare.)
+4. **Smoke sul device (la vera acceptance del run):**
+   - **Importa Torso A** (Programmi → "Importa esempio"): la TUA scheda, riga per riga — sezioni, varianti, "2/1/0", recuperi. Ri-tap → "già presente".
+   - **Scrivi Torso B / Gambe nel builder**: DEVE sembrare 5-minuti-veloce — desktop con Invio-che-scende, mobile con la scheda riga; drag per riordinare; giudica tu.
+   - **Logga un allenamento vero con la griglia**: tap sui fantasmi, peso prefillato dall'ultima volta, "Altro" per RIR/feeling, chip del recupero QUIETO (prova anche la campanella), concludi → voto + aderenza + peso di oggi.
+   - **Giudica la tabella Progressi contro il tuo Excel**: colonne datate, volume/e1RM/Δ, punti PR, Forza Rel. col peso del giorno; verdetto AUMENTA/RESTA sul giorno successivo.
+   - /corpo: pesata, trend 7/30/90, storico; Impostazioni → Profilo → controlla le stime.
+   - Due device: programma e pesate convergono (stessa riga, mai doppioni).
+5. **Nota per la prossima chat**: il run-08 costruisce su `data/derived.ts` (già esportato e testato); il brief del run-08 è già scritto e resta invariato.
+
+**Run 07 completo.** La palestra è un quaderno di programmi modellato sul foglio vero — sezioni, prescrizioni testuali, RIR discendente, griglia quieta senza countdown, Progressi rinati con e1RM/Δ/PR/Forza Relativa — e il corpo ha il suo modulo con le stime oneste pronte per il run-08. Quattro check verdi a ogni checkpoint; ogni commit su verde; `main` mai toccata.
