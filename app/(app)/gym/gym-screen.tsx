@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Lo schermo di /gym (B2.3) — quattro tab:
+ * Lo schermo di /gym (B2.3, programmi dal run-07) — quattro tab:
  *   - Allenamento: la sessione di oggi (inizia da zero o da piano,
  *     runner col timer di recupero, concludi con riepilogo volume/durata/
  *     record). Lo stato del timer vive QUI, sopra i Tabs: cambiare tab
@@ -10,7 +10,10 @@
  *     (riusa MonthHeat di /stats); una sessione passata si apre e si
  *     modifica con lo stesso runner (senza timer).
  *   - Libreria: catalogo seminato + custom, scheda con progressi e PR.
- *   - Piani: template ordinati, "inizia da piano".
+ *   - Programmi (run-07): la scheda vera — programmi → giorni → slot
+ *     con sezioni e prescrizioni testuali (programs-panel.tsx). I piani
+ *     v1 vengono convertiti UNA volta in un programma al mount
+ *     (convertPlansToPrograms, idempotente) e restano leggibili.
  * Semina del catalogo al primo uso (idempotente). Guest-first: tutto
  * locale; l'import legacy compare solo agli autenticati.
  */
@@ -38,6 +41,7 @@ import {
   usePlans,
 } from "@/data/hooks";
 import { getDb, hasIndexedDb } from "@/data/db";
+import { convertPlansToPrograms } from "@/data/gym-programs";
 import { seedGymExercises } from "@/data/gym-seed";
 import type { GymExercise, GymPlan, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
@@ -53,7 +57,7 @@ import {
   totalVolumeKg,
   type NewRecord,
 } from "./logic";
-import { PlanEditorSheet } from "./plan-editor";
+import { ProgramsPanel } from "./programs-panel";
 import { SessionRunner, type RestState } from "./session-runner";
 
 type FinishSummary = {
@@ -70,9 +74,13 @@ export function GymScreen({ authed }: { authed: boolean }) {
   const plans = usePlans();
   const exercises = useExercises();
 
-  // Semina idempotente del catalogo al primo uso del modulo.
+  // Semina idempotente del catalogo + conversione una-tantum dei piani
+  // v1 in programma (run-07; idempotente, id derivati) al primo uso.
   useEffect(() => {
-    if (hasIndexedDb()) void seedGymExercises(getDb());
+    if (hasIndexedDb()) {
+      const db = getDb();
+      void seedGymExercises(db).then(() => convertPlansToPrograms(db));
+    }
   }, []);
 
   // Timer di recupero sopra i Tabs (i pannelli si smontano).
@@ -80,8 +88,6 @@ export function GymScreen({ authed }: { authed: boolean }) {
   const [finish, setFinish] = useState<FinishSummary | null>(null);
   const [detailExercise, setDetailExercise] = useState<GymExercise | null>(null);
   const [createExercise, setCreateExercise] = useState(false);
-  const [editPlan, setEditPlan] = useState<GymPlan | null>(null);
-  const [createPlan, setCreatePlan] = useState(false);
   const [historySessionId, setHistorySessionId] = useState<string | null>(null);
 
   const active =
@@ -139,7 +145,7 @@ export function GymScreen({ authed }: { authed: boolean }) {
           { value: "oggi", label: "Allenamento" },
           { value: "storico", label: "Storico" },
           { value: "libreria", label: "Libreria" },
-          { value: "piani", label: "Piani" },
+          { value: "programmi", label: "Programmi" },
         ]}
       >
         {(tab) => (
@@ -180,15 +186,7 @@ export function GymScreen({ authed }: { authed: boolean }) {
               />
             ) : null}
 
-            {tab === "piani" ? (
-              <PlansPanel
-                plans={plans}
-                onOpen={setEditPlan}
-                onCreate={() => setCreatePlan(true)}
-                onStart={(plan) => void startSession(plan)}
-                canStart={active === null}
-              />
-            ) : null}
+            {tab === "programmi" ? <ProgramsPanel /> : null}
           </div>
         )}
       </Tabs>
@@ -199,14 +197,6 @@ export function GymScreen({ authed }: { authed: boolean }) {
         onClose={() => {
           setDetailExercise(null);
           setCreateExercise(false);
-        }}
-      />
-      <PlanEditorSheet
-        plan={editPlan}
-        createOpen={createPlan}
-        onClose={() => {
-          setEditPlan(null);
-          setCreatePlan(false);
         }}
       />
       <HistorySessionSheet
@@ -504,69 +494,3 @@ function LibraryPanel({
   );
 }
 
-/* ── Piani ───────────────────────────────────────────────────────────── */
-
-function PlansPanel({
-  plans,
-  onOpen,
-  onCreate,
-  onStart,
-  canStart,
-}: {
-  plans: GymPlan[] | undefined;
-  onOpen: (plan: GymPlan) => void;
-  onCreate: () => void;
-  onStart: (plan: GymPlan) => void;
-  canStart: boolean;
-}) {
-  if (plans === undefined) return <Skeleton className="h-24 w-full" />;
-  return (
-    <div className="flex flex-col gap-3">
-      {plans.length === 0 ? (
-        <EmptyState
-          compact
-          heading="Nessun piano"
-          text='Un piano è una scaletta con obiettivi "serie × ripetizioni": crea il primo.'
-          action={
-            <Button type="button" size="sm" variant="primary" onClick={onCreate}>
-              Nuovo piano
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <ul className="flex flex-col">
-            {plans.map((p) => (
-              <li
-                key={p.id}
-                className="flex min-h-11 items-center gap-3 border-b border-[var(--em-hairline)] py-2.5 last:border-b-0"
-              >
-                <button
-                  type="button"
-                  onClick={() => onOpen(p)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <span className="em-body block truncate text-[var(--em-text)]">
-                    {p.name}
-                  </span>
-                  <span className="em-body-sm text-[var(--em-text-3)]">
-                    {p.entries.length}{" "}
-                    {p.entries.length === 1 ? "esercizio" : "esercizi"}
-                  </span>
-                </button>
-                {canStart ? (
-                  <Button type="button" size="sm" onClick={() => onStart(p)}>
-                    Inizia
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          <Button type="button" variant="ghost" onClick={onCreate}>
-            + Nuovo piano
-          </Button>
-        </>
-      )}
-    </div>
-  );
-}

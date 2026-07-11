@@ -83,6 +83,40 @@ Nessun cambiamento di comportamento runtime (gli id derivati e i golden test del
 - Test matematica a peso nullo ✓ (no-NaN su volume/PR/record).
 - Grep "no UI change yet" ✓ (sopra).
 
-**Commit:** `feat(gym-v2): program domain modeled on the real sheet (sections, variants, textual RIR, per-set feeling)`
+**Commit:** `feat(gym-v2): program domain modeled on the real sheet (sections, variants, textual RIR, per-set feeling)` → `fadbb5a`
+
+---
+
+## Prompt 2 — Builder di programmi (authoring UX)
+
+**Checkpoint: VERDE.** lint ✓ (un `react-hooks/immutability` intermedio — indice di riga mutato nel render — corretto con una Map precalcolata) · tsc ✓ · build ✓ · sentinels ✓ · test **686/686, 56 file** (+7: `app/(app)/gym/program-parse.test.ts`). **Dev-server DA OSPITE:** `/gym` **200**; tab "Programmi" nell'HTML servito; copy dello starter ("Importa esempio…") verificata nel chunk JS servito della pagina (il pannello monta al tap del tab, per costruzione dei Tabs); **zero controlli nativi** nell'HTML (`<select`, checkbox/date/time/number: 0 occorrenze).
+
+### Struttura (tutto dentro `app/(app)/gym/**` — fence rispettata alla lettera)
+
+- **`programs-panel.tsx`** — il tab "Programmi" (sostituisce "Piani"): navigazione drill-down lista → programma → giorno (niente modali per superfici grandi). Lista: nome + conteggio giorni + chip "attiva"; azioni **Attiva** (updateProgram is_active — il repo spegne gli altri), apertura editor; in coda "+ Nuovo programma" (crea "Nuova scheda" e apre subito l'editor) e **"Importa esempio: Torso A"**. EmptyState onesto con entrambe le azioni. Editor programma: rinomina inline (commit-on-blur, Invio conferma), **Duplica** (toast "Duplicata: X (copia)"), **Elimina con undo** (toast Annulla → restoreProgram, che revive anche giorni e slot del cascade — P1), e **card-giorno riordinabili**: drag dalla maniglia (pointer-based, transform 60fps) + frecce su/giù come fallback tastiera; card con nome/sottotitolo/conteggio, duplica e elimina con undo; "+ Nuovo giorno" apre subito l'editor del giorno.
+- **`day-editor.tsx`** — LA TABELLA. Meta del giorno: nome, sottotitolo, **chips giorno-feriale L-D** (toggle per azzerare; aria-label coi nomi pieni). Righe = slot raggruppati sotto le **intestazioni di sezione derivate dai blocchi consecutivi** (l'ordine totale sort_order resta la verità; mai riordino implicito per sezione — logica pura `sectionGroups`, testata). Desktop (md+): griglia a colonne fisse con overflow-x — grip · **Esercizio** (tap → picker con autocomplete E **creazione inline** «Crea "query"») · **Variante** (testo) · **Serie** (stepper 1..10) · **Reps** (testo, placeholder "3–5") · **RIR** (testo, placeholder "1–2 o 2/1/0") · **Rec** (input "90"/"1'30"/"4'", parse puro; garbage → ripristino silenzioso del valore) · chip **corpo** · azioni (duplica riga · scheda "altro" · elimina con undo). **Invio conferma e scende alla stessa colonna della riga sotto** (data-cell/data-row + focus). Mobile: riga compatta (nome · variante + riepilogo "4×3–5 · RIR 1 · rec 4'30") che si apre in **BottomSheet** con target 44px: cambio esercizio, variante, **sezione a chips FORZA/IPERTROFIA/CORE + "altra…"** (custom, uppercased), serie stepper, reps/RIR testuali, **recupero a chips 60/75/90/120/150/180/210/240/270 + "altro…"** (input col parse), **Switch corpo libero**, note, duplica/elimina. La stessa scheda si apre da desktop (Modal) per sezione e note. Add-riga: "+ aggiungi qui" per sezione (sort_order = ultimo del blocco + 0,5, normalizzato al prossimo reorder), "+ Esercizio" in coda (eredita l'ultima sezione), chips "+ FORZA/IPERTROFIA/CORE" per le sezioni non ancora presenti.
+- **`program-parse.ts`** (+7 test) — logica pura del builder: `normalizePrescriptionInput` ("3-5" → "3–5" come sul foglio, trim/collapse, tetto 20), `parseRestInput` ("90", "1'30", "1:30", "4'", "2'15"; clamp 0..900; garbage → null), `formatRestShort` (270→"4'30", 45→'45"'), `sectionGroups` (consecutivi, mai riordino), `slotSummary`.
+- **`use-row-drag.ts`** — la meccanica di riordino del task-list (run-03) estratta a hook: parte solo dalla maniglia, transform-only; bersaglio del drop = riga col **punto medio più vicino** (misurati alla partenza) — regge le liste NON uniformi (intestazioni di sezione tra le righe). Usata da card-giorno e righe-slot (desktop e mobile).
+- **`exercise-picker.tsx`** — prop `allowCreate`: con query senza match (e non solo), riga «+ Crea "query"» → `createExercise(gruppo "altro")` → onPick immediato. Il flusso Libreria esistente non cambia (prop opt-in).
+- **`gym-screen.tsx`** — tab "Piani" → "Programmi"; al mount, dopo la semina del catalogo, **`convertPlansToPrograms`** (idempotente, P1). Stato/modale del vecchio editor piani rimossi.
+
+### Cancellazione grep-gated
+
+`plan-editor.tsx` (PlanEditorSheet) — consumatori PRIMA della rimozione:
+```
+$ grep -rn "plan-editor\|PlanEditorSheet\|PlansPanel" app lib components data ui
+app/(app)/gym/gym-screen.tsx:56:import { PlanEditorSheet } from "./plan-editor";
+app/(app)/gym/gym-screen.tsx:184/204/509 (PlansPanel interna + uso)
+app/(app)/gym/plan-editor.tsx:24 (definizione)
+```
+Unico consumatore = gym-screen (dentro il set di modifica) → `git rm` + rimozione della PlansPanel interna. I PIANI (dati) restano: leggibili, convertiti al mount, referenziati dalle sessioni storiche.
+
+### Scelte documentate
+
+1. **StartPanel intatto in questo prompt**: i bottoni "Da piano: X" del tab Allenamento restano finché il prompt 3 non riscrive il flusso di partenza ("Inizia: Torso A" + next-up) — nessuna regressione intermedia; la duplicazione visiva piani-convertiti/bottoni dura un commit.
+2. **Chips recupero su mobile, input testuale su desktop**: il brief chiede chips + custom E il flusso-foglio da tastiera; sul desktop l'input parse-ato ("4'") è più veloce dei chip, che restano nella scheda riga (dove vive anche la sezione). Entrambi passano dallo stesso `parseRestInput` testato.
+3. **Rinominare una sezione** = cambiarla sulle righe (la sezione è un'etichetta sugli slot, non un'entità): gesto per-riga dalla scheda; un rename-blocco è un raffinamento futuro.
+
+**Commit:** `feat(gym-v2): spreadsheet-fast program builder with sections and Torso A starter`
 
 ---
