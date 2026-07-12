@@ -256,6 +256,69 @@ Il delta è proporzionato a TRE sezioni nuove di Oggi (strip anelli, Adesso con 
 
 - Quattro check verdi ✓; `lib/focus/engine` interamente sotto test incluso il reload-resume ✓; `/focus` 200 da ospite ✓; il test agenda prova i task senza orario in fascia giornata ✓; voci palette nel chunk servito ✓; delta di dimensione riportato ✓.
 
-**Commit:** `feat(focus): resilient pomodoro with focus log, all-day tasks in agenda, cross-wiring`
+**Commit:** `feat(focus): resilient pomodoro with focus log, all-day tasks in agenda, cross-wiring` → `af5e98b`
 
 ---
+
+## Chiusura
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ 1a45642) | 60 | **730** | — |
+| Prompt 1 (dominio abitudini) | 62 | **772** | +42 |
+| Prompt 2 (UI abitudini) | 63 | **783** | +11 |
+| Prompt 3 (dominio planner) | 65 | **809** | +26 |
+| Prompt 4 (UI planner) | 66 | **823** | +14 |
+| Prompt 5 (focus + cross-wiring) | 68 | **844** | +21 |
+
+Verifica finale a HEAD: lint ✓ · typecheck ✓ · sentinels ✓ · **844/844** ✓ · build ✓ — albero pulito. 59 file cambiati, +8.954/−50.
+
+### Commit del branch (`feat/run-08`, off `main` @ `1a45642`)
+
+```
+abfa788  feat(habits): habits domain with date-keyed logs, per-habit streaks, seeded water
+bf06453  feat(habits): daily board with animated rings, quick logging, Today strip
+27dd153  feat(planner): week plan templates with per-week slot checks and skip stats
+a11163f  feat(planner): week board with hour slots, plan manager, skip history, Adesso on Today
+af5e98b  feat(focus): resilient pomodoro with focus log, all-day tasks in agenda, cross-wiring
+```
+Mai pushato, mai mergiato, `main` intatta. **Zero dipendenze nuove** (`package.json` byte-identico). Nessuna migrazione applicata, nessuno script contro il vivo. Zero emoji nel codice. Dexie v7 → **v10** (tre bump additivi, tutti con survival test).
+
+### Delta vs brief (riepilogo; ognuno argomentato nel suo prompt)
+
+1. **Completamento abitudini valutato contro l'obiettivo effettivo CORRENTE** (il log del brief non fotografa il target): deterministico cross-device; il target dell'acqua che sale col peso rivaluta anche i giorni passati.
+2. **Acqua senza profilo**: default di prodotto 2.000 ml dichiarato (non è la stima di formula, che resta `waterTargetMl`); override manuale = `daily_target` valorizzato, "Torna al profilo" lo azzera.
+3. **I valori dei log NON si sommano tra dispositivi** (LWW row-mirror): limite inerente al sync esistente, testato e documentato.
+4. **Planner senza piano seminato** (una "settimana tipo" non ha un default onesto, a differenza dell'acqua): il dev-check di "Adesso" è a livello chunk servito, dichiarato al P4.
+5. **Passato "read-only-editable"** = spuntabile retroattivamente; solo il futuro è anteprima non toccabile.
+6. **Slot senza fine** = dura fino al prossimo slot, max un'ora di cortesia (per lo stato "in corso").
+7. **Planner fuori dalla streak globale** (per brief): documentato in `data/planner.ts`; il focus invece DENTRO (per brief), quarta fonte di `activityDays`.
+8. **Rollover del focus al rientro**: si avanza di UNA fase, in pausa — mai pomodori finti; in tab aperta la fase nuova parte dall'istante esatto di fine (zero deriva). Skip = minuti veri maturati.
+9. **`/stats` toccato fuori dalla riga di fence** ma su ordine esplicito del build spec (tile "minuti di focus"); aggiornata anche la caption del Mese, che altrimenti sarebbe diventata falsa (non citava abitudini e focus).
+10. **Tile focus su Oggi NON aggiunto** ("optionally"): il launcher è già la presenza focus della home e il budget JS conta.
+11. **Badge del focus con flag proprio**: mai toccare il badge dei promemoria (conteggio reale di reminders-host).
+12. **Check inline sui task in agenda** (a destra, colonna orario allineata): la lettura operativa di "completable from there".
+13. **Misura di Oggi a livello chunk** (Next 16 non stampa più First Load JS): 27,1 kB → 46,6 kB raw (~13,9 kB gzip), proporzionato alle tre sezioni nuove; grafo verificato senza moduli trascinati per sbaglio.
+
+### GATE DI DAVIDE (in ordine — la sessione non tocca mai il vivo)
+
+1. **Review + merge**: leggi il diff di `feat/run-08`, poi `git merge --no-ff feat/run-08` su `main`.
+2. **Backup PRIMA**: export JSON da Impostazioni su ogni dispositivo con dati.
+3. **Applica le migrazioni IN ORDINE** — prima le pendenti fino a 0025 (vedi gate run-07), POI le nuove:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0026_lo_habits.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0027_lo_planner.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0028_lo_focus.sql
+   ```
+   (Ognuna ridichiara `lo_push` con l'allowlist estesa — 0028 è l'ultima, con 21 tabelle. `scripts/verify-schema.mjs` per confermare.)
+4. **Smoke sul device (la vera acceptance del run):**
+   - **Abitudini col pollice**: /abitudini — l'Acqua c'è già col target dal tuo profilo (pesati in /corpo e guarda l'obiettivo seguire); chips +200/+330/+500, "totale…", la spunta grande delle boolean, il pop dell'anello; ieri modificabile, domani no; la strip su Oggi con l'acqua per prima; archivia/elimina con Annulla.
+   - **Settimana sul telefono**: crea "Settimana lavoro" (authoring: TimePicker + copia-giorno + "copia anche in"), snap-scroll con oggi centrato, **tap = fatto, tieni premuto = saltato**, l'ember dot sullo slot in corso; "Adesso" su Oggi col check inline; dopo qualche settimana guarda lo Storico e "Salti più spesso".
+   - **Pomodoro attraverso un blocco schermo**: avvia da Oggi o dalla palette ("Avvia focus", `g poi f`), blocca il telefono oltre la fine fase → al rientro il chime suona e la fase è passata (in pausa, onestamente); ±1' in corsa; i minuti compaiono su /focus, su /stats e nella streak.
+   - **Agenda**: un task datato senza orario ora sta nella fascia "giornata" del giorno, spuntabile lì.
+   - Due device: log dell'acqua e check della settimana convergono (stessa riga, mai doppioni).
+5. **Nota per la prossima chat (run-09, v2 restante):** Dieta (piano settimanale + varianti + log per pasto + libreria alimenti personale + kcal/macro vs `calorieTarget` di data/derived.ts, già esportato); morning brief su Oggi (key-gated, dati veri); ricorrenze dei task; push notifications (stub 17: `lo_push_subscriptions` già pronta, migrazioni 0021-0023). Il brief del run-08 è chiuso: niente scope oltre il prompt 5.
+
+**Run 08 completo.** Tre pilastri cablati a fondo: le abitudini con anelli, streak per-serie e l'acqua che segue il profilo; la settimana tipo scritta una volta e spuntata per sempre, con la storia che dice cosa ti scappa; il pomodoro che non perde mai il tempo — calcolato, non contato — e che alimenta streak e statistiche. Quattro check verdi a ogni checkpoint; ogni commit su verde; `main` mai toccata.
