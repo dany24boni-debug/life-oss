@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconExam,
   IconMoon,
+  IconRepeat,
   IconScale,
   IconWallet,
 } from "../_components/icons";
@@ -29,6 +30,12 @@ const MODULE_LINKS: Array<{
   desc: string;
   icon: (props: { className?: string }) => React.ReactElement;
 }> = [
+  {
+    href: "/abitudini",
+    label: "Abitudini",
+    desc: "Board del giorno, anelli e streak",
+    icon: IconRepeat,
+  },
   {
     href: "/esami",
     label: "Esami",

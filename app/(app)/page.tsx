@@ -10,6 +10,7 @@ import {
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
 import { TodayAgenda } from "./_components/today-agenda";
 import { TodayGym } from "./_components/today-gym";
+import { TodayHabits } from "./_components/today-habits";
 import { TodayTasks } from "./_components/tasks/today-section";
 import { TodayTiles } from "./_components/today-tiles";
 
@@ -83,6 +84,9 @@ export default async function TodayPage() {
 
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
       <TodayTiles />
+
+      {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
+      <TodayHabits />
 
       {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
       <WhileAwayCard />

@@ -20,6 +20,7 @@ import {
   IconExam,
   IconGym,
   IconMoon,
+  IconRepeat,
   IconScale,
   IconSettings,
   IconStats,
@@ -49,6 +50,7 @@ const TABS: NavItem[] = [
  * restano cinque.
  */
 const MODULES: NavItem[] = [
+  { href: "/abitudini", label: "Abitudini", icon: IconRepeat },
   { href: "/esami", label: "Esami", icon: IconExam },
   { href: "/spese", label: "Spese", icon: IconWallet },
   { href: "/sera", label: "Sera", icon: IconMoon },

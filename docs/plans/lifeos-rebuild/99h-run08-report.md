@@ -83,6 +83,42 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓ (più sentinels). Migrazione presente, NON applicata ✓. Golden test del prefisso log-id ✓. Streak per-abitudine con giorni protetti e DST ✓. Acqua seminata che segue `waterTargetMl` con override manuale ✓. `activityDays` esteso e testato ✓. Dexie bump con survival ✓. Round-trip FakeRemote ✓.
 
-**Commit:** `feat(habits): habits domain with date-keyed logs, per-habit streaks, seeded water`
+**Commit:** `feat(habits): habits domain with date-keyed logs, per-habit streaks, seeded water` → `abfa788`
+
+---
+
+## Prompt 2 — UI Abitudini (la board quotidiana)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ (`ƒ /abitudini`) · sentinels ✓ · test **783/783, 63 file** (+11: `app/(app)/abitudini/logic.test.ts` nuovo — anello, chips, formattazione it-IT, parse input, water-first, futuro sola-lettura). **Dev-server DA OSPITE:** `/abitudini` **200** ("Gestione" e "Giorno precedente" nell'HTML servito) e `/` **200** con `aria-label="Abitudini"` (la strip) — **zero controlli nativi** su entrambe (`<select`, checkbox/date/time/number: 0 occorrenze).
+
+### Struttura (`app/(app)/abitudini/**` nuovo)
+
+- **`logic.ts`** (+test): `ringProgress` (0..1 clampata; senza obiettivo pieno solo con valore), `quickSteps` (acqua = gesti reali 200/330/500 ml; con obiettivo = passi "parlanti" derivati ≈1/10-1/4-1/2 arrotondati a 1/2/5×10ⁿ, dedupe; senza = 1/5/10), `defaultQuickStep` (il chip di mezzo: 330 ml one-thumb), `formatHabitValue` (**`useGrouping: "always"`** — la landmine it-IT sotto 10.000: "2.800"), `formatValueLine`, `parseValueInput` (virgola o punto, mai negativo, garbage → null), `waterFirst`, `canEditDay` (futuro = sola lettura).
+- **`habit-card.tsx`** — la card della board: **anello Ember 52px** (ProgressRing riusata, transizione sull'arco; il centro cambia con `em-pop-in` via key-swap SENZA mai smontare l'anello — smontarlo ucciderebbe la transizione CSS; reduced-motion = collasso globale Ember già in ember.css); **boolean** = tap sull'INTERA card (bottone assoluto sotto i controlli, aria-label onesta), spunta grande al centro; **counter** = tap card +1, "−" esplicito 44px; **quantity** = chips d'incremento + **"totale…"** che apre l'input inline (Invio conferma, Esc annulla, parse testato — niente input number nativo, `inputMode="decimal"`); fiamma della streak per-abitudine (IconFlame + conteggio, ember quando oggi conta).
+- **`habit-sheet.tsx`** — la scheda (BottomSheet mobile / Modal desktop): riga streak "corrente · migliore", **mini-heat del mese** (RIUSO di `MonthHeat` di /stats: giorni completati pieni, protetti bordati), nome commit-on-blur, **icon picker** (griglia 12 chiavi curate, aria-pressed), **obiettivo**: per l'acqua "Segue il profilo: ~2.800 ml" con **Imposta manuale / Torna al profilo** (daily_target null = derivato — il contratto del P1), per le altre input col parse; unità editabile (quantity); **giorni previsti** a chips L-D + "Tutti" (insieme vuoto torna a "tutti i giorni"; copy onesta: "Nei giorni non previsti la streak non si spezza: fa ponte"); **Archivia** (undo = unarchive, copy "la storia resta") ed **Elimina** (undo = restore del cascade P1). `CreateHabitSheet`: nome autofocus, tipo a card (Sì/No · Contatore · Quantità — kind si sceglie SOLO alla creazione, contratto P1), obiettivo/unità condizionali, icona, giorni.
+- **`abitudini-screen.tsx`** — navigazione giorno (‹ › + "Torna a oggi"; futuro navigabile ma "sola lettura" dichiarata e controlli spenti), board, **starter card** "Inizia da qui" finché l'unica abitudine viva è l'Acqua seminata (le 3 proposte one-tap del P1: Lettura/Camminata/Stretching), **Gestione**: riordino drag dalla maniglia (RIUSO di `useRowDrag`+`moveIndex` del gym, transform-only) + apertura scheda, archiviate con chip. `seedWaterHabit` al mount (idempotente, non risuscita).
+- **`page.tsx`** — shell server col pattern corpo (`metadata`, header Modulo).
+
+### Cablaggio (anchored)
+
+- **`app/(app)/page.tsx`** — la strip tra tile e task, prima di WhileAwayCard:
+```
+       <TodayTiles />
++
++      {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
++      <TodayHabits />
+
+       {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
+       <WhileAwayCard />
+```
+  (+ import `TodayHabits`). **`today-habits.tsx`** (_components): fila orizzontale di anelli 48px, **acqua per prima** (`waterFirst`), tap = log rapido (boolean toggle, counter +1, quantity + chip di mezzo — per l'acqua 330 ml), nome sotto, header-link a /abitudini; semina al mount anche qui (Oggi può essere la prima superficie vista).
+- **`icons.tsx`** — `IconRepeat` (modulo), `IconFlame` (streak) + le 10 icone nuove del set curato e la mappa **`HABIT_ICONS`/`HabitIcon`** (chiave ignota degrada alla spunta, mai un buco); goccia/libro/passi/stretching/sole/cuore/taccuino/musica/respiro disegnate a tratto 1.8 come le esistenti, `luna` e `spunta` riusano IconMoon/IconCheck.
+- **`app-nav.tsx`** — Rail "Moduli": Abitudini PRIMA voce (è il modulo quotidiano), poi Esami/Spese/Sera/Corpo. **`impostazioni/page.tsx`** — MODULE_LINKS idem con desc "Board del giorno, anelli e streak".
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; `/abitudini` 200 da ospite e strip su Oggi nel primo HTML ✓; zero controlli nativi ✓; matematica anello + logica board sotto test ✓ (P1 copre board/streak, qui i +11 della UI logic).
+
+**Commit:** `feat(habits): daily board with animated rings, quick logging, Today strip`
 
 ---
