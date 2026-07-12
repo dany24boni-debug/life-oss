@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CommandPalette, Modal, type CommandItem } from "@/ui";
+import { startFocusNow } from "../focus/use-focus";
 import { requestQuickAdd } from "./quick-add-bus";
 import { bootTheme, setThemeMode } from "./theme";
 
@@ -59,9 +60,13 @@ const NAV_TARGETS: Array<{ id: string; label: string; href: string; keywords: st
   { id: "nav:/calendar", label: "Calendario", href: "/calendar", keywords: "agenda eventi" },
   { id: "nav:/gym", label: "Palestra", href: "/gym", keywords: "gym allenamento" },
   { id: "nav:/stats", label: "Statistiche", href: "/stats", keywords: "stats numeri streak" },
+  { id: "nav:/abitudini", label: "Abitudini", href: "/abitudini", keywords: "habits anelli acqua streak" },
+  { id: "nav:/settimana", label: "Settimana", href: "/settimana", keywords: "planner piano slot settimana tipo" },
+  { id: "nav:/focus", label: "Focus", href: "/focus", keywords: "pomodoro timer concentrazione" },
   { id: "nav:/esami", label: "Esami", href: "/esami", keywords: "studio università capitoli" },
   { id: "nav:/spese", label: "Spese", href: "/spese", keywords: "soldi uscite finance" },
   { id: "nav:/sera", label: "Sera", href: "/sera", keywords: "diario check-in journal" },
+  { id: "nav:/corpo", label: "Corpo", href: "/corpo", keywords: "peso corporeo bilancia trend" },
   { id: "nav:/impostazioni", label: "Impostazioni", href: "/impostazioni", keywords: "settings account sync tema" },
 ];
 
@@ -71,6 +76,7 @@ const GO_KEYS: Record<string, string> = {
   c: "/calendar",
   g: "/gym",
   s: "/stats",
+  f: "/focus",
 };
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -123,6 +129,17 @@ export function ComfortHost() {
         onSelect: () => {
           pushRecent("act:new-task");
           openQuickAdd();
+        },
+      },
+      {
+        id: "act:start-focus",
+        label: "Avvia focus",
+        group: "Azioni",
+        keywords: "pomodoro timer concentrazione parti",
+        onSelect: () => {
+          pushRecent("act:start-focus");
+          startFocusNow();
+          router.push("/focus");
         },
       },
     ];
@@ -221,6 +238,7 @@ export function ComfortHost() {
             ["g poi c", "Vai a Calendario"],
             ["g poi g", "Vai a Palestra"],
             ["g poi s", "Vai a Statistiche"],
+            ["g poi f", "Vai a Focus"],
             ["?", "Questo riepilogo"],
             ["Esc", "Chiude palette, schede e finestre"],
           ].map(([keys, desc]) => (

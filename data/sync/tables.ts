@@ -21,6 +21,7 @@ import {
   EveningCheckinSchema,
   ExamSchema,
   ExpenseSchema,
+  FocusSessionSchema,
   GymExerciseSchema,
   GymPlanSchema,
   GymProgramDaySchema,
@@ -28,10 +29,15 @@ import {
   GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
+  HabitLogSchema,
+  HabitSchema,
   LocalEventSchema,
+  PlanSlotSchema,
   ReminderSchema,
   SettingsSchema,
+  SlotCheckSchema,
   TaskSchema,
+  WeekPlanSchema,
   type IsoInstant,
 } from "../schemas";
 
@@ -49,6 +55,12 @@ export type LocalTableName =
   | "spese"
   | "sera"
   | "body"
+  | "habits"
+  | "habit_logs"
+  | "week_plans"
+  | "plan_slots"
+  | "slot_checks"
+  | "focus_sessions"
   | "gym_exercises"
   | "gym_plans"
   | "gym_programs"
@@ -117,6 +129,42 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     local: "body",
     remote: "lo_body",
     parse: parserFor(BodyEntrySchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "habits",
+    remote: "lo_habits",
+    parse: parserFor(HabitSchema),
+    instantColumns: [...AUDIT, "archived_at"],
+  },
+  {
+    local: "habit_logs",
+    remote: "lo_habit_logs",
+    parse: parserFor(HabitLogSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "week_plans",
+    remote: "lo_week_plans",
+    parse: parserFor(WeekPlanSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "plan_slots",
+    remote: "lo_plan_slots",
+    parse: parserFor(PlanSlotSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "slot_checks",
+    remote: "lo_slot_checks",
+    parse: parserFor(SlotCheckSchema),
+    instantColumns: [...AUDIT, "checked_at"],
+  },
+  {
+    local: "focus_sessions",
+    remote: "lo_focus_sessions",
+    parse: parserFor(FocusSessionSchema),
     instantColumns: AUDIT,
   },
   {

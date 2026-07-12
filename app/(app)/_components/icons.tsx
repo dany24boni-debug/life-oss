@@ -198,3 +198,169 @@ export function IconScale({ className }: IconProps) {
     </svg>
   );
 }
+
+/* ── Abitudini (run-08): icona del modulo + set curato per-abitudine ──── */
+
+/** Abitudini: il ciclo che si ripete (modulo, run-08). */
+export function IconRepeat({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4.5 12a7.5 7.5 0 0 1 13-5.1" />
+      <path d="M17.5 3.5v3.4h-3.4" />
+      <path d="M19.5 12a7.5 7.5 0 0 1-13 5.1" />
+      <path d="M6.5 20.5v-3.4h3.4" />
+    </svg>
+  );
+}
+
+/** Settimana: la griglia lun-dom col check (modulo planner, run-08). */
+export function IconWeek({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="3.5" y="5.5" width="17" height="14.5" rx="3" />
+      <path d="M3.5 10h17" />
+      <path d="M8.5 3.5v3M15.5 3.5v3" />
+      <path d="m8.5 14.5 2 2 4-4.2" />
+    </svg>
+  );
+}
+
+/** Focus: il bersaglio del pomodoro (modulo, run-08 P5). */
+export function IconFocus({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="8.25" />
+      <circle cx="12" cy="12" r="4.4" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Fiamma della streak per-abitudine. */
+export function IconFlame({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 3.5c.5 2.5-.8 3.9-2.2 5.4C8.3 10.5 7 12 7 14.3A5 5 0 0 0 12 19a5 5 0 0 0 5-4.7c0-1.9-.9-3.3-1.9-4.6-.4 1-.9 1.6-1.7 2.1.2-2.9-.5-6-1.4-8.3Z" />
+    </svg>
+  );
+}
+
+function IconDrop({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 3.8c2.9 3.7 5.5 6.7 5.5 10a5.5 5.5 0 0 1-11 0c0-3.3 2.6-6.3 5.5-10Z" />
+    </svg>
+  );
+}
+
+function IconBook({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15.5H7.5A2.5 2.5 0 0 0 5 21V5.5Z" />
+      <path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H19" />
+    </svg>
+  );
+}
+
+function IconSteps({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M8.5 4.5c1.6 0 2.5 1.4 2.5 3.2 0 1.5-.7 2.8-2.2 2.8S6.5 9.4 6.5 8c0-1.9.6-3.5 2-3.5Z" />
+      <path d="M7.5 12.5h3v1.6a1.5 1.5 0 0 1-3 0v-1.6Z" />
+      <path d="M15.5 9.5c1.4 0 2 1.6 2 3.5 0 1.4-.8 2.5-2.3 2.5s-2.2-1.3-2.2-2.8c0-1.8.9-3.2 2.5-3.2Z" />
+      <path d="M14.5 17.5h3v1.5a1.5 1.5 0 0 1-3 0v-1.5Z" />
+    </svg>
+  );
+}
+
+function IconStretch({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="5" r="1.8" />
+      <path d="M12 7.5v6M12 9.5 7 7M12 9.5l5-2.5" />
+      <path d="m12 13.5-3 6M12 13.5l3 6" />
+    </svg>
+  );
+}
+
+function IconSun({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="3.8" />
+      <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" />
+    </svg>
+  );
+}
+
+function IconHeart({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M12 19.5c-4.5-3-7.5-5.8-7.5-9A4 4 0 0 1 12 8a4 4 0 0 1 7.5 2.5c0 3.2-3 6-7.5 9Z" />
+    </svg>
+  );
+}
+
+function IconNotebook({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="6" y="3.5" width="13" height="17" rx="2.5" />
+      <path d="M4.5 7.5h3M4.5 12h3M4.5 16.5h3" />
+      <path d="M10.5 8.5h4" />
+    </svg>
+  );
+}
+
+function IconMusic({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M9.5 17.5V6l9-1.8v11.3" />
+      <circle cx="7.2" cy="17.5" r="2.3" />
+      <circle cx="16.2" cy="15.5" r="2.3" />
+    </svg>
+  );
+}
+
+function IconBreath({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M4 8.5h9a2.3 2.3 0 1 0-2.2-3" />
+      <path d="M4 12.5h13.5a2.5 2.5 0 1 1-2.4 3.2" />
+      <path d="M4 16.5h6" />
+    </svg>
+  );
+}
+
+/**
+ * Il set curato per-abitudine (run-08): chiave persistita → icona a
+ * tratto. Le chiavi vivono in data/habits.ts (HABIT_ICON_KEYS); una
+ * chiave ignota degrada alla spunta, mai un buco.
+ */
+export const HABIT_ICONS: Record<
+  string,
+  (props: IconProps) => React.ReactElement
+> = {
+  spunta: IconCheck,
+  goccia: IconDrop,
+  libro: IconBook,
+  passi: IconSteps,
+  stretching: IconStretch,
+  sole: IconSun,
+  luna: IconMoon,
+  cuore: IconHeart,
+  fiamma: IconFlame,
+  taccuino: IconNotebook,
+  musica: IconMusic,
+  respiro: IconBreath,
+};
+
+/** L'icona dell'abitudine, con degrado onesto per chiavi future. */
+export function HabitIcon({
+  icon,
+  className,
+}: {
+  icon: string;
+  className?: string;
+}) {
+  const Component = HABIT_ICONS[icon] ?? IconCheck;
+  return <Component className={className} />;
+}

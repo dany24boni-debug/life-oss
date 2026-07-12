@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   EventCreateSchema,
+  FocusSessionSchema,
   GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
+  HabitCreateSchema,
+  HabitLogSchema,
+  HabitSchema,
   HhmmSchema,
   IsoDaySchema,
+  IsoWeekSchema,
+  PlanSlotPatchSchema,
+  PlanSlotSchema,
   ProgramSlotCreateSchema,
   ProgramSlotPatchSchema,
   SettingsSchema,
+  SlotCheckSchema,
   TaskCreateSchema,
   TaskPatchSchema,
   TaskSchema,
@@ -266,6 +274,146 @@ describe("Eventi e Settings", () => {
         updated_at: now,
         deleted_at: null,
       }).success,
+    ).toBe(false);
+  });
+});
+
+describe("abitudini (run-08)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+  const base = {
+    id: uuidv7(),
+    name: "Acqua",
+    icon: "goccia",
+    kind: "quantity",
+    unit: "ml",
+    daily_target: 2000,
+    weekdays: null,
+    sort_order: 0,
+    archived_at: null,
+    created_at: now,
+    updated_at: now,
+    deleted_at: null,
+  };
+
+  it("HabitSchema: domini chiusi su kind, weekdays e obiettivo", () => {
+    expect(HabitSchema.safeParse(base).success).toBe(true);
+    expect(
+      HabitSchema.safeParse({ ...base, kind: "timer" }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, weekdays: [0] }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, weekdays: [] }).success,
+    ).toBe(false);
+    expect(
+      HabitSchema.safeParse({ ...base, daily_target: 0 }).success,
+    ).toBe(false);
+  });
+
+  it("HabitCreateSchema richiede nome e specie; kind fuori dal patch", () => {
+    expect(
+      HabitCreateSchema.safeParse({ name: "Lettura", kind: "counter" }).success,
+    ).toBe(true);
+    expect(HabitCreateSchema.safeParse({ name: "Lettura" }).success).toBe(
+      false,
+    );
+  });
+
+  it("HabitLogSchema: valore 0..1M, mai negativo", () => {
+    const log = {
+      id: uuidv7(),
+      habit_id: base.id,
+      date: "2026-07-12",
+      value: 830,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(HabitLogSchema.safeParse(log).success).toBe(true);
+    expect(HabitLogSchema.safeParse({ ...log, value: -1 }).success).toBe(false);
+    expect(HabitLogSchema.safeParse({ ...log, value: 0 }).success).toBe(true);
+  });
+});
+
+describe("planner settimanale (run-08 P3)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+
+  it("IsoWeekSchema: regex chiusa 01..53", () => {
+    expect(IsoWeekSchema.safeParse("2026-W28").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W01").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W53").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W00").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-W54").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-28").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-W2").success).toBe(false);
+  });
+
+  it("PlanSlot: weekday 1..7, orari HH:MM; plan_id fuori dal patch", () => {
+    const base = {
+      id: uuidv7(),
+      plan_id: uuidv7(),
+      weekday: 1,
+      start_hhmm: "07:00",
+      end_hhmm: null,
+      title: "Palestra",
+      notes: null,
+      sort_order: 0,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(PlanSlotSchema.safeParse(base).success).toBe(true);
+    expect(PlanSlotSchema.safeParse({ ...base, weekday: 0 }).success).toBe(
+      false,
+    );
+    expect(
+      PlanSlotSchema.safeParse({ ...base, start_hhmm: "25:00" }).success,
+    ).toBe(false);
+    const r = PlanSlotPatchSchema.safeParse({ plan_id: uuidv7() });
+    expect(r.success && "plan_id" in r.data).toBe(false);
+  });
+
+  it("SlotCheck: stato chiuso done/skipped/null", () => {
+    const base = {
+      id: uuidv7(),
+      slot_id: uuidv7(),
+      iso_week: "2026-W28",
+      checked_at: null,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(SlotCheckSchema.safeParse({ ...base, state: "done" }).success).toBe(
+      true,
+    );
+    expect(SlotCheckSchema.safeParse({ ...base, state: null }).success).toBe(
+      true,
+    );
+    expect(
+      SlotCheckSchema.safeParse({ ...base, state: "missed" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("focus (run-08 P5)", () => {
+  it("FocusSession: minuti interi 1..600", () => {
+    const now = "2026-07-12T08:00:00.000Z";
+    const base = {
+      id: uuidv7(),
+      date: "2026-07-12",
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(FocusSessionSchema.safeParse({ ...base, minutes: 25 }).success).toBe(
+      true,
+    );
+    expect(FocusSessionSchema.safeParse({ ...base, minutes: 0 }).success).toBe(
+      false,
+    );
+    expect(
+      FocusSessionSchema.safeParse({ ...base, minutes: 25.5 }).success,
     ).toBe(false);
   });
 });

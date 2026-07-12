@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   civilDayInZone,
+  computeSeriesStreak,
   computeStreak,
   dayRange,
   shiftDay,
@@ -209,5 +210,60 @@ describe("civilDayInZone — timezone iniettata", () => {
     expect(
       civilDayInZone(new Date("2026-07-10T05:00:00.000Z"), "Europe/Rome"),
     ).toBe("2026-07-10");
+  });
+});
+
+describe("computeSeriesStreak — la variante per-serie (run-08)", () => {
+  it("equivale a computeStreak quando il ponte è 'giorno protetto'", () => {
+    const active = new Set(["2026-07-08", "2026-07-10"]);
+    const prot = new Set(["2026-07-09"]);
+    const viaSeries = computeSeriesStreak({
+      doneDays: active,
+      isBridge: (d) => prot.has(d),
+      today: "2026-07-10",
+    });
+    expect(viaSeries).toEqual(
+      computeStreak({
+        activityDays: active,
+        protectedDays: prot,
+        today: "2026-07-10",
+      }),
+    );
+    expect(viaSeries.current).toBe(2);
+  });
+
+  it("ponte da predicato: i giorni non previsti (weekend) non spezzano", () => {
+    // Serie prevista solo lun-ven: sabato/domenica fanno ponte.
+    const weekend = (d: string) => {
+      const wd = new Date(`${d}T12:00:00.000Z`).getUTCDay();
+      return wd === 0 || wd === 6;
+    };
+    const s = computeSeriesStreak({
+      doneDays: new Set(["2026-07-09", "2026-07-10", "2026-07-13"]),
+      isBridge: weekend,
+      today: "2026-07-13", // lunedì
+    });
+    expect(s).toEqual({ current: 3, best: 3, todayCounts: true });
+  });
+
+  it("un buco NON ponte spezza anche con predicato", () => {
+    const s = computeSeriesStreak({
+      doneDays: new Set(["2026-07-08", "2026-07-11"]),
+      isBridge: () => false,
+      today: "2026-07-11",
+    });
+    expect(s.current).toBe(1);
+    expect(s.best).toBe(1);
+  });
+
+  it("best fa ponte sui buchi coperti dal predicato, in mezzo alla storia", () => {
+    // Catena passata 01→03 con il 02 a ponte; oggi scollegato.
+    const s = computeSeriesStreak({
+      doneDays: new Set(["2026-07-01", "2026-07-03", "2026-07-10"]),
+      isBridge: (d) => d === "2026-07-02",
+      today: "2026-07-10",
+    });
+    expect(s.best).toBe(2);
+    expect(s.current).toBe(1);
   });
 });

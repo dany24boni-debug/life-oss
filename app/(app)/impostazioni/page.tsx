@@ -3,9 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import {
   IconChevronRight,
   IconExam,
+  IconFocus,
   IconMoon,
+  IconRepeat,
   IconScale,
   IconWallet,
+  IconWeek,
 } from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
@@ -29,6 +32,24 @@ const MODULE_LINKS: Array<{
   desc: string;
   icon: (props: { className?: string }) => React.ReactElement;
 }> = [
+  {
+    href: "/abitudini",
+    label: "Abitudini",
+    desc: "Board del giorno, anelli e streak",
+    icon: IconRepeat,
+  },
+  {
+    href: "/settimana",
+    label: "Settimana",
+    desc: "La settimana tipo, spuntata slot per slot",
+    icon: IconWeek,
+  },
+  {
+    href: "/focus",
+    label: "Focus",
+    desc: "Pomodoro con registro dei minuti",
+    icon: IconFocus,
+  },
   {
     href: "/esami",
     label: "Esami",
@@ -295,6 +316,17 @@ export default async function ImpostazioniPage() {
               Il web non può suonare da solo ad app chiusa. Per promemoria
               garantiti usa &ldquo;Esporta su Calendario&rdquo; dalla scheda
               del task: l&apos;allarme lo fa il calendario di sistema.
+            </dd>
+          </div>
+          <div>
+            <dt className="em-body font-medium text-[var(--em-text)]">
+              Timer focus
+            </dt>
+            <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
+              Il pomodoro suona a fine fase con l&apos;app aperta; se lo
+              schermo era bloccato, il cambio di fase ti aspetta — col suo
+              suono — appena torni. Il tempo non si perde mai: è calcolato,
+              non contato.
             </dd>
           </div>
         </dl>

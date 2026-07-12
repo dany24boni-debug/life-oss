@@ -8,8 +8,11 @@ import {
   WhileAwayCard,
 } from "./_components/reminders-cards";
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
+import { TodayAdesso } from "./_components/today-adesso";
 import { TodayAgenda } from "./_components/today-agenda";
+import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
+import { TodayHabits } from "./_components/today-habits";
 import { TodayTasks } from "./_components/tasks/today-section";
 import { TodayTiles } from "./_components/today-tiles";
 
@@ -83,6 +86,15 @@ export default async function TodayPage() {
 
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
       <TodayTiles />
+
+      {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
+      <TodayHabits />
+
+      {/* "Adesso" (run-08 prompt 4): lo slot corrente del piano attivo. */}
+      <TodayAdesso />
+
+      {/* Mini-launcher del pomodoro (run-08 prompt 5). */}
+      <TodayFocus />
 
       {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
       <WhileAwayCard />

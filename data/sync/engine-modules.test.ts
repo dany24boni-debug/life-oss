@@ -349,3 +349,193 @@ describe("SyncEngine — round-trip lo_esami", () => {
     expect(await b.repos.esami.listAll()).toHaveLength(0);
   });
 });
+
+describe("SyncEngine — round-trip abitudini (run-08)", () => {
+  it("abitudine + log creati su A arrivano su B identici; LWW sul valore", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const habit = must(
+      await a.repos.habits.create({
+        name: "Lettura",
+        kind: "quantity",
+        unit: "pagine",
+        daily_target: 10,
+        weekdays: [1, 2, 3, 4, 5],
+      }),
+    );
+    const log = must(await a.repos.habits.logDay(habit.id, "2026-07-10", 12));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.habits.get(habit.id)).toEqual(habit);
+    expect(await b.db.habit_logs.get(log.id)).toEqual(log);
+    expect(remote.rowsOf("lo_habits")).toHaveLength(1);
+
+    // B corregge il valore DOPO: vince al round-trip.
+    must(await b.repos.habits.logDay(habit.id, "2026-07-10", 20));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    expect((await a.repos.habits.getLog(habit.id, "2026-07-10"))?.value).toBe(
+      20,
+    );
+  });
+
+  it("il log del giorno CONVERGE tra dispositivi (id derivato da abitudine+data)", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    // La stessa abitudine esiste su entrambi (seminata: id fisso).
+    const { seedWaterHabit, WATER_HABIT_ID } = await import("../habits");
+    await seedWaterHabit(a.db);
+    await seedWaterHabit(b.db);
+
+    must(await a.repos.habits.incrementDay(WATER_HABIT_ID, "2026-07-12", 500));
+    await new Promise((r) => setTimeout(r, 5));
+    must(await b.repos.habits.incrementDay(WATER_HABIT_ID, "2026-07-12", 330));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    // Una sola riga remota; vince la scrittura più recente (LWW, i
+    // valori non si sommano tra dispositivi — è il contratto row-mirror).
+    expect(remote.rowsOf("lo_habit_logs")).toHaveLength(1);
+    const suA = await a.repos.habits.getLog(WATER_HABIT_ID, "2026-07-12");
+    const suB = await b.repos.habits.getLog(WATER_HABIT_ID, "2026-07-12");
+    expect(suA).toEqual(suB);
+    expect(suA?.value).toBe(330);
+  });
+
+  it("il cascade di tombstone (abitudine + log) viaggia; l'archivio pure", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const habit = must(
+      await a.repos.habits.create({ name: "Stretching", kind: "boolean" }),
+    );
+    must(await a.repos.habits.logDay(habit.id, "2026-07-10", 1));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    // Archivio su B: viaggia come campo.
+    must(await b.repos.habits.archive(habit.id));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    expect((await a.repos.habits.getById(habit.id))?.archived_at).not.toBeNull();
+
+    // Cancellazione su A: abitudine e log spariscono su B.
+    must(await a.repos.habits.softDelete(habit.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.habits.getById(habit.id)).toBeNull();
+    expect(await b.repos.habits.getLog(habit.id, "2026-07-10")).toBeNull();
+  });
+});
+
+describe("SyncEngine — round-trip planner (run-08 P3)", () => {
+  it("piano + slot + check arrivano su B; il check della settimana CONVERGE", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(
+      await a.repos.planner.createPlan({
+        name: "Settimana lavoro",
+        is_active: true,
+      }),
+    );
+    const slot = must(
+      await a.repos.planner.createSlot({
+        plan_id: plan.id,
+        weekday: 1,
+        start_hhmm: "07:00",
+        end_hhmm: "08:30",
+        title: "Palestra",
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.week_plans.get(plan.id)).toEqual(plan);
+    expect(await b.db.plan_slots.get(slot.id)).toEqual(slot);
+
+    // Entrambi spuntano la stessa settimana PRIMA di sincronizzare:
+    // stessa PK derivata, il sync fonde con LWW invece di duplicare.
+    must(await a.repos.planner.setCheck(slot.id, "2026-W28", "done"));
+    await new Promise((r) => setTimeout(r, 5));
+    must(await b.repos.planner.setCheck(slot.id, "2026-W28", "skipped"));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_slot_checks")).toHaveLength(1);
+    const suA = await a.repos.planner.getCheck(slot.id, "2026-W28");
+    const suB = await b.repos.planner.getCheck(slot.id, "2026-W28");
+    expect(suA).toEqual(suB);
+    expect(suA?.state).toBe("skipped"); // vince la scrittura più recente
+  });
+
+  it("de-spuntare viaggia (state null sulla stessa riga); il cascade pure", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(await a.repos.planner.createPlan({ name: "P" }));
+    const slot = must(
+      await a.repos.planner.createSlot({
+        plan_id: plan.id,
+        weekday: 3,
+        start_hhmm: "18:00",
+        title: "Spesa",
+      }),
+    );
+    must(await a.repos.planner.setCheck(slot.id, "2026-W28", "done"));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect((await b.repos.planner.getCheck(slot.id, "2026-W28"))?.state).toBe(
+      "done",
+    );
+
+    // B de-spunta: su A lo stato torna null (mai una riga fantasma).
+    must(await b.repos.planner.setCheck(slot.id, "2026-W28", null));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    const onA = await a.repos.planner.getCheck(slot.id, "2026-W28");
+    expect(onA).not.toBeNull();
+    expect(onA?.state).toBeNull();
+
+    // A elimina il piano: tombstone a cascata fino ai check, su B.
+    must(await a.repos.planner.softDeletePlan(plan.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.planner.getPlanById(plan.id)).toBeNull();
+    expect(await b.repos.planner.listSlots(plan.id)).toHaveLength(0);
+    expect(await b.repos.planner.getCheck(slot.id, "2026-W28")).toBeNull();
+  });
+});
+
+describe("SyncEngine — round-trip lo_focus_sessions (run-08 P5)", () => {
+  it("le fasi di focus arrivano su B identiche; la tombstone viaggia", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const row = must(
+      await a.repos.focus.add({ date: "2026-07-12", minutes: 25 }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.focus_sessions.get(row.id)).toEqual(row);
+    expect(remote.rowsOf("lo_focus_sessions")).toHaveLength(1);
+    expect(
+      await b.repos.focus.minutesByDay("2026-07-12", "2026-07-12"),
+    ).toEqual([{ date: "2026-07-12", minutes: 25 }]);
+  });
+});

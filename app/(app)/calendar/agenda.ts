@@ -159,10 +159,11 @@ export type AgendaItem = {
 };
 
 /**
- * L'agenda di un giorno: prima gli all-day (eventi locali, poi Google),
- * poi le voci con orario in ordine di inizio (a parità: eventi locali,
- * task, Google, poi titolo). I task SENZA orario non entrano in agenda —
- * vivono nella lista Task; qui compare solo ciò che ha un posto nel tempo.
+ * L'agenda di un giorno: prima la fascia all-day (eventi locali, poi
+ * Google, poi i task del giorno SENZA orario — run-08 P5: un task
+ * datato è un impegno della giornata anche senza un'ora, e da qui si
+ * completa come dalle liste), poi le voci con orario in ordine di
+ * inizio (a parità: eventi locali, task, Google, poi titolo).
  */
 export function buildDayAgenda(
   day: DayString,
@@ -189,13 +190,15 @@ export function buildDayAgenda(
   }
 
   for (const t of input.tasks) {
-    if (t.date !== day || t.time === null) continue;
+    if (t.date !== day) continue;
+    // Senza orario = fascia all-day (dopo gli eventi all-day); con
+    // orario = voce puntuale come prima.
     items.push({
       key: `task:${t.id}`,
       source: "task",
       id: t.id,
       title: t.title,
-      allDay: false,
+      allDay: t.time === null,
       start: t.time,
       end: null,
       done: t.status === "done",
@@ -225,13 +228,21 @@ const SOURCE_ORDER: Record<AgendaItem["source"], number> = {
   google: 2,
 };
 
+/** Nella fascia all-day i task vengono DOPO gli eventi (locali e Google). */
+const ALLDAY_SOURCE_ORDER: Record<AgendaItem["source"], number> = {
+  event: 0,
+  google: 1,
+  task: 2,
+};
+
 function byAgendaOrder(a: AgendaItem, b: AgendaItem): number {
   if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+  const order = a.allDay ? ALLDAY_SOURCE_ORDER : SOURCE_ORDER;
   const at = a.start ?? "";
   const bt = b.start ?? "";
   return (
     at.localeCompare(bt) ||
-    SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source] ||
+    order[a.source] - order[b.source] ||
     a.title.localeCompare(b.title, "it")
   );
 }

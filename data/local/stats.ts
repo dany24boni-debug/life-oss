@@ -6,6 +6,7 @@
  */
 
 import type { LifeosDb } from "../db";
+import { effectiveTarget, habitDone } from "../habits";
 import type { IsoDay } from "../schemas";
 import type { StatsRepo } from "../ports";
 import {
@@ -79,22 +80,45 @@ export class LocalStatsRepo implements StatsRepo {
 
   /**
    * Giorni con almeno un'azione significativa: task completato (istante
-   * completed_at -> giorno civile nella zona) o sessione gym (già un
-   * giorno civile). Scansione filtrata: completed_at non è indicizzato,
-   * a scala personale è la scelta documentata (vedi data/db.ts).
+   * completed_at -> giorno civile nella zona), sessione gym (già un
+   * giorno civile), abitudine COMPLETATA (run-08: valore >= obiettivo
+   * effettivo — per l'acqua l'obiettivo segue il profilo, come sulla
+   * board) o fase di LAVORO del timer focus conclusa (run-08 P5).
+   * Scansione filtrata: completed_at non è indicizzato, a scala
+   * personale è la scelta documentata (vedi data/db.ts).
    */
   private async allActivityDays(timeZone: string): Promise<Set<IsoDay>> {
-    const [doneTasks, sessions] = await Promise.all([
-      this.db.tasks
-        .where("status")
-        .equals("done")
-        .filter((t) => alive(t) && t.completed_at !== null)
-        .toArray(),
-      this.db.gym_sessions.filter((s) => alive(s)).toArray(),
-    ]);
+    const [doneTasks, sessions, habits, habitLogs, bodyRows, focusRows] =
+      await Promise.all([
+        this.db.tasks
+          .where("status")
+          .equals("done")
+          .filter((t) => alive(t) && t.completed_at !== null)
+          .toArray(),
+        this.db.gym_sessions.filter((s) => alive(s)).toArray(),
+        this.db.habits.filter(alive).toArray(),
+        this.db.habit_logs.filter(alive).toArray(),
+        this.db.body.filter(alive).toArray(),
+        this.db.focus_sessions.filter(alive).toArray(),
+      ]);
     const days = new Set<IsoDay>();
     for (const t of doneTasks) days.add(civilDayInZone(t.completed_at!, timeZone));
     for (const s of sessions) days.add(s.date);
+    for (const f of focusRows) days.add(f.date);
+
+    // Abitudini: anche le archiviate contano (i completamenti erano
+    // veri); le eliminate no (i log viaggiano nel cascade di tombstone).
+    const habitById = new Map(habits.map((h) => [h.id, h]));
+    const latestWeight =
+      bodyRows.length > 0
+        ? bodyRows.sort((a, b) => b.date.localeCompare(a.date))[0].weight_kg
+        : null;
+    for (const log of habitLogs) {
+      const habit = habitById.get(log.habit_id);
+      if (!habit) continue;
+      const target = effectiveTarget(habit, latestWeight);
+      if (habitDone(habit.kind, log.value, target)) days.add(log.date);
+    }
     return days;
   }
 

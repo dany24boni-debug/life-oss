@@ -323,6 +323,212 @@ export const BodyPatchSchema = z
 export type BodyPatch = z.infer<typeof BodyPatchSchema>;
 
 // ============================================================
+// Abitudini (run-08 prompt 1) — il motore habits: abitudini
+// boolean / counter / quantity con obiettivo giornaliero e
+// programmazione per giorni feriali; log UNA riga per
+// (abitudine, giorno) per costruzione — id derivato
+// `lifeos:habit-log:<habit_id>:<date>` — così due dispositivi
+// che loggano lo stesso giorno convergono sulla stessa PK (LWW,
+// stesso disegno di Sera/Corpo).
+// ============================================================
+
+export const HabitKindSchema = z.enum(["boolean", "counter", "quantity"]);
+export type HabitKind = z.infer<typeof HabitKindSchema>;
+
+/** Chiave icona dal set curato Ember (la UI degrada le chiavi ignote). */
+const HabitIconSchema = z.string().trim().min(1).max(40);
+/** Unità delle quantità ("ml", "pagine"); breve, testo libero. */
+const HabitUnitSchema = z.string().trim().min(1).max(20);
+/** Obiettivo giornaliero (counter/quantity): positivo, tetto largo. */
+const HabitTargetSchema = z.number().positive().max(100_000);
+/** Giorno feriale ISO: 1 = lunedì … 7 = domenica. */
+const IsoWeekdaySchema = z.number().int().min(1).max(7);
+
+export const HabitSchema = z.object({
+  id: UuidSchema,
+  name: z.string().trim().min(1).max(120),
+  icon: HabitIconSchema,
+  kind: HabitKindSchema,
+  /** Solo per quantity; null per boolean/counter. */
+  unit: HabitUnitSchema.nullable(),
+  /**
+   * Obiettivo del giorno (counter/quantity). Null = nessun obiettivo
+   * fisso — per l'acqua seminata significa "segue il profilo"
+   * (waterTargetMl dal peso più recente); l'override manuale è
+   * semplicemente un valore qui.
+   */
+  daily_target: HabitTargetSchema.nullable(),
+  /**
+   * Giorni previsti (ISO 1-7, senza duplicati per costruzione del
+   * repo); null = tutti i giorni. I giorni NON previsti fanno da ponte
+   * nella streak per-abitudine, mai da rottura.
+   */
+  weekdays: z.array(IsoWeekdaySchema).min(1).max(7).nullable(),
+  /** Ordine manuale della board (drag to reorder). */
+  sort_order: z.number(),
+  /** Archiviata: sparisce dalla board, la storia resta (≠ eliminata). */
+  archived_at: IsoInstantSchema.nullable(),
+  ...audit,
+});
+export type Habit = z.infer<typeof HabitSchema>;
+
+/**
+ * `kind` è FUORI dagli editable: cambiare specie a un'abitudine
+ * cambierebbe il significato di tutta la sua storia (0/1 vs quantità).
+ */
+const habitEditable = {
+  name: z.string().trim().min(1).max(120),
+  icon: HabitIconSchema,
+  unit: HabitUnitSchema.nullable(),
+  daily_target: HabitTargetSchema.nullable(),
+  weekdays: z.array(IsoWeekdaySchema).min(1).max(7).nullable(),
+  sort_order: z.number(),
+};
+
+export const HabitCreateSchema = z
+  .object({ ...habitEditable, kind: HabitKindSchema })
+  .partial()
+  .required({ name: true, kind: true });
+export type HabitCreate = z.infer<typeof HabitCreateSchema>;
+
+export const HabitPatchSchema = z.object(habitEditable).partial();
+export type HabitPatch = z.infer<typeof HabitPatchSchema>;
+
+/**
+ * Valore del giorno: boolean come 0/1, counter come conteggio,
+ * quantity nell'unità dell'abitudine. Mai negativo; lo zero esplicito
+ * è legale (giorno azzerato, la riga resta).
+ */
+export const HabitValueSchema = z.number().min(0).max(1_000_000);
+
+export const HabitLogSchema = z.object({
+  id: UuidSchema,
+  habit_id: UuidSchema,
+  /** Giorno del log (unico per (abitudine, giorno): id derivato). */
+  date: IsoDaySchema,
+  value: HabitValueSchema,
+  ...audit,
+});
+export type HabitLog = z.infer<typeof HabitLogSchema>;
+
+// ============================================================
+// Planner settimanale (run-08 prompt 3) — modelli settimana tipo
+// ("Settimana lavoro"): un piano ATTIVO alla volta (invariante del
+// repo, come i programmi gym), slot orari per giorno feriale scritti
+// UNA volta, e check per (slot, settimana ISO) con id DERIVATO
+// `lifeos:slot-check:<slot_id>:<iso_week>` — una riga per slot per
+// settimana per costruzione, i device convergono (LWW). La storia è
+// append-only per costruzione: i check delle settimane passate restano.
+// ============================================================
+
+/** Settimana ISO 8601 come stringa: "2026-W28" (settimane 01..53). */
+export const IsoWeekSchema = z
+  .string()
+  .regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/, "Settimana ISO non valida");
+
+const PlanNameSchema = z.string().trim().min(1).max(120);
+const SlotTitleSchema = z.string().trim().min(1).max(200);
+
+export const WeekPlanSchema = z.object({
+  id: UuidSchema,
+  name: PlanNameSchema,
+  /** Al più uno attivo: lo garantisce il repo, non lo schema. */
+  is_active: z.boolean(),
+  ...audit,
+});
+export type WeekPlan = z.infer<typeof WeekPlanSchema>;
+
+const weekPlanEditable = {
+  name: PlanNameSchema,
+  is_active: z.boolean(),
+};
+
+export const WeekPlanCreateSchema = z
+  .object(weekPlanEditable)
+  .partial()
+  .required({ name: true });
+export type WeekPlanCreate = z.infer<typeof WeekPlanCreateSchema>;
+
+export const WeekPlanPatchSchema = z.object(weekPlanEditable).partial();
+export type WeekPlanPatch = z.infer<typeof WeekPlanPatchSchema>;
+
+export const PlanSlotSchema = z.object({
+  id: UuidSchema,
+  plan_id: UuidSchema,
+  /** 1 = lunedì … 7 = domenica. */
+  weekday: z.number().int().min(1).max(7),
+  /** "07:00" — l'ora dello slot. */
+  start_hhmm: HhmmSchema,
+  /** Fine opzionale ("08:30"); null = solo un orario di inizio. */
+  end_hhmm: HhmmSchema.nullable(),
+  /** "Palestra", "Deep work". */
+  title: SlotTitleSchema,
+  notes: z.string().max(500).nullable(),
+  /** Ordine dentro la stessa ora (poi vince start_hhmm). */
+  sort_order: z.number(),
+  ...audit,
+});
+export type PlanSlot = z.infer<typeof PlanSlotSchema>;
+
+/** weekday resta editabile: spostare uno slot di giorno è un gesto vero. */
+const planSlotEditable = {
+  plan_id: UuidSchema,
+  weekday: z.number().int().min(1).max(7),
+  start_hhmm: HhmmSchema,
+  end_hhmm: HhmmSchema.nullable(),
+  title: SlotTitleSchema,
+  notes: z.string().max(500).nullable(),
+  sort_order: z.number(),
+};
+
+export const PlanSlotCreateSchema = z
+  .object(planSlotEditable)
+  .partial()
+  .required({ plan_id: true, weekday: true, start_hhmm: true, title: true });
+export type PlanSlotCreate = z.infer<typeof PlanSlotCreateSchema>;
+
+/** Gli slot non migrano mai tra piani: plan_id fuori dal patch. */
+export const PlanSlotPatchSchema = z
+  .object(planSlotEditable)
+  .partial()
+  .omit({ plan_id: true });
+export type PlanSlotPatch = z.infer<typeof PlanSlotPatchSchema>;
+
+export const SlotCheckStateSchema = z.enum(["done", "skipped"]);
+export type SlotCheckState = z.infer<typeof SlotCheckStateSchema>;
+
+export const SlotCheckSchema = z.object({
+  id: UuidSchema,
+  slot_id: UuidSchema,
+  /** La settimana del check (unica per slot: id derivato). */
+  iso_week: IsoWeekSchema,
+  /** null = de-spuntato (la riga resta: l'annullamento deve viaggiare). */
+  state: SlotCheckStateSchema.nullable(),
+  checked_at: IsoInstantSchema.nullable(),
+  ...audit,
+});
+export type SlotCheck = z.infer<typeof SlotCheckSchema>;
+
+// ============================================================
+// Focus (run-08 prompt 5) — le fasi di LAVORO concluse del timer
+// pomodoro: una riga per fase (data + minuti), append-only. La
+// matematica del timer vive in lib/focus/engine.ts (pura); qui solo
+// il registro di ciò che è stato fatto davvero.
+// ============================================================
+
+/** Minuti di una fase di lavoro conclusa (1..600: tetto largo). */
+export const FocusMinutesSchema = z.number().int().min(1).max(600);
+
+export const FocusSessionSchema = z.object({
+  id: UuidSchema,
+  /** Giorno civile della fase conclusa. */
+  date: IsoDaySchema,
+  minutes: FocusMinutesSchema,
+  ...audit,
+});
+export type FocusSession = z.infer<typeof FocusSessionSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

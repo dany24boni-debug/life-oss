@@ -14,6 +14,7 @@
 
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
+import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
 import type {
   BodyEntry,
   BodyPatch,
@@ -29,6 +30,7 @@ import type {
   Expense,
   ExpenseCreate,
   ExpensePatch,
+  FocusSession,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -36,8 +38,20 @@ import type {
   GymProgramSlot,
   GymSession,
   GymSet,
+  Habit,
+  HabitCreate,
+  HabitLog,
+  HabitPatch,
   IsoDay,
   IsoInstant,
+  PlanSlot,
+  PlanSlotCreate,
+  PlanSlotPatch,
+  SlotCheck,
+  SlotCheckState,
+  WeekPlan,
+  WeekPlanCreate,
+  WeekPlanPatch,
   LocalEvent,
   MuscleGroup,
   PlanCreate,
@@ -217,6 +231,186 @@ export interface BodyRepo {
   softDeleteDay(date: IsoDay): Promise<Result<void>>;
   /** Undo del toast — semantica di EventsRepo.restore, per giorno. */
   restoreDay(date: IsoDay): Promise<Result<BodyEntry>>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Abitudini (run-08 prompt 1)
+// ============================================================
+
+/**
+ * Una voce della board del giorno: l'abitudine prevista con il suo log
+ * (se c'è), l'obiettivo EFFETTIVO (derivato per l'acqua: segue il
+ * profilo; 1 per le boolean) e il completamento già calcolato — la UI
+ * non rifà mai questa matematica.
+ */
+export type HabitBoardEntry = {
+  habit: Habit;
+  log: HabitLog | null;
+  /** Obiettivo effettivo del giorno; null = senza obiettivo. */
+  target: number | null;
+  /** Valore del giorno (0 se nessun log). */
+  value: number;
+  done: boolean;
+};
+
+export interface HabitsRepo {
+  create(input: HabitCreate): Promise<Result<Habit>>;
+  update(id: string, patch: HabitPatch): Promise<Result<Habit>>;
+  /** Archivia: sparisce dalla board, la storia resta. Idempotente. */
+  archive(id: string): Promise<Result<Habit>>;
+  unarchive(id: string): Promise<Result<Habit>>;
+  /**
+   * Tombstone all'abitudine E ai suoi log, tutti con lo STESSO
+   * deleted_at (pattern cascade dei programmi gym): l'undo revive solo
+   * le righe di quel cascade.
+   */
+  softDelete(id: string): Promise<Result<void>>;
+  /** Undo del toast: revive abitudine + log del cascade. */
+  restore(id: string): Promise<Result<Habit>>;
+  /** sort_order = indice nell'array; id ignoti o cancellati saltati. */
+  reorder(orderedIds: string[]): Promise<Result<void>>;
+
+  getById(id: string): Promise<Habit | null>;
+  /** Vive per sort_order (poi created_at); archiviate solo su richiesta. */
+  listAll(opts?: { includeArchived?: boolean }): Promise<Habit[]>;
+
+  /**
+   * Imposta il valore ASSOLUTO del giorno (upsert per-giorno: id
+   * derivato da abitudine+data, una riga per costruzione; una tombstone
+   * del giorno viene rianimata — loggare È l'intento).
+   */
+  logDay(
+    habitId: string,
+    date: IsoDay,
+    value: number,
+  ): Promise<Result<HabitLog>>;
+  /**
+   * Incrementa il valore del giorno (delta anche negativo; il risultato
+   * è clampato a >= 0). Crea la riga del giorno se non esiste.
+   */
+  incrementDay(
+    habitId: string,
+    date: IsoDay,
+    delta: number,
+  ): Promise<Result<HabitLog>>;
+  getLog(habitId: string, date: IsoDay): Promise<HabitLog | null>;
+  /** I log vivi del giorno (tutte le abitudini). */
+  listLogsByDay(date: IsoDay): Promise<HabitLog[]>;
+  /** from <= date <= to, per giorno crescente (month heat, streak). */
+  listLogsRange(
+    habitId: string,
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<HabitLog[]>;
+
+  /**
+   * La board del giorno: ogni abitudine viva, non archiviata e PREVISTA
+   * quel giorno, col suo log e l'obiettivo effettivo, per sort_order.
+   */
+  dayBoard(date: IsoDay): Promise<HabitBoardEntry[]>;
+  /**
+   * Streak per-abitudine: contano i giorni COMPLETATI; i giorni protetti
+   * (Impostazioni) e i giorni NON previsti dallo schedule fanno da
+   * ponte. `today` è il giorno civile del chiamante (i log sono già
+   * date-keyed: nessuna conversione di timezone qui dentro).
+   */
+  habitStreak(
+    habitId: string,
+    opts: { today: IsoDay },
+  ): Promise<StreakSummary>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Planner settimanale (run-08 prompt 3)
+// ============================================================
+
+export interface PlannerRepo {
+  // Piani (modelli di settimana)
+  createPlan(input: WeekPlanCreate): Promise<Result<WeekPlan>>;
+  /**
+   * Patch mirata; `is_active: true` disattiva ogni altro piano nella
+   * stessa transazione (al più uno attivo, invariante del repo).
+   */
+  updatePlan(id: string, patch: WeekPlanPatch): Promise<Result<WeekPlan>>;
+  /**
+   * Tombstone al piano E a slot/check vivi, tutti con lo STESSO
+   * deleted_at (pattern cascade dei programmi gym): l'undo revive solo
+   * le righe di quel cascade.
+   */
+  softDeletePlan(id: string): Promise<Result<void>>;
+  restorePlan(id: string): Promise<Result<WeekPlan>>;
+  /**
+   * Copia profonda degli SLOT (nome " (copia)", mai attiva); la storia
+   * dei check resta all'originale — è la sua, non del clone.
+   */
+  duplicatePlan(id: string): Promise<Result<WeekPlan>>;
+  getPlanById(id: string): Promise<WeekPlan | null>;
+  /** Piani vivi: l'attivo per primo, poi per nome. */
+  listPlans(): Promise<WeekPlan[]>;
+  /** Il piano attivo; più attivi post-merge: vince updated_at. */
+  activePlan(): Promise<WeekPlan | null>;
+
+  // Slot orari
+  createSlot(input: PlanSlotCreate): Promise<Result<PlanSlot>>;
+  updateSlot(id: string, patch: PlanSlotPatch): Promise<Result<PlanSlot>>;
+  softDeleteSlot(id: string): Promise<Result<void>>;
+  /** Undo del toast — revive lo slot e i check del suo cascade. */
+  restoreSlot(id: string): Promise<Result<PlanSlot>>;
+  /** Copia lo slot negli altri giorni feriali dati (authoring veloce). */
+  copySlotToWeekdays(
+    id: string,
+    weekdays: number[],
+  ): Promise<Result<PlanSlot[]>>;
+  /** Slot vivi del piano: weekday, poi orario, poi sort_order. */
+  listSlots(planId: string): Promise<PlanSlot[]>;
+  /** sort_order = indice nell'array; id ignoti o d'altri piani saltati. */
+  reorderSlots(planId: string, orderedIds: string[]): Promise<Result<void>>;
+
+  // Check per settimana (id derivato: una riga per slot per settimana)
+  /**
+   * Upsert del check di (slot, settimana): done / saltato / null per
+   * de-spuntare — la riga resta, l'annullamento viaggia col sync.
+   */
+  setCheck(
+    slotId: string,
+    isoWeek: IsoWeek,
+    state: SlotCheckState | null,
+  ): Promise<Result<SlotCheck>>;
+  getCheck(slotId: string, isoWeek: IsoWeek): Promise<SlotCheck | null>;
+  /** I check vivi della settimana (tutti gli slot). */
+  listChecksForWeek(isoWeek: IsoWeek): Promise<SlotCheck[]>;
+
+  // Letture composte (la matematica vive in data/planner.ts, pura)
+  /** Lun->dom della settimana data, slot per orario + check. */
+  weekBoard(planId: string, isoWeek: IsoWeek): Promise<WeekBoardDay[]>;
+  /** Ultime N settimane (corrente inclusa): completamento + più saltati. */
+  weekStats(
+    planId: string,
+    lastNWeeks: number,
+    currentWeek: IsoWeek,
+  ): Promise<WeekStats>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
+// Focus (run-08 prompt 5)
+// ============================================================
+
+export interface FocusRepo {
+  /** Registra una fase di lavoro conclusa (append-only). */
+  add(input: { date: IsoDay; minutes: number }): Promise<Result<FocusSession>>;
+  /** from <= date <= to, per giorno crescente. */
+  listRange(from: IsoDay, to: IsoDay): Promise<FocusSession[]>;
+  /** Somma dei minuti per giorno nel range (tile e /stats). */
+  minutesByDay(
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<Array<{ date: IsoDay; minutes: number }>>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -458,6 +652,9 @@ export interface Repos {
   spese: SpeseRepo;
   sera: SeraRepo;
   body: BodyRepo;
+  habits: HabitsRepo;
+  planner: PlannerRepo;
+  focus: FocusRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

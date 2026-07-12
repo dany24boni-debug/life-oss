@@ -34,6 +34,7 @@ import type {
   EveningCheckin,
   Exam,
   Expense,
+  FocusSession,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -41,10 +42,15 @@ import type {
   GymProgramSlot,
   GymSession,
   GymSet,
+  Habit,
+  HabitLog,
   LocalEvent,
+  PlanSlot,
   Reminder,
   Settings,
+  SlotCheck,
   Task,
+  WeekPlan,
 } from "./schemas";
 
 export const DB_NAME = "lifeos";
@@ -113,6 +119,38 @@ export const SCHEMA_V7 = {
   body: "id, date, updated_at",
 } as const;
 
+/**
+ * v8 = v7 + abitudini (run-08 prompt 1): abitudini + log per-giorno
+ * (id derivato da abitudine+data). Solo additiva: nessun reshaping,
+ * nessun backfill necessario.
+ */
+export const SCHEMA_V8 = {
+  ...SCHEMA_V7,
+  habits: "id, updated_at",
+  habit_logs: "id, habit_id, date, updated_at",
+} as const;
+
+/**
+ * v9 = v8 + planner settimanale (run-08 prompt 3): piani, slot orari,
+ * check per (slot, settimana ISO — indice iso_week per la board).
+ * Solo additiva.
+ */
+export const SCHEMA_V9 = {
+  ...SCHEMA_V8,
+  week_plans: "id, updated_at",
+  plan_slots: "id, plan_id, updated_at",
+  slot_checks: "id, slot_id, iso_week, updated_at",
+} as const;
+
+/**
+ * v10 = v9 + focus (run-08 prompt 5): fasi di lavoro concluse del
+ * timer pomodoro, per giorno. Solo additiva.
+ */
+export const SCHEMA_V10 = {
+  ...SCHEMA_V9,
+  focus_sessions: "id, date, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -123,6 +161,12 @@ export class LifeosDb extends Dexie {
   spese!: Table<Expense, string>;
   sera!: Table<EveningCheckin, string>;
   body!: Table<BodyEntry, string>;
+  habits!: Table<Habit, string>;
+  habit_logs!: Table<HabitLog, string>;
+  week_plans!: Table<WeekPlan, string>;
+  plan_slots!: Table<PlanSlot, string>;
+  slot_checks!: Table<SlotCheck, string>;
+  focus_sessions!: Table<FocusSession, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
   gym_programs!: Table<GymProgram, string>;
@@ -167,6 +211,9 @@ export class LifeosDb extends Dexie {
         ]).then(() => undefined),
       );
     this.version(7).stores(SCHEMA_V7);
+    this.version(8).stores(SCHEMA_V8);
+    this.version(9).stores(SCHEMA_V9);
+    this.version(10).stores(SCHEMA_V10);
   }
 }
 

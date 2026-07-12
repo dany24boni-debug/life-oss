@@ -22,7 +22,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useSyncExternalStore } from "react";
 import { getDb } from "./db";
 import { createLocalRepos } from "./local";
-import type { Repos } from "./ports";
+import type { HabitBoardEntry, Repos } from "./ports";
 import type {
   BodyEntry,
   EveningCheckin,
@@ -35,14 +35,19 @@ import type {
   GymProgramSlot,
   GymSession,
   GymSet,
+  Habit,
+  HabitLog,
   IsoDay,
   IsoInstant,
   LocalEvent,
   MuscleGroup,
+  PlanSlot,
   Reminder,
   Settings,
   Task,
+  WeekPlan,
 } from "./schemas";
+import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
 import type { StreakSummary } from "./streak";
 import type { SyncState } from "./sync/engine";
 import { META_LAST_ERROR, META_LAST_SYNC_AT, getMeta } from "./sync/meta";
@@ -192,6 +197,121 @@ export function useBodyRecent(
   return useLiveQuery(
     () => appRepos().body.listRecent(before, limit),
     [before, limit],
+  );
+}
+
+/* ── Abitudini (run-08 prompt 1) ─────────────────────────────────────── */
+
+/** Abitudini vive per sort_order; archiviate incluse solo su richiesta. */
+export function useHabits(includeArchived?: boolean): Habit[] | undefined {
+  return useLiveQuery(
+    () => appRepos().habits.listAll(includeArchived ? { includeArchived: true } : undefined),
+    [includeArchived],
+  );
+}
+
+/** Singola abitudine per id; null se assente o tombstone. */
+export function useHabit(id: string | null): Habit | null | undefined {
+  return useLiveQuery(
+    () => (id ? appRepos().habits.getById(id) : Promise.resolve(null)),
+    [id],
+  );
+}
+
+/** La board del giorno: abitudini previste + log + obiettivo effettivo. */
+export function useHabitBoard(date: IsoDay): HabitBoardEntry[] | undefined {
+  return useLiveQuery(() => appRepos().habits.dayBoard(date), [date]);
+}
+
+/** Log vivi dell'abitudine nel range (month heat della scheda). */
+export function useHabitLogsRange(
+  habitId: string | null,
+  from: IsoDay,
+  to: IsoDay,
+): HabitLog[] | undefined {
+  return useLiveQuery(
+    () =>
+      habitId
+        ? appRepos().habits.listLogsRange(habitId, from, to)
+        : Promise.resolve([]),
+    [habitId, from, to],
+  );
+}
+
+/** Streak per-abitudine (giorni protetti e non previsti fanno ponte). */
+export function useHabitStreak(
+  habitId: string | null,
+  today: IsoDay,
+): StreakSummary | undefined {
+  return useLiveQuery(
+    () =>
+      habitId
+        ? appRepos().habits.habitStreak(habitId, { today })
+        : Promise.resolve({ current: 0, best: 0, todayCounts: false }),
+    [habitId, today],
+  );
+}
+
+/* ── Focus (run-08 prompt 5) ─────────────────────────────────────────── */
+
+/** Minuti di focus per giorno nel range (tile e /stats). */
+export function useFocusMinutesByDay(
+  from: IsoDay,
+  to: IsoDay,
+): Array<{ date: IsoDay; minutes: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().focus.minutesByDay(from, to),
+    [from, to],
+  );
+}
+
+/* ── Planner settimanale (run-08 prompt 3) ───────────────────────────── */
+
+/** Piani vivi: l'attivo per primo, poi per nome. */
+export function useWeekPlans(): WeekPlan[] | undefined {
+  return useLiveQuery(() => appRepos().planner.listPlans(), []);
+}
+
+/** Il piano attivo (al più uno); null se nessuno. */
+export function useActiveWeekPlan(): WeekPlan | null | undefined {
+  return useLiveQuery(() => appRepos().planner.activePlan(), []);
+}
+
+/** Slot vivi del piano (weekday, orario, sort_order). */
+export function usePlanSlots(planId: string | null): PlanSlot[] | undefined {
+  return useLiveQuery(
+    () =>
+      planId ? appRepos().planner.listSlots(planId) : Promise.resolve([]),
+    [planId],
+  );
+}
+
+/** La board lun->dom della settimana ISO data (slot + check). */
+export function useWeekBoard(
+  planId: string | null,
+  isoWeek: IsoWeek,
+): WeekBoardDay[] | undefined {
+  return useLiveQuery(
+    () =>
+      planId
+        ? appRepos().planner.weekBoard(planId, isoWeek)
+        : Promise.resolve([]),
+    [planId, isoWeek],
+  );
+}
+
+/** Statistiche delle ultime N settimane (completamento + più saltati). */
+export function useWeekStats(
+  planId: string | null,
+  lastNWeeks: number,
+  currentWeek: IsoWeek,
+): WeekStats | undefined {
+  return useLiveQuery(
+    () =>
+      planId
+        ? appRepos().planner.weekStats(planId, lastNWeeks, currentWeek)
+        : Promise.resolve({ weeks: [], mostSkipped: [] }),
+    [planId, lastNWeeks, currentWeek],
   );
 }
 

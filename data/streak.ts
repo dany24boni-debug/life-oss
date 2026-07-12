@@ -40,26 +40,54 @@ export function computeStreak({
   protectedDays,
   today,
 }: StreakInput): StreakSummary {
-  const todayCounts = activityDays.has(today);
+  return computeSeriesStreak({
+    doneDays: activityDays,
+    isBridge: (day) => protectedDays.has(day),
+    today,
+  });
+}
 
-  // Catena corrente: a ritroso da oggi. Oggi inattivo = in sospeso (si
-  // salta senza rompere); ogni giorno passato o è attivo (conta), o è
-  // protetto (ponte), o spezza.
+/**
+ * Variante per-serie (run-08): la stessa aritmetica della streak
+ * globale, ma il "ponte" è un PREDICATO — così una singola abitudine
+ * può far da ponte sia coi giorni protetti sia coi giorni in cui NON è
+ * prevista (schedule per giorni feriali), senza che il motore conosca
+ * l'una o l'altra semantica. `computeStreak` è ora un wrapper di
+ * questa (equivalenza provata dai test storici, mai riscritti).
+ */
+export type SeriesStreakInput = {
+  /** Giorni in cui la serie è stata COMPLETATA. */
+  doneDays: ReadonlySet<IsoDay>;
+  /** true = il giorno fa da ponte senza contare (protetto/non previsto). */
+  isBridge: (day: IsoDay) => boolean;
+  today: IsoDay;
+};
+
+export function computeSeriesStreak({
+  doneDays,
+  isBridge,
+  today,
+}: SeriesStreakInput): StreakSummary {
+  const todayCounts = doneDays.has(today);
+
+  // Catena corrente: a ritroso da oggi. Oggi non fatto = in sospeso (si
+  // salta senza rompere); ogni giorno passato o è fatto (conta), o è
+  // ponte, o spezza.
   let current = todayCounts ? 1 : 0;
   let day = shiftDay(today, -1);
   for (;;) {
-    if (activityDays.has(day)) current += 1;
-    else if (!protectedDays.has(day)) break;
+    if (doneDays.has(day)) current += 1;
+    else if (!isBridge(day)) break;
     day = shiftDay(day, -1);
   }
 
-  // Migliore di sempre: catene sui giorni attivi ordinati, con ponte sui
-  // protetti (ogni giorno strettamente in mezzo dev'essere protetto).
+  // Migliore di sempre: catene sui giorni fatti ordinati, con ponte
+  // (ogni giorno strettamente in mezzo dev'essere un ponte).
   let best = current;
   let chain = 0;
   let prev: IsoDay | null = null;
-  for (const d of [...activityDays].sort()) {
-    chain = prev !== null && bridged(prev, d, protectedDays) ? chain + 1 : 1;
+  for (const d of [...doneDays].sort()) {
+    chain = prev !== null && bridged(prev, d, isBridge) ? chain + 1 : 1;
     if (chain > best) best = chain;
     prev = d;
   }
@@ -67,14 +95,14 @@ export function computeStreak({
   return { current, best, todayCounts };
 }
 
-/** true se tra a e b (esclusi) ci sono solo giorni protetti. */
+/** true se tra a e b (esclusi) ci sono solo giorni ponte. */
 function bridged(
   a: IsoDay,
   b: IsoDay,
-  protectedDays: ReadonlySet<IsoDay>,
+  isBridge: (day: IsoDay) => boolean,
 ): boolean {
   for (let d = shiftDay(a, 1); d < b; d = shiftDay(d, 1)) {
-    if (!protectedDays.has(d)) return false;
+    if (!isBridge(d)) return false;
   }
   return true;
 }

@@ -12,6 +12,7 @@ import { ChartFrame, StatCard } from "@/ui";
 import {
   useActivityDays,
   useCompletionByDay,
+  useFocusMinutesByDay,
   useGymVolume,
   useSettings,
   useStreak,
@@ -36,6 +37,12 @@ export function StatsScreen() {
 
   // Volume palestra della settimana (run-04 prompt 10): port reale.
   const gym = useGymVolume(week.from, week.to);
+
+  // Minuti di focus della settimana (run-08 prompt 5): registro vero.
+  const focus = useFocusMinutesByDay(week.from, week.to);
+  const focusToday =
+    focus?.find((d) => d.date === today)?.minutes ?? (focus ? 0 : undefined);
+  const focusWeek = focus?.reduce((sum, d) => sum + d.minutes, 0);
 
   const weekFilled =
     weekDays === undefined ? undefined : fillDays(weekDays, week.from, week.to);
@@ -118,7 +125,7 @@ export function StatsScreen() {
             ? "loading"
             : "ready"
         }
-        caption="Un giorno è attivo se hai completato un task o registrato un allenamento. I giorni protetti non spezzano la streak."
+        caption="Un giorno è attivo se hai completato un task, un allenamento, un'abitudine o un pomodoro di focus. I giorni protetti non spezzano la streak."
       >
         {activeDays !== undefined && settings !== undefined ? (
           <MonthHeat
@@ -153,6 +160,39 @@ export function StatsScreen() {
               <dt className="em-eyebrow">Volume</dt>
               <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
                 {formatKg(gym.totalVolumeKg)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+      </ChartFrame>
+
+      {/* Minuti di focus (run-08 prompt 5): dal registro FocusSession. */}
+      <ChartFrame
+        label="Focus"
+        title="Minuti di focus"
+        state={
+          focus === undefined
+            ? "loading"
+            : (focusWeek ?? 0) === 0
+              ? "empty"
+              : "ready"
+        }
+        emptyText="Nessun pomodoro questa settimana. Il primo accende questo riquadro."
+        minHeight={120}
+        caption="Settimana in corso (lun -> dom): fasi di lavoro concluse dal timer."
+      >
+        {focus !== undefined && (focusWeek ?? 0) > 0 ? (
+          <dl className="grid grid-cols-2 gap-3">
+            <div>
+              <dt className="em-eyebrow">Oggi</dt>
+              <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+                {focusToday ?? 0} min
+              </dd>
+            </div>
+            <div>
+              <dt className="em-eyebrow">Settimana</dt>
+              <dd className="em-title em-num mt-0.5 text-[var(--em-text)]">
+                {focusWeek} min
               </dd>
             </div>
           </dl>

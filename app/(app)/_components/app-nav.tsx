@@ -18,14 +18,17 @@ import { cx } from "@/ui";
 import {
   IconCalendar,
   IconExam,
+  IconFocus,
   IconGym,
   IconMoon,
+  IconRepeat,
   IconScale,
   IconSettings,
   IconStats,
   IconTasks,
   IconToday,
   IconWallet,
+  IconWeek,
 } from "./icons";
 import { SyncDot } from "./sync-dot";
 
@@ -49,6 +52,9 @@ const TABS: NavItem[] = [
  * restano cinque.
  */
 const MODULES: NavItem[] = [
+  { href: "/abitudini", label: "Abitudini", icon: IconRepeat },
+  { href: "/settimana", label: "Settimana", icon: IconWeek },
+  { href: "/focus", label: "Focus", icon: IconFocus },
   { href: "/esami", label: "Esami", icon: IconExam },
   { href: "/spese", label: "Spese", icon: IconWallet },
   { href: "/sera", label: "Sera", icon: IconMoon },

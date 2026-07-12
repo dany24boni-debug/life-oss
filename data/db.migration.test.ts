@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
-import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5 } from "./db";
+import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5, SCHEMA_V7 } from "./db";
 
 /**
  * Il test del "bump di schema": la garanzia che quando (prompt 08+) si
@@ -65,16 +65,18 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 7 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 10 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
     // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
-    // programmi. v7 (run-07 P4): + body.
-    expect(dbTest.verno).toBe(7);
+    // programmi. v7 (run-07 P4): + body. v8 (run-08): + abitudini.
+    // v9 (run-08 P3): + planner settimanale. v10 (run-08 P5): + focus.
+    expect(dbTest.verno).toBe(10);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "body",
       "esami",
       "events",
+      "focus_sessions",
       "gym_exercises",
       "gym_plans",
       "gym_program_days",
@@ -82,12 +84,17 @@ describe("schema bump v1 -> v2", () => {
       "gym_programs",
       "gym_sessions",
       "gym_sets",
+      "habit_logs",
+      "habits",
+      "plan_slots",
       "reminders",
       "sera",
       "settings",
+      "slot_checks",
       "spese",
       "sync_meta",
       "tasks",
+      "week_plans",
     ]);
     expect(DB_NAME).toBe("lifeos");
     dbTest.close();
@@ -129,7 +136,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(7);
+    expect(current.verno).toBe(10);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -186,6 +193,95 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
+  it("v7 → v8: la pesata sopravvive e le tabelle abitudini sono subito usabili", async () => {
+    const name = "v7-to-v8-habits-survival";
+    // Simula un dispositivo run-07: db creato con la v7 reale.
+    const v7 = new Dexie(name);
+    v7.version(7).stores(SCHEMA_V7);
+    await v7.open();
+    const pesata = {
+      id: "01980000-0000-7000-8000-000000000401",
+      date: "2026-07-11",
+      weight_kg: 82.4,
+      note: null,
+      created_at: "2026-07-11T08:00:00.000Z",
+      updated_at: "2026-07-11T08:00:00.000Z",
+      deleted_at: null,
+    };
+    await v7.table("body").add(pesata);
+    v7.close();
+
+    const current = new LifeosDb(name);
+    await current.open();
+    expect(current.verno).toBe(10);
+    expect(await current.body.get(pesata.id)).toEqual(pesata);
+
+    // Le tabelle nuove funzionano, indici compresi.
+    await current.habits.add({
+      id: "01980000-0000-7000-8000-000000000402",
+      name: "Lettura",
+      icon: "libro",
+      kind: "quantity",
+      unit: "pagine",
+      daily_target: 10,
+      weekdays: null,
+      sort_order: 0,
+      archived_at: null,
+      created_at: "2026-07-12T08:00:00.000Z",
+      updated_at: "2026-07-12T08:00:00.000Z",
+      deleted_at: null,
+    });
+    await current.habit_logs.add({
+      id: "01980000-0000-7000-8000-000000000403",
+      habit_id: "01980000-0000-7000-8000-000000000402",
+      date: "2026-07-12",
+      value: 12,
+      created_at: "2026-07-12T09:00:00.000Z",
+      updated_at: "2026-07-12T09:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.habit_logs
+        .where("habit_id")
+        .equals("01980000-0000-7000-8000-000000000402")
+        .count(),
+    ).toBe(1);
+    expect(
+      await current.habit_logs.where("date").equals("2026-07-12").count(),
+    ).toBe(1);
+
+    // E le tabelle planner (v9) sono subito usabili, indici compresi.
+    await current.slot_checks.add({
+      id: "01980000-0000-7000-8000-000000000404",
+      slot_id: "01980000-0000-7000-8000-000000000405",
+      iso_week: "2026-W28",
+      state: "done",
+      checked_at: "2026-07-12T10:00:00.000Z",
+      created_at: "2026-07-12T10:00:00.000Z",
+      updated_at: "2026-07-12T10:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.slot_checks.where("iso_week").equals("2026-W28").count(),
+    ).toBe(1);
+
+    // E la tabella focus (v10) pure.
+    await current.focus_sessions.add({
+      id: "01980000-0000-7000-8000-000000000406",
+      date: "2026-07-12",
+      minutes: 25,
+      created_at: "2026-07-12T11:00:00.000Z",
+      updated_at: "2026-07-12T11:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.focus_sessions.where("date").equals("2026-07-12").count(),
+    ).toBe(1);
+
+    current.close();
+    await Dexie.delete(name);
+  });
+
   it("un database scritto a v1 si apre alla versione corrente coi dati intatti", async () => {
     const name = "v1-to-current-real-schema";
     // Simula un dispositivo run-03: db creato con SOLO la v1 reale.
@@ -212,10 +308,10 @@ describe("schema bump v1 -> v2", () => {
     await v1.table("tasks").add(row);
     v1.close();
 
-    // Apertura con la classe reale (v1..v7): upgrade additivo.
+    // Apertura con la classe reale (v1..v8): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(7);
+    expect(current.verno).toBe(10);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");
