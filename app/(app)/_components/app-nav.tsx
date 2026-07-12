@@ -27,6 +27,7 @@ import {
   IconTasks,
   IconToday,
   IconWallet,
+  IconWeek,
 } from "./icons";
 import { SyncDot } from "./sync-dot";
 
@@ -51,6 +52,7 @@ const TABS: NavItem[] = [
  */
 const MODULES: NavItem[] = [
   { href: "/abitudini", label: "Abitudini", icon: IconRepeat },
+  { href: "/settimana", label: "Settimana", icon: IconWeek },
   { href: "/esami", label: "Esami", icon: IconExam },
   { href: "/spese", label: "Spese", icon: IconWallet },
   { href: "/sera", label: "Sera", icon: IconMoon },

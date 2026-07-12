@@ -213,6 +213,18 @@ export function IconRepeat({ className }: IconProps) {
   );
 }
 
+/** Settimana: la griglia lun-dom col check (modulo planner, run-08). */
+export function IconWeek({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <rect x="3.5" y="5.5" width="17" height="14.5" rx="3" />
+      <path d="M3.5 10h17" />
+      <path d="M8.5 3.5v3M15.5 3.5v3" />
+      <path d="m8.5 14.5 2 2 4-4.2" />
+    </svg>
+  );
+}
+
 /** Fiamma della streak per-abitudine. */
 export function IconFlame({ className }: IconProps) {
   return (

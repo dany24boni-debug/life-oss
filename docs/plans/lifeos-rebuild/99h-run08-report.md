@@ -160,6 +160,50 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓. Test iso-week (confini d'anno, DST) ✓. Test del ranking più-saltati ✓. Migrazione presente NON applicata ✓. Golden del prefisso slot-check ✓. Dexie bump con survival ✓. Round-trip + convergenza ✓. activityDays non toccato, documentato ✓.
 
-**Commit:** `feat(planner): week plan templates with per-week slot checks and skip stats`
+**Commit:** `feat(planner): week plan templates with per-week slot checks and skip stats` → `27dd153`
+
+---
+
+## Prompt 4 — UI Planner settimanale
+
+**Checkpoint: VERDE.** lint ✓ (una direttiva eslint-disable inutilizzata, rimossa) · tsc ✓ · build ✓ (`ƒ /settimana`) · sentinels ✓ · test **823/823, 66 file** (+14: `app/(app)/settimana/logic.test.ts` nuovo — slot "adesso", conteggi, etichette, macchina degli stati del check). **Dev-server DA OSPITE:** `/settimana` **200** con le tre tab "Settimana/Piani/Storico" nell'HTML servito; `/` **200**; **zero controlli nativi** su entrambe; copy "Adesso"/"Piano di oggi" presente nel chunk servito della route `/` (la card monta coi dati IndexedDB del client — la verifica a livello chunk è l'interpretazione run-07 del dev-check, dichiarata sotto).
+
+### Struttura (`app/(app)/settimana/**` nuovo)
+
+- **`logic.ts`** (+14 test): `findNowSlot` (in corso = inizio ≤ ora < fine effettiva, dove la fine effettiva è end_hhmm, altrimenti il prossimo slot, altrimenti UN'ORA di cortesia — testato il buco tra slot e il dopo-cena), `adessoEntry` (in corso vince sul prossimo; null a giornata finita), `remainingCount` (slot senza esito), `completionPct` (null senza slot, mai 0% finto), `weekRangeLabel` ("6–12 lug", "28 set – 4 ott" a cavallo di mese, valori Intl verificati), `hhmmInZone` (fuso rotto degrada a UTC), e la **macchina degli stati**: tap null→fatto→null e saltato→fatto; gesto lungo sempre saltato, ri-lungo annulla.
+- **`week-board.tsx`** — LA BOARD: lun→dom come card; **mobile = snap-scroll orizzontale con oggi centrato al mount** (scrollIntoView inline center), **desktop (md+) = griglia a 7 colonne**; header giorno con nome+numero, ember dot su oggi; righe slot "07:00 Palestra" con **check a un tocco** (cerchio → pieno ember con spunta) e **gesto lungo 450ms = saltato** (pointer events, funziona anche col mouse; da tastiera Invio/Spazio = fatto, "s" = saltato — aria-label che spiega il gesto); fatto = **strike quieto** (line-through text-3), saltato = chip "saltato" + cerchio tratteggiato; **slot in corso con l'ember dot** (findNowSlot, solo sulla card di oggi); settimane future = `editable false`: check spenti al 35%, mai finti.
+- **`plan-manager.tsx`** — PIANI: lista (nome, chip "attivo", Attiva, apertura drill-down — pattern gym), "+ Nuovo piano" (nasce attivo e apre l'editor); editor: **rinomina inline** commit-on-blur, **Attiva**, **Duplica** (toast), **Elimina con undo** (restore del cascade P3, copy onesta "con slot e storia"); **authoring veloce**: giorni a chips L-D col conteggio, righe slot per orario, **scheda slot** (BottomSheet/Modal) con **TimePicker** inizio/fine (kit, zero native), titolo autofocus + Invio salva, note, **"Copia anche in"** a chips (copySlotToWeekdays del P3 al salvataggio) ed elimina con undo; **"Copia giorno su…"** (chips del bersaglio, copia tutti gli slot del giorno).
+- **`settimana-screen.tsx`** — Tabs Settimana/Piani/Storico; switcher ‹ › con "Questa settimana"/range + id ISO, futuro = riga "Anteprima del piano: si spunta quando arriva", passato = ancora spuntabile ("read-only-editable" del brief: i check retroattivi restano possibili) con "Torna a questa settimana"; senza piano attivo EmptyState con CTA che salta alla tab Piani. **STORICO**: barre delle ultime 8 settimane (percentuale sopra, barra ember, etichetta Wnn, corrente evidenziata; "—" onesto per settimane senza slot) + **"Salti più spesso"** dal weekStats P3 (top 6: orario, titolo, "N su M" settimane; il primo porta la copy senza colpa **"ti scappa spesso"**). La settimana corrente deriva da `isoWeekOf(useToday())` — niente `new Date()` nel render (la lezione lint del run-07, annotata nel codice).
+- **`page.tsx`** — shell server pattern corpo.
+
+### Cablaggio (anchored)
+
+- **`app/(app)/page.tsx`** — la card dopo la strip abitudini:
+```
+       {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
+       <TodayHabits />
++
++      {/* "Adesso" (run-08 prompt 4): lo slot corrente del piano attivo. */}
++      <TodayAdesso />
+
+       {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
+       <WhileAwayCard />
+```
+  (+ import). **`today-adesso.tsx`** (_components): lo slot IN CORSO del piano attivo — o "Tra poco: {prossimo}" — con lo **stesso SlotRow della board** (check inline, tap/gesto lungo), riga "E altri N slot oggi", "Piano di oggi completo." a giornata finita; **quieta per costruzione**: senza piano attivo o senza slot oggi rende null. Esporta `useTodayPlanSlots` (una query sola, mai due verità).
+- **`today-tiles.tsx`** — tile **"Piano di oggi"** (conteggio slot senza esito, unit "slot", hint "Tutto spuntato."/"Ancora senza esito.") SOLO quando il piano attivo prevede qualcosa oggi — pattern del tile Peso.
+- **`icons.tsx`** `IconWeek` (calendario con spunta); Rail Moduli e card Moduli di Impostazioni: "Settimana" dopo Abitudini ("La settimana tipo, spuntata slot per slot").
+
+### Scelte documentate
+
+1. **"Today 'Adesso' renders with a seeded plan in dev-check"**: il dominio planner NON ha un piano seminato (il P3 non lo prevede — a differenza dell'acqua, una "settimana tipo" non ha un default onesto). Il dev-check verifica quindi la card nel grafo chunk servito di `/` (copy presente) — con un piano creato la card monta per costruzione (stessa SlotRow della board, testata via findNowSlot/adessoEntry).
+2. **Gesto lungo = 450ms** su pointer events (mobile E desktop), con fallback da tastiera ("s") e aria-label che dichiara il gesto.
+3. **Slot senza fine**: dura fino al prossimo slot ma al massimo un'ora — "in corso" onesto senza chiedere la end_hhmm a chi non la vuole scrivere.
+4. **Passato "read-only-editable"**: interpretato come spuntabile retroattivamente (il dominio lo consente per costruzione: la riga della settimana passata è indipendente); solo il FUTURO è anteprima non toccabile.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; `/settimana` 200 da ospite con board e manager raggiungibili (tab nell'HTML) ✓; "Adesso" nel chunk servito di Oggi ✓ (interpretazione dichiarata); zero controlli nativi ✓; logica board/slot-corrente sotto test ✓.
+
+**Commit:** `feat(planner): week board with hour slots, plan manager, skip history, Adesso on Today`
 
 ---

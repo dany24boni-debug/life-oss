@@ -18,9 +18,11 @@ import {
 } from "@/data/hooks";
 import { formatBodyDelta, formatBodyKg } from "../corpo/logic";
 import { formatKg } from "../gym/logic";
+import { remainingCount } from "../settimana/logic";
 import { completionPercent, fillDays, weekBounds } from "../stats/logic";
 import { APP_TIME_ZONE } from "./tasks/logic";
 import { useToday } from "./tasks/screen-hooks";
+import { useTodayPlanSlots } from "./today-adesso";
 
 export function TodayTiles() {
   const today = useToday();
@@ -38,6 +40,11 @@ export function TodayTiles() {
 
   // Palestra della settimana in corso (lun -> oggi): sessioni e volume.
   const gym = useGymVolume(week.from, today);
+
+  // Piano di oggi (run-08 P4): slot rimasti — SOLO con un piano attivo
+  // che prevede qualcosa oggi.
+  const todayPlan = useTodayPlanSlots();
+  const planEntries = todayPlan.entries;
 
   // Peso corporeo (run-07 P4): tile compatto SOLO quando esistono dati.
   const weights = useBodyRecent(today, 2);
@@ -135,6 +142,18 @@ export function TodayTiles() {
             weightDelta !== null
               ? `${formatBodyDelta(weightDelta)} dall'ultima pesata.`
               : "Prima pesata registrata."
+          }
+        />
+      ) : null}
+      {planEntries !== undefined && planEntries.length > 0 ? (
+        <StatCard
+          label="Piano di oggi"
+          value={remainingCount(planEntries)}
+          unit="slot"
+          hint={
+            remainingCount(planEntries) === 0
+              ? "Tutto spuntato."
+              : "Ancora senza esito."
           }
         />
       ) : null}

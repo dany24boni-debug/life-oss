@@ -7,6 +7,7 @@ import {
   IconRepeat,
   IconScale,
   IconWallet,
+  IconWeek,
 } from "../_components/icons";
 import { InstallSection } from "../_components/pwa-install";
 import { CalendarImportButton } from "../calendar/import-button";
@@ -35,6 +36,12 @@ const MODULE_LINKS: Array<{
     label: "Abitudini",
     desc: "Board del giorno, anelli e streak",
     icon: IconRepeat,
+  },
+  {
+    href: "/settimana",
+    label: "Settimana",
+    desc: "La settimana tipo, spuntata slot per slot",
+    icon: IconWeek,
   },
   {
     href: "/esami",
