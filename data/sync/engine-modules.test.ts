@@ -539,3 +539,145 @@ describe("SyncEngine — round-trip lo_focus_sessions (run-08 P5)", () => {
     ).toEqual([{ date: "2026-07-12", minutes: 25 }]);
   });
 });
+
+describe("SyncEngine — round-trip dieta (run-09 P1)", () => {
+  it("alimento + piano + pasto + variante + riga arrivano su B identici; LWW sulla qty", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const pasta = must(
+      await a.repos.diet.createFood({
+        name: "Pasta",
+        basis: "per100g",
+        kcal: 353,
+        protein_g: 13.5,
+      }),
+    );
+    const plan = must(
+      await a.repos.diet.createPlan({ name: "Dieta", is_active: true }),
+    );
+    const meal = must(
+      await a.repos.diet.createMeal({
+        plan_id: plan.id,
+        weekday: 1,
+        name: "Pranzo",
+      }),
+    );
+    const variant = must(
+      await a.repos.diet.createVariant({ meal_id: meal.id, name: "Variante B" }),
+    );
+    const item = must(
+      await a.repos.diet.createItem({
+        meal_id: meal.id,
+        food_id: pasta.id,
+        qty: 80,
+      }),
+    );
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.foods.get(pasta.id)).toEqual(pasta);
+    expect(await b.db.diet_plans.get(plan.id)).toEqual(
+      await a.db.diet_plans.get(plan.id),
+    );
+    expect(await b.db.diet_meals.get(meal.id)).toEqual(meal);
+    expect(await b.db.meal_variants.get(variant.id)).toEqual(variant);
+    expect(await b.db.meal_items.get(item.id)).toEqual(item);
+    expect(remote.rowsOf("lo_meal_items")).toHaveLength(1);
+
+    // B ritocca la quantità DOPO: vince al round-trip.
+    must(await b.repos.diet.updateItem(item.id, { qty: 100 }));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    const onA = (await a.repos.diet.listItems(meal.id))[0];
+    expect(onA.qty).toBe(100);
+  });
+
+  it("il log del pasto CONVERGE (id derivato) e lo s-mangiare viaggia", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(
+      await a.repos.diet.createPlan({ name: "Dieta", is_active: true }),
+    );
+    const meal = must(
+      await a.repos.diet.createMeal({
+        plan_id: plan.id,
+        weekday: 1,
+        name: "Pranzo",
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    // Entrambi loggano lo stesso (pasto, giorno) PRIMA di sincronizzare:
+    // stessa PK derivata, il sync fonde con LWW invece di duplicare.
+    must(await a.repos.diet.logMeal(meal.id, "2026-07-13", true));
+    await new Promise((r) => setTimeout(r, 5));
+    must(await b.repos.diet.logMeal(meal.id, "2026-07-13", true));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_meal_logs")).toHaveLength(1);
+    const suA = await a.repos.diet.getMealLog(meal.id, "2026-07-13");
+    const suB = await b.repos.diet.getMealLog(meal.id, "2026-07-13");
+    expect(suA).toEqual(suB);
+    expect(suA?.eaten).toBe(true);
+
+    // B s-mangia: su A eaten torna false SULLA STESSA riga.
+    must(await b.repos.diet.logMeal(meal.id, "2026-07-13", false));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    expect(remote.rowsOf("lo_meal_logs")).toHaveLength(1);
+    expect(
+      (await a.repos.diet.getMealLog(meal.id, "2026-07-13"))?.eaten,
+    ).toBe(false);
+  });
+
+  it("il cascade del piano viaggia fino ai log; gli extra fanno round-trip", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(
+      await a.repos.diet.createPlan({ name: "Dieta", is_active: true }),
+    );
+    const meal = must(
+      await a.repos.diet.createMeal({
+        plan_id: plan.id,
+        weekday: 1,
+        name: "Pranzo",
+      }),
+    );
+    must(await a.repos.diet.logMeal(meal.id, "2026-07-13", true));
+    const extra = must(
+      await a.repos.diet.addExtra({
+        date: "2026-07-13",
+        name: "Gelato",
+        kcal: 320,
+        protein_g: 4.5,
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.db.diet_extras.get(extra.id)).toEqual(extra);
+    expect(
+      (await b.repos.diet.getMealLog(meal.id, "2026-07-13"))?.eaten,
+    ).toBe(true);
+
+    // A elimina il piano: tombstone a cascata fino ai log, su B.
+    must(await a.repos.diet.softDeletePlan(plan.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.diet.getPlanById(plan.id)).toBeNull();
+    expect(await b.repos.diet.getMealById(meal.id)).toBeNull();
+    expect(await b.repos.diet.getMealLog(meal.id, "2026-07-13")).toBeNull();
+    // L'extra non fa parte del piano: resta vivo.
+    expect((await b.repos.diet.dayExtras("2026-07-13"))).toHaveLength(1);
+  });
+});

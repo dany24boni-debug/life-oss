@@ -20,6 +20,15 @@ export function waterTargetMl(weightKg: number | null): number | null {
   return Math.round(Math.max(1500, Math.min(4000, weightKg * 35)));
 }
 
+/**
+ * Proteine del giorno (run-09): ~1,8 g/kg dal peso più recente, clamp
+ * 60..260 g. Null senza pesate — mai numeri inventati.
+ */
+export function proteinTargetG(weightKg: number | null): number | null {
+  if (weightKg === null || weightKg <= 0) return null;
+  return Math.round(Math.max(60, Math.min(260, weightKg * 1.8)));
+}
+
 /** Età (approssimata all'anno civile: basta per una stima onesta). */
 export function ageFromBirthYear(
   birthYear: number | null,

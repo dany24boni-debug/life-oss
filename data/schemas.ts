@@ -529,6 +529,267 @@ export const FocusSessionSchema = z.object({
 export type FocusSession = z.infer<typeof FocusSessionSchema>;
 
 // ============================================================
+// Dieta (run-09 prompt 1) — libreria alimenti PERSONALE (nessun
+// database pubblico di alimenti, per decisione), piano settimanale
+// di pasti con VARIANTI (una variante SOSTITUISCE la composizione
+// base del pasto, non la somma), log per (pasto, giorno) con id
+// DERIVATO `lifeos:meal-log:<meal_id>:<date>` — un solo log per
+// pasto al giorno per costruzione, i device convergono (LWW);
+// "s-mangiare" scrive eaten:false sulla STESSA riga e viaggia col
+// sync (pattern dei check del planner) — ed extra del giorno
+// append-only (id UUIDv7: due spuntini sono due righe vere).
+//
+// Numeri: kcal INTERE per basis; macro in grammi con al più UN
+// decimale — la matematica di data/diet.ts lavora in DECIGRAMMI
+// interi (la lezione dei centesimi di Spese: mai scie di float).
+// ============================================================
+
+/** Base di misura dell'alimento: valori per 100 g o per pezzo. */
+export const FoodBasisSchema = z.enum(["per100g", "per_piece"]);
+export type FoodBasis = z.infer<typeof FoodBasisSchema>;
+
+/** kcal per basis (per 100 g o per pezzo): intere, tetto largo. */
+const KcalSchema = z.number().int().min(0).max(9000);
+/** Grammi di macro per basis: al più un decimale (math in decigrammi). */
+const MacroGramsSchema = z
+  .number()
+  .min(0)
+  .max(1000)
+  .refine((n) => Math.abs(n * 10 - Math.round(n * 10)) < 1e-6, {
+    message: "I grammi possono avere al massimo un decimale.",
+  });
+/** Quantità in g o pezzi secondo la basis: positiva, al più un decimale. */
+const FoodQtySchema = z
+  .number()
+  .positive()
+  .max(10_000)
+  .refine((n) => Math.abs(n * 10 - Math.round(n * 10)) < 1e-6, {
+    message: "La quantità può avere al massimo un decimale.",
+  });
+
+const FoodNameSchema = z.string().trim().min(1).max(120);
+
+export const FoodSchema = z.object({
+  id: UuidSchema,
+  name: FoodNameSchema,
+  basis: FoodBasisSchema,
+  kcal: KcalSchema,
+  protein_g: MacroGramsSchema,
+  carbs_g: MacroGramsSchema,
+  fat_g: MacroGramsSchema,
+  /** Quantità proposta dallo stepper ("80" g di pasta, "2" uova). */
+  default_qty: FoodQtySchema.nullable(),
+  /** Archiviato: sparisce dall'autocomplete, la storia resta (≠ eliminato). */
+  archived_at: IsoInstantSchema.nullable(),
+  ...audit,
+});
+export type Food = z.infer<typeof FoodSchema>;
+
+/** `basis` è FUORI dagli editable: cambiarla cambierebbe il significato
+ *  di ogni quantità già scritta nei pasti (80 g ≠ 80 pezzi). */
+const foodEditable = {
+  name: FoodNameSchema,
+  kcal: KcalSchema,
+  protein_g: MacroGramsSchema,
+  carbs_g: MacroGramsSchema,
+  fat_g: MacroGramsSchema,
+  default_qty: FoodQtySchema.nullable(),
+};
+
+export const FoodCreateSchema = z
+  .object({ ...foodEditable, basis: FoodBasisSchema })
+  .partial()
+  .required({ name: true, basis: true, kcal: true });
+export type FoodCreate = z.infer<typeof FoodCreateSchema>;
+
+export const FoodPatchSchema = z.object(foodEditable).partial();
+export type FoodPatch = z.infer<typeof FoodPatchSchema>;
+
+const DietNameSchema = z.string().trim().min(1).max(120);
+
+export const DietPlanSchema = z.object({
+  id: UuidSchema,
+  name: DietNameSchema,
+  /** Al più uno attivo: lo garantisce il repo, non lo schema. */
+  is_active: z.boolean(),
+  ...audit,
+});
+export type DietPlan = z.infer<typeof DietPlanSchema>;
+
+const dietPlanEditable = {
+  name: DietNameSchema,
+  is_active: z.boolean(),
+};
+
+export const DietPlanCreateSchema = z
+  .object(dietPlanEditable)
+  .partial()
+  .required({ name: true });
+export type DietPlanCreate = z.infer<typeof DietPlanCreateSchema>;
+
+export const DietPlanPatchSchema = z.object(dietPlanEditable).partial();
+export type DietPlanPatch = z.infer<typeof DietPlanPatchSchema>;
+
+export const DietMealSchema = z.object({
+  id: UuidSchema,
+  plan_id: UuidSchema,
+  /** 1 = lunedì … 7 = domenica. */
+  weekday: z.number().int().min(1).max(7),
+  /** "Pranzo", "Spuntino". */
+  name: DietNameSchema,
+  /** Ordine dentro il giorno. */
+  sort_order: z.number(),
+  ...audit,
+});
+export type DietMeal = z.infer<typeof DietMealSchema>;
+
+/** weekday resta editabile: spostare un pasto di giorno è un gesto vero. */
+const dietMealEditable = {
+  plan_id: UuidSchema,
+  weekday: z.number().int().min(1).max(7),
+  name: DietNameSchema,
+  sort_order: z.number(),
+};
+
+export const DietMealCreateSchema = z
+  .object(dietMealEditable)
+  .partial()
+  .required({ plan_id: true, weekday: true, name: true });
+export type DietMealCreate = z.infer<typeof DietMealCreateSchema>;
+
+/** I pasti non migrano mai tra piani: plan_id fuori dal patch. */
+export const DietMealPatchSchema = z
+  .object(dietMealEditable)
+  .partial()
+  .omit({ plan_id: true });
+export type DietMealPatch = z.infer<typeof DietMealPatchSchema>;
+
+export const MealVariantSchema = z.object({
+  id: UuidSchema,
+  meal_id: UuidSchema,
+  /** "Variante B". */
+  name: DietNameSchema,
+  sort_order: z.number(),
+  ...audit,
+});
+export type MealVariant = z.infer<typeof MealVariantSchema>;
+
+const mealVariantEditable = {
+  meal_id: UuidSchema,
+  name: DietNameSchema,
+  sort_order: z.number(),
+};
+
+export const MealVariantCreateSchema = z
+  .object(mealVariantEditable)
+  .partial()
+  .required({ meal_id: true, name: true });
+export type MealVariantCreate = z.infer<typeof MealVariantCreateSchema>;
+
+/** Le varianti non migrano mai tra pasti: meal_id fuori dal patch. */
+export const MealVariantPatchSchema = z
+  .object(mealVariantEditable)
+  .partial()
+  .omit({ meal_id: true });
+export type MealVariantPatch = z.infer<typeof MealVariantPatchSchema>;
+
+export const MealItemSchema = z.object({
+  id: UuidSchema,
+  meal_id: UuidSchema,
+  /** null = riga della composizione BASE; altrimenti la variante. */
+  variant_id: UuidSchema.nullable(),
+  food_id: UuidSchema,
+  /** In g o pezzi secondo la basis dell'alimento. */
+  qty: FoodQtySchema,
+  sort_order: z.number(),
+  ...audit,
+});
+export type MealItem = z.infer<typeof MealItemSchema>;
+
+const mealItemEditable = {
+  meal_id: UuidSchema,
+  variant_id: UuidSchema.nullable(),
+  food_id: UuidSchema,
+  qty: FoodQtySchema,
+  sort_order: z.number(),
+};
+
+export const MealItemCreateSchema = z
+  .object(mealItemEditable)
+  .partial()
+  .required({ meal_id: true, food_id: true, qty: true });
+export type MealItemCreate = z.infer<typeof MealItemCreateSchema>;
+
+/** Le righe non migrano tra pasti né tra base e varianti: fuori dal patch. */
+export const MealItemPatchSchema = z
+  .object(mealItemEditable)
+  .partial()
+  .omit({ meal_id: true, variant_id: true });
+export type MealItemPatch = z.infer<typeof MealItemPatchSchema>;
+
+export const MealLogSchema = z.object({
+  id: UuidSchema,
+  meal_id: UuidSchema,
+  /** Giorno del log (unico per (pasto, giorno): id derivato). */
+  date: IsoDaySchema,
+  /** false = s-mangiato: la riga resta, l'annullamento viaggia. */
+  eaten: z.boolean(),
+  /** Variante scelta; null = composizione base. */
+  variant_id: UuidSchema.nullable(),
+  ...audit,
+});
+export type MealLog = z.infer<typeof MealLogSchema>;
+
+/**
+ * Extra del giorno: O una voce di libreria (food_id + qty) O una voce
+ * libera (name + kcal, macro facoltative) — l'aut-aut è normalizzato
+ * dal repo (pattern kind delle abitudini), lo schema entità resta di
+ * sola forma per non scartare mai righe al pull.
+ */
+export const DietExtraSchema = z.object({
+  id: UuidSchema,
+  date: IsoDaySchema,
+  food_id: UuidSchema.nullable(),
+  qty: FoodQtySchema.nullable(),
+  name: FoodNameSchema.nullable(),
+  kcal: KcalSchema.nullable(),
+  protein_g: MacroGramsSchema.nullable(),
+  carbs_g: MacroGramsSchema.nullable(),
+  fat_g: MacroGramsSchema.nullable(),
+  ...audit,
+});
+export type DietExtra = z.infer<typeof DietExtraSchema>;
+
+const dietExtraEditable = {
+  date: IsoDaySchema,
+  food_id: UuidSchema.nullable(),
+  qty: FoodQtySchema.nullable(),
+  name: FoodNameSchema.nullable(),
+  kcal: KcalSchema.nullable(),
+  protein_g: MacroGramsSchema.nullable(),
+  carbs_g: MacroGramsSchema.nullable(),
+  fat_g: MacroGramsSchema.nullable(),
+};
+
+export const DietExtraCreateSchema = z
+  .object(dietExtraEditable)
+  .partial()
+  .required({ date: true })
+  .refine(
+    (e) =>
+      (e.food_id != null && e.qty != null) ||
+      (e.name != null && e.kcal != null),
+    {
+      message:
+        "Un extra è un alimento con quantità oppure una voce libera con kcal.",
+    },
+  );
+export type DietExtraCreate = z.infer<typeof DietExtraCreateSchema>;
+
+export const DietExtraPatchSchema = z.object(dietExtraEditable).partial();
+export type DietExtraPatch = z.infer<typeof DietExtraPatchSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

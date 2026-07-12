@@ -65,6 +65,7 @@ export function withMutationSignal(repos: Repos): Repos {
     body: wrapRepo(repos.body),
     habits: wrapRepo(repos.habits),
     planner: wrapRepo(repos.planner),
+    diet: wrapRepo(repos.diet),
     focus: wrapRepo(repos.focus),
     gym: wrapRepo(repos.gym),
     stats: repos.stats,

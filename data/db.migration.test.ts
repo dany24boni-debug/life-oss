@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
-import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5, SCHEMA_V7 } from "./db";
+import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5, SCHEMA_V7, SCHEMA_V10 } from "./db";
 
 /**
  * Il test del "bump di schema": la garanzia che quando (prompt 08+) si
@@ -65,18 +65,23 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 10 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 11 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
     // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
     // programmi. v7 (run-07 P4): + body. v8 (run-08): + abitudini.
     // v9 (run-08 P3): + planner settimanale. v10 (run-08 P5): + focus.
-    expect(dbTest.verno).toBe(10);
+    // v11 (run-09): + dieta.
+    expect(dbTest.verno).toBe(11);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "body",
+      "diet_extras",
+      "diet_meals",
+      "diet_plans",
       "esami",
       "events",
       "focus_sessions",
+      "foods",
       "gym_exercises",
       "gym_plans",
       "gym_program_days",
@@ -86,6 +91,9 @@ describe("schema bump v1 -> v2", () => {
       "gym_sets",
       "habit_logs",
       "habits",
+      "meal_items",
+      "meal_logs",
+      "meal_variants",
       "plan_slots",
       "reminders",
       "sera",
@@ -136,7 +144,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(10);
+    expect(current.verno).toBe(11);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -213,7 +221,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(10);
+    expect(current.verno).toBe(11);
     expect(await current.body.get(pesata.id)).toEqual(pesata);
 
     // Le tabelle nuove funzionano, indici compresi.
@@ -282,6 +290,84 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
+  it("v10 → v11: il registro focus sopravvive e le tabelle dieta sono subito usabili", async () => {
+    const name = "v10-to-v11-diet-survival";
+    // Simula un dispositivo run-08: db creato con la v10 reale.
+    const v10 = new Dexie(name);
+    v10.version(10).stores(SCHEMA_V10);
+    await v10.open();
+    const fase = {
+      id: "01980000-0000-7000-8000-000000000501",
+      date: "2026-07-12",
+      minutes: 25,
+      created_at: "2026-07-12T11:00:00.000Z",
+      updated_at: "2026-07-12T11:00:00.000Z",
+      deleted_at: null,
+    };
+    await v10.table("focus_sessions").add(fase);
+    v10.close();
+
+    const current = new LifeosDb(name);
+    await current.open();
+    expect(current.verno).toBe(11);
+    expect(await current.focus_sessions.get(fase.id)).toEqual(fase);
+
+    // Le tabelle dieta funzionano, indici compresi.
+    await current.foods.add({
+      id: "01980000-0000-7000-8000-000000000502",
+      name: "Pasta",
+      basis: "per100g",
+      kcal: 353,
+      protein_g: 13.5,
+      carbs_g: 70.2,
+      fat_g: 1.8,
+      default_qty: 80,
+      archived_at: null,
+      created_at: "2026-07-13T08:00:00.000Z",
+      updated_at: "2026-07-13T08:00:00.000Z",
+      deleted_at: null,
+    });
+    await current.meal_logs.add({
+      id: "01980000-0000-7000-8000-000000000503",
+      meal_id: "01980000-0000-7000-8000-000000000504",
+      date: "2026-07-13",
+      eaten: true,
+      variant_id: null,
+      created_at: "2026-07-13T12:00:00.000Z",
+      updated_at: "2026-07-13T12:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.meal_logs
+        .where("meal_id")
+        .equals("01980000-0000-7000-8000-000000000504")
+        .count(),
+    ).toBe(1);
+    expect(
+      await current.meal_logs.where("date").equals("2026-07-13").count(),
+    ).toBe(1);
+    await current.diet_extras.add({
+      id: "01980000-0000-7000-8000-000000000505",
+      date: "2026-07-13",
+      food_id: null,
+      qty: null,
+      name: "Gelato",
+      kcal: 320,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      created_at: "2026-07-13T15:00:00.000Z",
+      updated_at: "2026-07-13T15:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.diet_extras.where("date").equals("2026-07-13").count(),
+    ).toBe(1);
+
+    current.close();
+    await Dexie.delete(name);
+  });
+
   it("un database scritto a v1 si apre alla versione corrente coi dati intatti", async () => {
     const name = "v1-to-current-real-schema";
     // Simula un dispositivo run-03: db creato con SOLO la v1 reale.
@@ -311,7 +397,7 @@ describe("schema bump v1 -> v2", () => {
     // Apertura con la classe reale (v1..v8): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(10);
+    expect(current.verno).toBe(11);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

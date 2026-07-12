@@ -4,6 +4,7 @@ import {
   ageFromBirthYear,
   bmrMifflinKcal,
   calorieTargetKcal,
+  proteinTargetG,
   relativeStrength,
   waterTargetMl,
 } from "./derived";
@@ -19,6 +20,20 @@ describe("waterTargetMl — ~35 ml/kg, clamp 1500..4000", () => {
   it("senza peso: null, mai numeri inventati", () => {
     expect(waterTargetMl(null)).toBeNull();
     expect(waterTargetMl(0)).toBeNull();
+  });
+});
+
+describe("proteinTargetG — ~1,8 g/kg, clamp 60..260 (run-09)", () => {
+  it("valori noti", () => {
+    expect(proteinTargetG(80)).toBe(144);
+    expect(proteinTargetG(82.4)).toBe(148); // 148,32 → 148
+    expect(proteinTargetG(30)).toBe(60); // 54 → clamp basso
+    expect(proteinTargetG(150)).toBe(260); // 270 → clamp alto
+  });
+
+  it("senza peso: null, mai numeri inventati", () => {
+    expect(proteinTargetG(null)).toBeNull();
+    expect(proteinTargetG(0)).toBeNull();
   });
 });
 
