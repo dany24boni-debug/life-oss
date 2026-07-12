@@ -41,10 +41,13 @@ import type {
   IsoInstant,
   LocalEvent,
   MuscleGroup,
+  PlanSlot,
   Reminder,
   Settings,
   Task,
+  WeekPlan,
 } from "./schemas";
+import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
 import type { StreakSummary } from "./streak";
 import type { SyncState } from "./sync/engine";
 import { META_LAST_ERROR, META_LAST_SYNC_AT, getMeta } from "./sync/meta";
@@ -246,6 +249,56 @@ export function useHabitStreak(
         ? appRepos().habits.habitStreak(habitId, { today })
         : Promise.resolve({ current: 0, best: 0, todayCounts: false }),
     [habitId, today],
+  );
+}
+
+/* ── Planner settimanale (run-08 prompt 3) ───────────────────────────── */
+
+/** Piani vivi: l'attivo per primo, poi per nome. */
+export function useWeekPlans(): WeekPlan[] | undefined {
+  return useLiveQuery(() => appRepos().planner.listPlans(), []);
+}
+
+/** Il piano attivo (al più uno); null se nessuno. */
+export function useActiveWeekPlan(): WeekPlan | null | undefined {
+  return useLiveQuery(() => appRepos().planner.activePlan(), []);
+}
+
+/** Slot vivi del piano (weekday, orario, sort_order). */
+export function usePlanSlots(planId: string | null): PlanSlot[] | undefined {
+  return useLiveQuery(
+    () =>
+      planId ? appRepos().planner.listSlots(planId) : Promise.resolve([]),
+    [planId],
+  );
+}
+
+/** La board lun->dom della settimana ISO data (slot + check). */
+export function useWeekBoard(
+  planId: string | null,
+  isoWeek: IsoWeek,
+): WeekBoardDay[] | undefined {
+  return useLiveQuery(
+    () =>
+      planId
+        ? appRepos().planner.weekBoard(planId, isoWeek)
+        : Promise.resolve([]),
+    [planId, isoWeek],
+  );
+}
+
+/** Statistiche delle ultime N settimane (completamento + più saltati). */
+export function useWeekStats(
+  planId: string | null,
+  lastNWeeks: number,
+  currentWeek: IsoWeek,
+): WeekStats | undefined {
+  return useLiveQuery(
+    () =>
+      planId
+        ? appRepos().planner.weekStats(planId, lastNWeeks, currentWeek)
+        : Promise.resolve({ weeks: [], mostSkipped: [] }),
+    [planId, lastNWeeks, currentWeek],
   );
 }
 

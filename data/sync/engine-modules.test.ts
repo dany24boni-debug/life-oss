@@ -436,3 +436,86 @@ describe("SyncEngine — round-trip abitudini (run-08)", () => {
     expect(await b.repos.habits.getLog(habit.id, "2026-07-10")).toBeNull();
   });
 });
+
+describe("SyncEngine — round-trip planner (run-08 P3)", () => {
+  it("piano + slot + check arrivano su B; il check della settimana CONVERGE", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(
+      await a.repos.planner.createPlan({
+        name: "Settimana lavoro",
+        is_active: true,
+      }),
+    );
+    const slot = must(
+      await a.repos.planner.createSlot({
+        plan_id: plan.id,
+        weekday: 1,
+        start_hhmm: "07:00",
+        end_hhmm: "08:30",
+        title: "Palestra",
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.week_plans.get(plan.id)).toEqual(plan);
+    expect(await b.db.plan_slots.get(slot.id)).toEqual(slot);
+
+    // Entrambi spuntano la stessa settimana PRIMA di sincronizzare:
+    // stessa PK derivata, il sync fonde con LWW invece di duplicare.
+    must(await a.repos.planner.setCheck(slot.id, "2026-W28", "done"));
+    await new Promise((r) => setTimeout(r, 5));
+    must(await b.repos.planner.setCheck(slot.id, "2026-W28", "skipped"));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    expect(remote.rowsOf("lo_slot_checks")).toHaveLength(1);
+    const suA = await a.repos.planner.getCheck(slot.id, "2026-W28");
+    const suB = await b.repos.planner.getCheck(slot.id, "2026-W28");
+    expect(suA).toEqual(suB);
+    expect(suA?.state).toBe("skipped"); // vince la scrittura più recente
+  });
+
+  it("de-spuntare viaggia (state null sulla stessa riga); il cascade pure", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const plan = must(await a.repos.planner.createPlan({ name: "P" }));
+    const slot = must(
+      await a.repos.planner.createSlot({
+        plan_id: plan.id,
+        weekday: 3,
+        start_hhmm: "18:00",
+        title: "Spesa",
+      }),
+    );
+    must(await a.repos.planner.setCheck(slot.id, "2026-W28", "done"));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect((await b.repos.planner.getCheck(slot.id, "2026-W28"))?.state).toBe(
+      "done",
+    );
+
+    // B de-spunta: su A lo stato torna null (mai una riga fantasma).
+    must(await b.repos.planner.setCheck(slot.id, "2026-W28", null));
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+    const onA = await a.repos.planner.getCheck(slot.id, "2026-W28");
+    expect(onA).not.toBeNull();
+    expect(onA?.state).toBeNull();
+
+    // A elimina il piano: tombstone a cascata fino ai check, su B.
+    must(await a.repos.planner.softDeletePlan(plan.id));
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect(await b.repos.planner.getPlanById(plan.id)).toBeNull();
+    expect(await b.repos.planner.listSlots(plan.id)).toHaveLength(0);
+    expect(await b.repos.planner.getCheck(slot.id, "2026-W28")).toBeNull();
+  });
+});

@@ -44,9 +44,12 @@ import type {
   Habit,
   HabitLog,
   LocalEvent,
+  PlanSlot,
   Reminder,
   Settings,
+  SlotCheck,
   Task,
+  WeekPlan,
 } from "./schemas";
 
 export const DB_NAME = "lifeos";
@@ -126,6 +129,18 @@ export const SCHEMA_V8 = {
   habit_logs: "id, habit_id, date, updated_at",
 } as const;
 
+/**
+ * v9 = v8 + planner settimanale (run-08 prompt 3): piani, slot orari,
+ * check per (slot, settimana ISO — indice iso_week per la board).
+ * Solo additiva.
+ */
+export const SCHEMA_V9 = {
+  ...SCHEMA_V8,
+  week_plans: "id, updated_at",
+  plan_slots: "id, plan_id, updated_at",
+  slot_checks: "id, slot_id, iso_week, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -138,6 +153,9 @@ export class LifeosDb extends Dexie {
   body!: Table<BodyEntry, string>;
   habits!: Table<Habit, string>;
   habit_logs!: Table<HabitLog, string>;
+  week_plans!: Table<WeekPlan, string>;
+  plan_slots!: Table<PlanSlot, string>;
+  slot_checks!: Table<SlotCheck, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
   gym_programs!: Table<GymProgram, string>;
@@ -183,6 +201,7 @@ export class LifeosDb extends Dexie {
       );
     this.version(7).stores(SCHEMA_V7);
     this.version(8).stores(SCHEMA_V8);
+    this.version(9).stores(SCHEMA_V9);
   }
 }
 

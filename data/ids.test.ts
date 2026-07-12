@@ -77,6 +77,12 @@ describe("deriveUuidV8 — golden (contratto di idempotenza)", () => {
         "lifeos:habit-log:01970000-90ac-7000-8000-000000000001:2026-07-12",
       ),
     ).toBe("481cb061-399a-8a91-aa69-11ae34b725fd");
+    // Prefisso slot-check (run-08): una riga per (slot, settimana ISO).
+    expect(
+      await deriveUuidV8(
+        "lifeos:slot-check:aaaa1111-0000-4000-8000-000000000001:2027-W01",
+      ),
+    ).toBe("14828f50-c9bc-8e13-8135-cf85d241821e");
   });
 
   it("è deterministica e ha forma UUID v8 variant 10", async () => {

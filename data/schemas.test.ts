@@ -9,9 +9,13 @@ import {
   HabitSchema,
   HhmmSchema,
   IsoDaySchema,
+  IsoWeekSchema,
+  PlanSlotPatchSchema,
+  PlanSlotSchema,
   ProgramSlotCreateSchema,
   ProgramSlotPatchSchema,
   SettingsSchema,
+  SlotCheckSchema,
   TaskCreateSchema,
   TaskPatchSchema,
   TaskSchema,
@@ -328,5 +332,65 @@ describe("abitudini (run-08)", () => {
     expect(HabitLogSchema.safeParse(log).success).toBe(true);
     expect(HabitLogSchema.safeParse({ ...log, value: -1 }).success).toBe(false);
     expect(HabitLogSchema.safeParse({ ...log, value: 0 }).success).toBe(true);
+  });
+});
+
+describe("planner settimanale (run-08 P3)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+
+  it("IsoWeekSchema: regex chiusa 01..53", () => {
+    expect(IsoWeekSchema.safeParse("2026-W28").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W01").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W53").success).toBe(true);
+    expect(IsoWeekSchema.safeParse("2026-W00").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-W54").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-28").success).toBe(false);
+    expect(IsoWeekSchema.safeParse("2026-W2").success).toBe(false);
+  });
+
+  it("PlanSlot: weekday 1..7, orari HH:MM; plan_id fuori dal patch", () => {
+    const base = {
+      id: uuidv7(),
+      plan_id: uuidv7(),
+      weekday: 1,
+      start_hhmm: "07:00",
+      end_hhmm: null,
+      title: "Palestra",
+      notes: null,
+      sort_order: 0,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(PlanSlotSchema.safeParse(base).success).toBe(true);
+    expect(PlanSlotSchema.safeParse({ ...base, weekday: 0 }).success).toBe(
+      false,
+    );
+    expect(
+      PlanSlotSchema.safeParse({ ...base, start_hhmm: "25:00" }).success,
+    ).toBe(false);
+    const r = PlanSlotPatchSchema.safeParse({ plan_id: uuidv7() });
+    expect(r.success && "plan_id" in r.data).toBe(false);
+  });
+
+  it("SlotCheck: stato chiuso done/skipped/null", () => {
+    const base = {
+      id: uuidv7(),
+      slot_id: uuidv7(),
+      iso_week: "2026-W28",
+      checked_at: null,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(SlotCheckSchema.safeParse({ ...base, state: "done" }).success).toBe(
+      true,
+    );
+    expect(SlotCheckSchema.safeParse({ ...base, state: null }).success).toBe(
+      true,
+    );
+    expect(
+      SlotCheckSchema.safeParse({ ...base, state: "missed" }).success,
+    ).toBe(false);
   });
 });

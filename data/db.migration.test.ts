@@ -65,12 +65,13 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 8 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 9 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
     // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
     // programmi. v7 (run-07 P4): + body. v8 (run-08): + abitudini.
-    expect(dbTest.verno).toBe(8);
+    // v9 (run-08 P3): + planner settimanale.
+    expect(dbTest.verno).toBe(9);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "body",
       "esami",
@@ -84,12 +85,15 @@ describe("schema bump v1 -> v2", () => {
       "gym_sets",
       "habit_logs",
       "habits",
+      "plan_slots",
       "reminders",
       "sera",
       "settings",
+      "slot_checks",
       "spese",
       "sync_meta",
       "tasks",
+      "week_plans",
     ]);
     expect(DB_NAME).toBe("lifeos");
     dbTest.close();
@@ -131,7 +135,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(8);
+    expect(current.verno).toBe(9);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -208,7 +212,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(8);
+    expect(current.verno).toBe(9);
     expect(await current.body.get(pesata.id)).toEqual(pesata);
 
     // Le tabelle nuove funzionano, indici compresi.
@@ -245,6 +249,21 @@ describe("schema bump v1 -> v2", () => {
       await current.habit_logs.where("date").equals("2026-07-12").count(),
     ).toBe(1);
 
+    // E le tabelle planner (v9) sono subito usabili, indici compresi.
+    await current.slot_checks.add({
+      id: "01980000-0000-7000-8000-000000000404",
+      slot_id: "01980000-0000-7000-8000-000000000405",
+      iso_week: "2026-W28",
+      state: "done",
+      checked_at: "2026-07-12T10:00:00.000Z",
+      created_at: "2026-07-12T10:00:00.000Z",
+      updated_at: "2026-07-12T10:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.slot_checks.where("iso_week").equals("2026-W28").count(),
+    ).toBe(1);
+
     current.close();
     await Dexie.delete(name);
   });
@@ -278,7 +297,7 @@ describe("schema bump v1 -> v2", () => {
     // Apertura con la classe reale (v1..v8): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(8);
+    expect(current.verno).toBe(9);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

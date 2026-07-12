@@ -14,6 +14,7 @@
 
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
+import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
 import type {
   BodyEntry,
   BodyPatch,
@@ -42,6 +43,14 @@ import type {
   HabitPatch,
   IsoDay,
   IsoInstant,
+  PlanSlot,
+  PlanSlotCreate,
+  PlanSlotPatch,
+  SlotCheck,
+  SlotCheckState,
+  WeekPlan,
+  WeekPlanCreate,
+  WeekPlanPatch,
   LocalEvent,
   MuscleGroup,
   PlanCreate,
@@ -315,6 +324,79 @@ export interface HabitsRepo {
 }
 
 // ============================================================
+// Planner settimanale (run-08 prompt 3)
+// ============================================================
+
+export interface PlannerRepo {
+  // Piani (modelli di settimana)
+  createPlan(input: WeekPlanCreate): Promise<Result<WeekPlan>>;
+  /**
+   * Patch mirata; `is_active: true` disattiva ogni altro piano nella
+   * stessa transazione (al più uno attivo, invariante del repo).
+   */
+  updatePlan(id: string, patch: WeekPlanPatch): Promise<Result<WeekPlan>>;
+  /**
+   * Tombstone al piano E a slot/check vivi, tutti con lo STESSO
+   * deleted_at (pattern cascade dei programmi gym): l'undo revive solo
+   * le righe di quel cascade.
+   */
+  softDeletePlan(id: string): Promise<Result<void>>;
+  restorePlan(id: string): Promise<Result<WeekPlan>>;
+  /**
+   * Copia profonda degli SLOT (nome " (copia)", mai attiva); la storia
+   * dei check resta all'originale — è la sua, non del clone.
+   */
+  duplicatePlan(id: string): Promise<Result<WeekPlan>>;
+  getPlanById(id: string): Promise<WeekPlan | null>;
+  /** Piani vivi: l'attivo per primo, poi per nome. */
+  listPlans(): Promise<WeekPlan[]>;
+  /** Il piano attivo; più attivi post-merge: vince updated_at. */
+  activePlan(): Promise<WeekPlan | null>;
+
+  // Slot orari
+  createSlot(input: PlanSlotCreate): Promise<Result<PlanSlot>>;
+  updateSlot(id: string, patch: PlanSlotPatch): Promise<Result<PlanSlot>>;
+  softDeleteSlot(id: string): Promise<Result<void>>;
+  /** Undo del toast — revive lo slot e i check del suo cascade. */
+  restoreSlot(id: string): Promise<Result<PlanSlot>>;
+  /** Copia lo slot negli altri giorni feriali dati (authoring veloce). */
+  copySlotToWeekdays(
+    id: string,
+    weekdays: number[],
+  ): Promise<Result<PlanSlot[]>>;
+  /** Slot vivi del piano: weekday, poi orario, poi sort_order. */
+  listSlots(planId: string): Promise<PlanSlot[]>;
+  /** sort_order = indice nell'array; id ignoti o d'altri piani saltati. */
+  reorderSlots(planId: string, orderedIds: string[]): Promise<Result<void>>;
+
+  // Check per settimana (id derivato: una riga per slot per settimana)
+  /**
+   * Upsert del check di (slot, settimana): done / saltato / null per
+   * de-spuntare — la riga resta, l'annullamento viaggia col sync.
+   */
+  setCheck(
+    slotId: string,
+    isoWeek: IsoWeek,
+    state: SlotCheckState | null,
+  ): Promise<Result<SlotCheck>>;
+  getCheck(slotId: string, isoWeek: IsoWeek): Promise<SlotCheck | null>;
+  /** I check vivi della settimana (tutti gli slot). */
+  listChecksForWeek(isoWeek: IsoWeek): Promise<SlotCheck[]>;
+
+  // Letture composte (la matematica vive in data/planner.ts, pura)
+  /** Lun->dom della settimana data, slot per orario + check. */
+  weekBoard(planId: string, isoWeek: IsoWeek): Promise<WeekBoardDay[]>;
+  /** Ultime N settimane (corrente inclusa): completamento + più saltati. */
+  weekStats(
+    planId: string,
+    lastNWeeks: number,
+    currentWeek: IsoWeek,
+  ): Promise<WeekStats>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
 // Gym (B2.3)
 // ============================================================
 
@@ -552,6 +634,7 @@ export interface Repos {
   sera: SeraRepo;
   body: BodyRepo;
   habits: HabitsRepo;
+  planner: PlannerRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

@@ -31,9 +31,12 @@ import {
   HabitLogSchema,
   HabitSchema,
   LocalEventSchema,
+  PlanSlotSchema,
   ReminderSchema,
   SettingsSchema,
+  SlotCheckSchema,
   TaskSchema,
+  WeekPlanSchema,
   type IsoInstant,
 } from "../schemas";
 
@@ -53,6 +56,9 @@ export type LocalTableName =
   | "body"
   | "habits"
   | "habit_logs"
+  | "week_plans"
+  | "plan_slots"
+  | "slot_checks"
   | "gym_exercises"
   | "gym_plans"
   | "gym_programs"
@@ -134,6 +140,24 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     remote: "lo_habit_logs",
     parse: parserFor(HabitLogSchema),
     instantColumns: AUDIT,
+  },
+  {
+    local: "week_plans",
+    remote: "lo_week_plans",
+    parse: parserFor(WeekPlanSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "plan_slots",
+    remote: "lo_plan_slots",
+    parse: parserFor(PlanSlotSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "slot_checks",
+    remote: "lo_slot_checks",
+    parse: parserFor(SlotCheckSchema),
+    instantColumns: [...AUDIT, "checked_at"],
   },
   {
     local: "gym_exercises",

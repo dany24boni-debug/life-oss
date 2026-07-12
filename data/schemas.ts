@@ -412,6 +412,104 @@ export const HabitLogSchema = z.object({
 export type HabitLog = z.infer<typeof HabitLogSchema>;
 
 // ============================================================
+// Planner settimanale (run-08 prompt 3) — modelli settimana tipo
+// ("Settimana lavoro"): un piano ATTIVO alla volta (invariante del
+// repo, come i programmi gym), slot orari per giorno feriale scritti
+// UNA volta, e check per (slot, settimana ISO) con id DERIVATO
+// `lifeos:slot-check:<slot_id>:<iso_week>` — una riga per slot per
+// settimana per costruzione, i device convergono (LWW). La storia è
+// append-only per costruzione: i check delle settimane passate restano.
+// ============================================================
+
+/** Settimana ISO 8601 come stringa: "2026-W28" (settimane 01..53). */
+export const IsoWeekSchema = z
+  .string()
+  .regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/, "Settimana ISO non valida");
+
+const PlanNameSchema = z.string().trim().min(1).max(120);
+const SlotTitleSchema = z.string().trim().min(1).max(200);
+
+export const WeekPlanSchema = z.object({
+  id: UuidSchema,
+  name: PlanNameSchema,
+  /** Al più uno attivo: lo garantisce il repo, non lo schema. */
+  is_active: z.boolean(),
+  ...audit,
+});
+export type WeekPlan = z.infer<typeof WeekPlanSchema>;
+
+const weekPlanEditable = {
+  name: PlanNameSchema,
+  is_active: z.boolean(),
+};
+
+export const WeekPlanCreateSchema = z
+  .object(weekPlanEditable)
+  .partial()
+  .required({ name: true });
+export type WeekPlanCreate = z.infer<typeof WeekPlanCreateSchema>;
+
+export const WeekPlanPatchSchema = z.object(weekPlanEditable).partial();
+export type WeekPlanPatch = z.infer<typeof WeekPlanPatchSchema>;
+
+export const PlanSlotSchema = z.object({
+  id: UuidSchema,
+  plan_id: UuidSchema,
+  /** 1 = lunedì … 7 = domenica. */
+  weekday: z.number().int().min(1).max(7),
+  /** "07:00" — l'ora dello slot. */
+  start_hhmm: HhmmSchema,
+  /** Fine opzionale ("08:30"); null = solo un orario di inizio. */
+  end_hhmm: HhmmSchema.nullable(),
+  /** "Palestra", "Deep work". */
+  title: SlotTitleSchema,
+  notes: z.string().max(500).nullable(),
+  /** Ordine dentro la stessa ora (poi vince start_hhmm). */
+  sort_order: z.number(),
+  ...audit,
+});
+export type PlanSlot = z.infer<typeof PlanSlotSchema>;
+
+/** weekday resta editabile: spostare uno slot di giorno è un gesto vero. */
+const planSlotEditable = {
+  plan_id: UuidSchema,
+  weekday: z.number().int().min(1).max(7),
+  start_hhmm: HhmmSchema,
+  end_hhmm: HhmmSchema.nullable(),
+  title: SlotTitleSchema,
+  notes: z.string().max(500).nullable(),
+  sort_order: z.number(),
+};
+
+export const PlanSlotCreateSchema = z
+  .object(planSlotEditable)
+  .partial()
+  .required({ plan_id: true, weekday: true, start_hhmm: true, title: true });
+export type PlanSlotCreate = z.infer<typeof PlanSlotCreateSchema>;
+
+/** Gli slot non migrano mai tra piani: plan_id fuori dal patch. */
+export const PlanSlotPatchSchema = z
+  .object(planSlotEditable)
+  .partial()
+  .omit({ plan_id: true });
+export type PlanSlotPatch = z.infer<typeof PlanSlotPatchSchema>;
+
+export const SlotCheckStateSchema = z.enum(["done", "skipped"]);
+export type SlotCheckState = z.infer<typeof SlotCheckStateSchema>;
+
+export const SlotCheckSchema = z.object({
+  id: UuidSchema,
+  slot_id: UuidSchema,
+  /** La settimana del check (unica per slot: id derivato). */
+  iso_week: IsoWeekSchema,
+  /** null = de-spuntato (la riga resta: l'annullamento deve viaggiare). */
+  state: SlotCheckStateSchema.nullable(),
+  checked_at: IsoInstantSchema.nullable(),
+  ...audit,
+});
+export type SlotCheck = z.infer<typeof SlotCheckSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

@@ -119,6 +119,47 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓; `/abitudini` 200 da ospite e strip su Oggi nel primo HTML ✓; zero controlli nativi ✓; matematica anello + logica board sotto test ✓ (P1 copre board/streak, qui i +11 della UI logic).
 
-**Commit:** `feat(habits): daily board with animated rings, quick logging, Today strip`
+**Commit:** `feat(habits): daily board with animated rings, quick logging, Today strip` → `bf06453`
+
+---
+
+## Prompt 3 — Dominio Planner settimanale
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **809/809, 65 file** (+26: 11 `data/planner.test.ts` nuovo, 10 `data/local/planner.test.ts` nuovo, +2 round-trip in engine-modules, +3 `data/schemas.test.ts`, +1 golden slot-check in ids.test — dentro il test golden esistente — e survival esteso in db.migration). **Fence rispettata:** solo `data/**` + `supabase/migrations/0027_lo_planner.sql` + test; zero diff su app/ui/lib/public.
+
+### Modello (la spec di Davide, `data/schemas.ts`)
+
+- **`WeekPlan`**: id, name ("Settimana lavoro"), `is_active` (al più uno — invariante del REPO, come i programmi gym), audit.
+- **`PlanSlot`**: id, plan_id, `weekday` 1-7, `start_hhmm` (HhmmSchema riusato), `end_hhmm` opzionale, title ≤200, notes ≤500, `sort_order` (spareggio dentro la stessa ora — l'ordine vero lo dà l'orario). **plan_id fuori dal patch** (gli slot non migrano tra piani); weekday resta editabile (spostare di giorno è un gesto vero).
+- **`SlotCheck`**: id **DERIVATO** `deriveUuidV8("lifeos:slot-check:<slot_id>:<iso_week>")` — una riga per (slot, settimana) PER COSTRUZIONE, convergenza cross-device; `state` `done | skipped | null` (**null = de-spuntato: la riga resta e l'annullamento viaggia col sync**), `checked_at`. Golden del prefisso pinnato in ids.test.
+- **`IsoWeekSchema`**: regex chiusa `YYYY-Wnn` 01..53.
+
+### Settimane ISO (`data/planner.ts`, puro)
+
+`isoWeekOf` (regola ISO: la settimana appartiene all'anno del suo GIOVEDÌ), `isoWeekDays` (lun→dom), `shiftIsoWeek`, `currentIsoWeek(instant, timeZone)` via `civilDayInZone` esistente (Europe/Rome iniettata dal chiamante — "existing civil helpers" del brief). Aritmetica a mezzogiorno UTC su stringhe civili: DST-immune per costruzione. **Testato sui confini**: il 2026 inizia di giovedì → W01 parte dal 29/12/2025 e il 2026 ha 53 settimane → l'1/1/2027 (venerdì) è `2026-W53`; 28/12/2025→2025-W52; 30/12/2024→2025-W01; shift che attraversa gli anni (W53→W01); giorni dei due cambi d'ora 2026; `currentIsoWeek` che cambia settimana alle 22:30Z di domenica per Roma ma non per UTC.
+
+### Board e statistiche (pure + repo)
+
+- **`computeWeekBoard(slots, checks, isoWeek)`**: 7 giorni lun→dom con la DATA di quella settimana, slot per orario → sort_order → created_at, stato del check fuso. Testato (ordine, parità d'ora, giorni vuoti).
+- **`computeWeekStats(slots, checks, currentWeek, lastN)`**: per-settimana `{total, done, skipped}` dove **total conta solo gli slot già esistenti in quella settimana** (created_at ≤ domenica — uno slot creato ieri non "manca" nelle settimane in cui non c'era, testato) e nelle settimane CHIUSE il mai-toccato conta come saltato (nella corrente contano solo i salti espliciti: la settimana non è finita); **classifica "salti più spesso"** = salti espliciti + silenziosi sulle settimane chiuse, ordinata per missed poi titolo — il "task che dimentichi di più" di Davide, con `{missed, done, weeks}` per la copy onesta del P4. Test del ranking con fixture a 3 slot.
+- **`LocalPlannerRepo`** (`data/local/planner.ts`): piani CRUD + **un-solo-attivo** transazionale + `activePlan` tolerant (updated_at) + **duplicatePlan** (copia profonda degli slot, " (copia)", mai attiva, **la storia dei check resta all'originale** — testato); slot CRUD + `reorderSlots` (indice, id d'altri piani saltati) + **`copySlotToWeekdays`** (authoring veloce del P4; mai nel proprio giorno, dedupe, testato); **cascade** piano→slot→check e slot→check con lo stesso deleted_at + restore che revive solo il cascade (testato); `setCheck` upsert su id derivato (validazione IsoWeek + stato, slot vivo richiesto, tombstone rianimata, `checked_at` null quando si de-spunta), `weekBoard`/`weekStats` = query + funzioni pure.
+- **La storia è append-only per costruzione**: settimane diverse = PK diverse, nessuna scrittura tocca mai le righe delle settimane passate (testato: W28 e W29 = 2 righe).
+
+### Streak globale: NO (scelta documentata)
+
+`activityDays` NON è esteso ai check del planner: "07:00 Palestra" spuntato è già contato dalla sessione gym, "09:00 Deep work" dai task — contarli anche qui double-conterebbe l'amministrazione della vita. Documentato nel docstring di `data/planner.ts` e qui.
+
+### Dexie v9, sync, migrazione
+
+- **Dexie v9** additiva: `week_plans`, `plan_slots` (indice plan_id), `slot_checks` (indici slot_id e **iso_week** per la board). Survival test esteso: v7→(v9) con pesata intatta + tabelle habits E planner subito usabili (indice iso_week verificato); verno-assert aggiornati a 9.
+- **Sync**: 3 voci nuove (`lo_week_plans`, `lo_plan_slots`, `lo_slot_checks` con `checked_at` tra le colonne istante). Round-trip FakeRemote: piano+slot identici su B; **convergenza del check della settimana** (due device spuntano offline → UNA riga remota, vince la scrittura più recente); **de-spuntare viaggia** (state null sulla stessa riga, mai una riga fantasma); cascade di tombstone fino ai check.
+- **Migrazione `0027_lo_planner.sql` SCRITTA, NON applicata**: 3 tabelle coi check di dominio (weekday 1-7, HH:MM regex, iso_week regex, state chiuso), blocco per-tabella 0019, **`lo_push` ridichiarata con l'allowlist a 20** (17 di 0026 + 3). Nessun unique server-side su (slot, settimana): garanzia client, come lo_sera/lo_body/lo_habit_logs (commentato nel file).
+- Hook nuovi: `useWeekPlans`, `useActiveWeekPlan`, `usePlanSlots`, `useWeekBoard`, `useWeekStats`. `withMutationSignal` + factory cablati.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓. Test iso-week (confini d'anno, DST) ✓. Test del ranking più-saltati ✓. Migrazione presente NON applicata ✓. Golden del prefisso slot-check ✓. Dexie bump con survival ✓. Round-trip + convergenza ✓. activityDays non toccato, documentato ✓.
+
+**Commit:** `feat(planner): week plan templates with per-week slot checks and skip stats`
 
 ---
