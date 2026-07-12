@@ -510,6 +510,25 @@ export const SlotCheckSchema = z.object({
 export type SlotCheck = z.infer<typeof SlotCheckSchema>;
 
 // ============================================================
+// Focus (run-08 prompt 5) — le fasi di LAVORO concluse del timer
+// pomodoro: una riga per fase (data + minuti), append-only. La
+// matematica del timer vive in lib/focus/engine.ts (pura); qui solo
+// il registro di ciò che è stato fatto davvero.
+// ============================================================
+
+/** Minuti di una fase di lavoro conclusa (1..600: tetto largo). */
+export const FocusMinutesSchema = z.number().int().min(1).max(600);
+
+export const FocusSessionSchema = z.object({
+  id: UuidSchema,
+  /** Giorno civile della fase conclusa. */
+  date: IsoDaySchema,
+  minutes: FocusMinutesSchema,
+  ...audit,
+});
+export type FocusSession = z.infer<typeof FocusSessionSchema>;
+
+// ============================================================
 // Gym (B2.3) — shape pronte per il prompt 10, senza reshaping
 // ============================================================
 

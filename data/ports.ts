@@ -30,6 +30,7 @@ import type {
   Expense,
   ExpenseCreate,
   ExpensePatch,
+  FocusSession,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -397,6 +398,24 @@ export interface PlannerRepo {
 }
 
 // ============================================================
+// Focus (run-08 prompt 5)
+// ============================================================
+
+export interface FocusRepo {
+  /** Registra una fase di lavoro conclusa (append-only). */
+  add(input: { date: IsoDay; minutes: number }): Promise<Result<FocusSession>>;
+  /** from <= date <= to, per giorno crescente. */
+  listRange(from: IsoDay, to: IsoDay): Promise<FocusSession[]>;
+  /** Somma dei minuti per giorno nel range (tile e /stats). */
+  minutesByDay(
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<Array<{ date: IsoDay; minutes: number }>>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
 // Gym (B2.3)
 // ============================================================
 
@@ -635,6 +654,7 @@ export interface Repos {
   body: BodyRepo;
   habits: HabitsRepo;
   planner: PlannerRepo;
+  focus: FocusRepo;
   gym: GymRepo;
   stats: StatsRepo;
   reminders: RemindersRepo;

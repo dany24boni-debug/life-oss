@@ -2,14 +2,17 @@
 
 /**
  * Lista agenda condivisa (B2.4): rende gli AgendaItem del merge — all-day
- * in testa, poi le voci con orario. Ogni voce è source-linked: un task
- * apre la sua scheda, un evento locale la sua; gli eventi Google portano
- * il badge e restano read-only. Usata da /calendar (giorno selezionato)
- * e dalla sezione Agenda di Oggi.
+ * in testa (dal run-08 P5 anche i task datati senza orario), poi le voci
+ * con orario. Ogni voce è source-linked: un task apre la sua scheda E si
+ * completa dal check inline, un evento locale la sua; gli eventi Google
+ * portano il badge e restano read-only. Usata da /calendar (giorno
+ * selezionato) e dalla sezione Agenda di Oggi.
  */
 
-import { cx } from "@/ui";
+import { cx, useToast } from "@/ui";
+import { appRepos } from "@/data/hooks";
 import type { AgendaItem } from "../calendar/agenda";
+import { IconCheck } from "./icons";
 
 export function AgendaList({
   items,
@@ -88,16 +91,74 @@ function AgendaRow({
     );
   }
 
+  if (item.source === "task") {
+    // Task: check inline a destra (run-08 P5, "completable from there")
+    // + scheda al tap sulla riga — la colonna orario resta allineata.
+    return (
+      <div className="flex items-stretch gap-1 border-b border-[var(--em-hairline)] last:border-b-0">
+        <button
+          type="button"
+          onClick={() => onOpenTask(item.id)}
+          aria-label={`Apri: ${item.title}`}
+          className="flex min-h-11 min-w-0 flex-1 items-start gap-3 py-2.5 text-left transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)]"
+        >
+          {body}
+        </button>
+        <TaskCheck id={item.id} title={item.title} done={item.done} />
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
-      onClick={() =>
-        item.source === "task" ? onOpenTask(item.id) : onOpenEvent(item.id)
-      }
+      onClick={() => onOpenEvent(item.id)}
       aria-label={`Apri: ${item.title}`}
       className="flex min-h-11 w-full items-start gap-3 border-b border-[var(--em-hairline)] py-2.5 text-left transition-colors duration-[var(--em-dur-tap)] last:border-b-0 hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)]"
     >
       {body}
+    </button>
+  );
+}
+
+function TaskCheck({
+  id,
+  title,
+  done,
+}: {
+  id: string;
+  title: string;
+  done: boolean;
+}) {
+  const toast = useToast();
+
+  async function toggle() {
+    const tasks = appRepos().tasks;
+    const r = done ? await tasks.uncomplete(id) : await tasks.complete(id);
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={
+        done ? `${title}: fatto — tocca per riaprire` : `Completa: ${title}`
+      }
+      aria-pressed={done}
+      onClick={() => void toggle()}
+      className="grid w-11 shrink-0 place-items-center"
+    >
+      <span
+        className={cx(
+          "grid h-5 w-5 place-items-center rounded-full transition-colors duration-[var(--em-dur-tap)]",
+          done
+            ? "bg-[var(--em-ember)] text-[var(--em-on-ember)]"
+            : "border border-[var(--em-hairline-strong)] text-transparent",
+        )}
+        aria-hidden="true"
+      >
+        {done ? <IconCheck className="h-3 w-3" /> : null}
+      </span>
     </button>
   );
 }

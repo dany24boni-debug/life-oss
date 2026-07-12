@@ -519,3 +519,23 @@ describe("SyncEngine — round-trip planner (run-08 P3)", () => {
     expect(await b.repos.planner.getCheck(slot.id, "2026-W28")).toBeNull();
   });
 });
+
+describe("SyncEngine — round-trip lo_focus_sessions (run-08 P5)", () => {
+  it("le fasi di focus arrivano su B identiche; la tombstone viaggia", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const row = must(
+      await a.repos.focus.add({ date: "2026-07-12", minutes: 25 }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    expect(await b.db.focus_sessions.get(row.id)).toEqual(row);
+    expect(remote.rowsOf("lo_focus_sessions")).toHaveLength(1);
+    expect(
+      await b.repos.focus.minutesByDay("2026-07-12", "2026-07-12"),
+    ).toEqual([{ date: "2026-07-12", minutes: 25 }]);
+  });
+});

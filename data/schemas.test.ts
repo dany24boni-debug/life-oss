@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EventCreateSchema,
+  FocusSessionSchema,
   GymProgramSlotSchema,
   GymSessionSchema,
   GymSetSchema,
@@ -391,6 +392,28 @@ describe("planner settimanale (run-08 P3)", () => {
     );
     expect(
       SlotCheckSchema.safeParse({ ...base, state: "missed" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("focus (run-08 P5)", () => {
+  it("FocusSession: minuti interi 1..600", () => {
+    const now = "2026-07-12T08:00:00.000Z";
+    const base = {
+      id: uuidv7(),
+      date: "2026-07-12",
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    expect(FocusSessionSchema.safeParse({ ...base, minutes: 25 }).success).toBe(
+      true,
+    );
+    expect(FocusSessionSchema.safeParse({ ...base, minutes: 0 }).success).toBe(
+      false,
+    );
+    expect(
+      FocusSessionSchema.safeParse({ ...base, minutes: 25.5 }).success,
     ).toBe(false);
   });
 });

@@ -65,17 +65,18 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 9 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 10 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
     // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
     // programmi. v7 (run-07 P4): + body. v8 (run-08): + abitudini.
-    // v9 (run-08 P3): + planner settimanale.
-    expect(dbTest.verno).toBe(9);
+    // v9 (run-08 P3): + planner settimanale. v10 (run-08 P5): + focus.
+    expect(dbTest.verno).toBe(10);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "body",
       "esami",
       "events",
+      "focus_sessions",
       "gym_exercises",
       "gym_plans",
       "gym_program_days",
@@ -135,7 +136,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(9);
+    expect(current.verno).toBe(10);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -212,7 +213,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(9);
+    expect(current.verno).toBe(10);
     expect(await current.body.get(pesata.id)).toEqual(pesata);
 
     // Le tabelle nuove funzionano, indici compresi.
@@ -264,6 +265,19 @@ describe("schema bump v1 -> v2", () => {
       await current.slot_checks.where("iso_week").equals("2026-W28").count(),
     ).toBe(1);
 
+    // E la tabella focus (v10) pure.
+    await current.focus_sessions.add({
+      id: "01980000-0000-7000-8000-000000000406",
+      date: "2026-07-12",
+      minutes: 25,
+      created_at: "2026-07-12T11:00:00.000Z",
+      updated_at: "2026-07-12T11:00:00.000Z",
+      deleted_at: null,
+    });
+    expect(
+      await current.focus_sessions.where("date").equals("2026-07-12").count(),
+    ).toBe(1);
+
     current.close();
     await Dexie.delete(name);
   });
@@ -297,7 +311,7 @@ describe("schema bump v1 -> v2", () => {
     // Apertura con la classe reale (v1..v8): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(9);
+    expect(current.verno).toBe(10);
     expect(await current.tasks.get(row.id)).toEqual(row);
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

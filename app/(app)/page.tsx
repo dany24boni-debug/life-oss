@@ -10,6 +10,7 @@ import {
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
 import { TodayAdesso } from "./_components/today-adesso";
 import { TodayAgenda } from "./_components/today-agenda";
+import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
 import { TodayHabits } from "./_components/today-habits";
 import { TodayTasks } from "./_components/tasks/today-section";
@@ -91,6 +92,9 @@ export default async function TodayPage() {
 
       {/* "Adesso" (run-08 prompt 4): lo slot corrente del piano attivo. */}
       <TodayAdesso />
+
+      {/* Mini-launcher del pomodoro (run-08 prompt 5). */}
+      <TodayFocus />
 
       {/* Promemoria scattati mentre eri via (run-03 prompt 5). */}
       <WhileAwayCard />

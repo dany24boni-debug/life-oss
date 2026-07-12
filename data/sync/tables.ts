@@ -21,6 +21,7 @@ import {
   EveningCheckinSchema,
   ExamSchema,
   ExpenseSchema,
+  FocusSessionSchema,
   GymExerciseSchema,
   GymPlanSchema,
   GymProgramDaySchema,
@@ -59,6 +60,7 @@ export type LocalTableName =
   | "week_plans"
   | "plan_slots"
   | "slot_checks"
+  | "focus_sessions"
   | "gym_exercises"
   | "gym_plans"
   | "gym_programs"
@@ -158,6 +160,12 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     remote: "lo_slot_checks",
     parse: parserFor(SlotCheckSchema),
     instantColumns: [...AUDIT, "checked_at"],
+  },
+  {
+    local: "focus_sessions",
+    remote: "lo_focus_sessions",
+    parse: parserFor(FocusSessionSchema),
+    instantColumns: AUDIT,
   },
   {
     local: "gym_exercises",

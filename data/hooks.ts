@@ -252,6 +252,19 @@ export function useHabitStreak(
   );
 }
 
+/* ── Focus (run-08 prompt 5) ─────────────────────────────────────────── */
+
+/** Minuti di focus per giorno nel range (tile e /stats). */
+export function useFocusMinutesByDay(
+  from: IsoDay,
+  to: IsoDay,
+): Array<{ date: IsoDay; minutes: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().focus.minutesByDay(from, to),
+    [from, to],
+  );
+}
+
 /* ── Planner settimanale (run-08 prompt 3) ───────────────────────────── */
 
 /** Piani vivi: l'attivo per primo, poi per nome. */

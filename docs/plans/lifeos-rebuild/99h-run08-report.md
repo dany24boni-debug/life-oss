@@ -204,6 +204,58 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓; `/settimana` 200 da ospite con board e manager raggiungibili (tab nell'HTML) ✓; "Adesso" nel chunk servito di Oggi ✓ (interpretazione dichiarata); zero controlli nativi ✓; logica board/slot-corrente sotto test ✓.
 
-**Commit:** `feat(planner): week board with hour slots, plan manager, skip history, Adesso on Today`
+**Commit:** `feat(planner): week board with hour slots, plan manager, skip history, Adesso on Today` → `a11163f`
+
+---
+
+## Prompt 5 — Pomodoro/Focus + cross-wiring
+
+**Checkpoint: VERDE.** lint ✓ (due errori intermedi MERITEVOLI: `set-state-in-effect` sul caricamento del timer — riscritto con l'idioma `useSyncExternalStore` del pwa-store, la stessa lezione run-07 — e un prefer-const nei test) · tsc ✓ · build ✓ (`ƒ /focus`) · sentinels ✓ · test **844/844, 68 file** (+21: 15 `lib/focus/engine.test.ts` nuovo, 3 `data/local/focus.test.ts` nuovo, +1 round-trip, +1 schemas, +1 netto agenda). **Dev-server DA OSPITE:** `/focus` **200**, zero controlli nativi; **"Avvia focus" nei chunk serviti** di `/` (launcher) E del layout (palette); "g poi f" nel chunk del layout; voci Abitudini/Settimana/Focus/Corpo nel grafo della palette.
+
+### 1. Il motore (`lib/focus/engine.ts`, puro — 15 test coi fake-instant)
+
+- Stato = `{config, phase, cycle, started_at, elapsed_ms, duration_ms, running}`; **il tempo è SEMPRE la differenza da `now`** — mai un contatore in memoria: wake/reload-safe PER COSTRUZIONE (testato: 10 minuti "mai tickati" risultano maturati).
+- **Pausa** congela il maturato (il tempo fermo non scorre, testato); **±1' live** cambia la durata della fase in corsa, mai sotto il maturato né sotto 1' (testato il clamp).
+- **Rollover**: lavoro→pausa→lavoro con la pausa LUNGA a fine giro e ripartenza dal ciclo 1; a scarto piccolo (tab aperta) la fase nuova parte IN CORSA **dall'istante esatto di fine — zero deriva** (tick a +800ms → pausa già maturata di 800ms, testato); **al rientro** (blocco schermo/reload, scarto > 60s) si avanza di UNA fase IN PAUSA — niente pomodori finti — coi minuti pieni riportati (testato il ritorno dopo 2 ore).
+- **Skip manuale**: prossima fase in pausa e minuti VERI del maturato (10'30" → 10, testato).
+- `parseState` difensivo (spazzatura → null; `running` senza `started_at` → fermo); `clampConfig` 1..120/1..60/1..90/1..12; preset Classico 25/5 · Profondo 50/10 · Leggero 15/3; `formatRemaining` mm:ss.
+
+### 2. Dati: `FocusSession` (data/** SOLO additivo) + migrazione 0028
+
+- Schema `{id UUIDv7, date, minutes 1..600}` — append-only, id NON derivato (due fasi lo stesso giorno = due righe vere). `FocusRepo`: `add` (validato), `listRange`, `minutesByDay` (somma per giorno). **Dexie v10** additiva + survival esteso (tabella subito usabile); registro sync `lo_focus_sessions` + round-trip FakeRemote; **migrazione `0028_lo_focus.sql` SCRITTA, NON applicata** (blocco 0019, **`lo_push` con l'allowlist a 21** — l'ultima del run). Hook `useFocusMinutesByDay`.
+- **`activityDays` guadagna la quarta fonte**: una fase di lavoro conclusa fa contare il giorno (testato: activityDays + todayCounts).
+
+### 3. Le superfici
+
+- **`/focus`** (`focus-screen.tsx` + `use-focus.ts`): anello 216px col mm:ss (ember lavoro / salvia pausa), fase + "ciclo N/M", **Avvia/Pausa/Riprendi**, **Salta**, **Ricomincia**, **−1'/+1' in corsa**; card **Durate** (steppers 44px per lavoro/pausa/lunga/cicli + preset a chips; copy onesta "valgono dalla prossima fase") e card **Oggi** (minuti veri dal registro, "contano nella streak"). `use-focus.ts`: **store esterno a modulo** (`useSyncExternalStore`, verità unica per tutte le superfici montate) + localStorage; battito 500ms solo in corsa; recupero al mount E a visibilitychange (setTimeout 0: mai setState sincroni nell'effetto); **CHIME a fine fase** col pattern WebAudio dei promemoria ma TONI DISTINTI (lavoro finito: due note discendenti 880/587; pausa finita: una nota 784) + toast + **Badging** solo a pagina nascosta con flag proprio (il badge dei promemoria non si tocca mai, guardia `badgeFlashed`); le fasi di LAVORO concluse (rollover E skip ≥1') scrivono la FocusSession.
+- **Oggi — mini-launcher** (`today-focus.tsx`, dopo "Adesso"): fermo = "N minuti di lavoro, poi pausa" + **Avvia focus**; in corsa/pausa = mm:ss vivo + fase + Pausa/Riprendi inline; monta lo stesso hook: il chime suona anche restando su Oggi. Quiet su SSR (snapshot server null).
+- **Tile "minuti di focus" su /stats**: ChartFrame "Focus" con Oggi/Settimana dal registro (empty onesto) — /stats è fuori dalla riga di fence ma il build spec del prompt lo ordina esplicitamente (delta dichiarato); aggiornata anche la caption del Mese ("attivo se hai completato un task, un allenamento, un'abitudine o un pomodoro") — la copy diceva ancora solo task+palestra, ora sarebbe stata falsa. Il tile su Oggi resta NON aggiunto (era "optionally"; il launcher è già la presenza focus di Oggi e il budget JS della home conta — scelta documentata).
+
+### 4. Fix agenda: i task senza orario in fascia giornata
+
+`buildDayAgenda` (`app/(app)/calendar/agenda.ts`, modulo di merge puro): un task datato SENZA orario ora entra nella fascia all-day — **dopo gli eventi all-day** (locali e Google: `ALLDAY_SOURCE_ORDER` dedicato), source-linked, col done che passa. Test aggiornato (l'assert "Senza orario resta fuori" era il comportamento vecchio) + test dedicato (all-day, start null, key `task:id`, done). `buildDensityMap` INTATTA (già contava i task datati aperti — assert esistenti verdi). **`agenda-list.tsx`**: i task guadagnano il **check inline a destra** ("completable from there" del brief) mantenendo la colonna orario allineata e la riga che apre la scheda; eventi e Google invariati.
+
+### 5. Cross-wiring sweep
+
+- **Palette** (`comfort-host.tsx`): voci "Vai a" per **Abitudini, Settimana, Focus, Corpo** (Corpo mancava dal run-07) + azione **"Avvia focus"** (`startFocusNow()` sullo store + push a /focus); **`g poi f`** → /focus; overlay scorciatoie aggiornato.
+- **Rail/Moduli** e **card Moduli di Impostazioni** completi: Abitudini · Settimana · Focus · Esami · Spese · Sera · Corpo (IconFocus nuova: il bersaglio).
+- **Pannello verità promemoria** (Impostazioni): voce "Timer focus" — suona a fine fase ad app aperta; a schermo bloccato il cambio di fase aspetta col suo suono al rientro; "il tempo non si perde mai: è calcolato, non contato".
+- **Composizione di Oggi** (ordine finale, verificato): tile → strip abitudini → Adesso → focus launcher → (Mentre eri via) → task → agenda → palestra → promemoria → installa.
+
+### Delta di dimensione di Oggi (misura onesta, pre/post run)
+
+Next 16 non stampa più "First Load JS": misurato il chunk client della route.
+| Chunk | Baseline (main) | Fine run | Δ |
+| --- | --- | --- | --- |
+| `app/(app)/page-*.js` (Oggi) | 27.759 B | 47.683 B (13,9 kB gzip) | **+19,9 kB raw (~+6 kB gzip)** |
+| `app/(app)/layout-*.js` (shell) | 27.131 B | 37.315 B (11,5 kB gzip) | +10,2 kB raw |
+
+Il delta è proporzionato a TRE sezioni nuove di Oggi (strip anelli, Adesso con la SlotRow condivisa, launcher focus col motore) e, sul layout, alle voci palette/nav. Nessuna dipendenza nuova, nessun modulo pesante trascinato per sbaglio (habit-sheet, MonthHeat, plan-manager NON sono nel grafo di Oggi — verificato dai chunk).
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; `lib/focus/engine` interamente sotto test incluso il reload-resume ✓; `/focus` 200 da ospite ✓; il test agenda prova i task senza orario in fascia giornata ✓; voci palette nel chunk servito ✓; delta di dimensione riportato ✓.
+
+**Commit:** `feat(focus): resilient pomodoro with focus log, all-day tasks in agenda, cross-wiring`
 
 ---

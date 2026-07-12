@@ -196,7 +196,7 @@ describe("toGoogleAgendaEvent", () => {
 });
 
 describe("buildDayAgenda — merge e ordinamento", () => {
-  it("all-day prima, poi per orario; a parità eventi < task < google", () => {
+  it("all-day prima (task senza orario DOPO gli eventi), poi per orario", () => {
     const items = buildDayAgenda("2026-07-10", {
       events: [
         event({ title: "Compleanno", all_day: true }),
@@ -209,7 +209,9 @@ describe("buildDayAgenda — merge e ordinamento", () => {
       ],
       tasks: [
         task({ title: "Chiamare idraulico", time: "09:00" }),
-        task({ title: "Senza orario resta fuori" }),
+        // run-08 P5: il task datato SENZA orario entra in fascia
+        // giornata, dopo gli all-day (locali e Google).
+        task({ title: "Comprare il regalo" }),
       ],
       google: [
         gev({ title: "Standup", start: "09:00" }),
@@ -220,6 +222,7 @@ describe("buildDayAgenda — merge e ordinamento", () => {
     expect(items.map((i) => `${i.source}:${i.title}`)).toEqual([
       "event:Compleanno",
       "google:Ferie",
+      "task:Comprare il regalo",
       "task:Chiamare idraulico",
       "google:Standup",
       "event:Cena",
@@ -227,6 +230,25 @@ describe("buildDayAgenda — merge e ordinamento", () => {
     const cena = items.find((i) => i.title === "Cena");
     expect(cena?.start).toBe("20:30");
     expect(cena?.end).toBe("22:00");
+  });
+
+  it("task senza orario: all-day, source-linked e col done che passa", () => {
+    const items = buildDayAgenda("2026-07-10", {
+      events: [],
+      tasks: [
+        task({ title: "Spesa", status: "done" }),
+        task({ title: "Bolletta" }),
+      ],
+      google: [],
+    });
+    expect(items.map((i) => i.title)).toEqual(["Bolletta", "Spesa"]);
+    for (const i of items) {
+      expect(i.allDay).toBe(true);
+      expect(i.start).toBeNull();
+      expect(i.source).toBe("task");
+      expect(i.key).toBe(`task:${i.id}`);
+    }
+    expect(items.find((i) => i.title === "Spesa")?.done).toBe(true);
   });
 
   it("giorni diversi restano fuori; i task fatti arrivano marcati done", () => {

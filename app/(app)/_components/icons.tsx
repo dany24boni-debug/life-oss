@@ -225,6 +225,17 @@ export function IconWeek({ className }: IconProps) {
   );
 }
 
+/** Focus: il bersaglio del pomodoro (modulo, run-08 P5). */
+export function IconFocus({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="8.25" />
+      <circle cx="12" cy="12" r="4.4" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /** Fiamma della streak per-abitudine. */
 export function IconFlame({ className }: IconProps) {
   return (
