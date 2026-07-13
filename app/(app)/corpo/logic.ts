@@ -14,6 +14,9 @@ export function stepBodyWeight(current: number, direction: 1 | -1): number {
 const KG = new Intl.NumberFormat("it-IT", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
+  // Mai raggiungibile nel dominio 20..400 kg, ma la landmine it-IT
+  // (niente separatore sotto 10.000) si disinnesca OVUNQUE, greppabile.
+  useGrouping: "always",
 });
 
 /** "82,4 kg" — sempre un decimale (la bilancia parla così). */

@@ -304,4 +304,114 @@ Tutti e tre ora importano dal canonico: `import { deriveUuidV8 as deriveId } fro
 
 - Quattro check verdi ✓; unit test della parte pura del timeout ✓; golden intatti e verdi ✓; ogni cambio quotato sopra ✓.
 
-**Commit:** `fix(hardening): proxy fail-fast, canonical id imports, multi-account drive export, stale docs`
+**Commit:** `fix(hardening): proxy fail-fast, canonical id imports, multi-account drive export, stale docs` → `02c88c6`
+
+---
+
+## Prompt 7 — Hardening B: sweep totale + docs + cablaggio finale
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **952/952, 75 file** (nessun test nuovo: il prompt è sweep e docs). **Smoke di produzione**: `/`, `/dieta`, `/tasks`, `/impostazioni`, `/abitudini`, `/settimana`, `/focus`, `/corpo`, `/gym` tutte **200** da ospite.
+
+### 1. Cross-wiring completo
+
+- **Palette** (`comfort-host.tsx`): voce "Vai a → **Dieta**" (keywords pasti/alimenti/kcal/proteine/piano); verifica: Abitudini/Settimana/Focus/Corpo/Esami/Spese/Sera tutte presenti.
+- **`g poi d`** → /dieta (GO_KEYS) + riga nell'**overlay scorciatoie**.
+- **Rail Moduli** e **Impostazioni → Moduli**: Dieta era già cablata al P2 — verificata (dopo Focus, con `IconMeal`).
+- **Pannello di verità promemoria**: la voce "App chiusa" ora dice la verità nuova — *"Con le notifiche push attive (la card qui sopra, quando il server le offre) i promemoria arrivano anche ad app chiusa. Senza, …"* — il fallback .ics resta documentato.
+
+### 2. Sweep di audit sui moduli run 07-09 (la lista COMPLETA dei fix)
+
+Controlli fatti: skeleton su ogni async, EmptyState per B4, `:focus-visible` (regola globale `.em-scope :focus-visible` in ember.css verificata), reduced-motion (collasso globale Ember), 44px, `useGrouping` su ogni `NumberFormat("it-IT")`, catch silenziosi, undo su ogni distruttiva. **Fix applicati:**
+
+1. `app/(app)/corpo/logic.ts` — `useGrouping: "always"` sul formatter KG (mai raggiungibile nel dominio 20..400, ma l'invariante ora è greppabile OVUNQUE — commentato).
+2. `app/(app)/gym/progress-table.tsx` — idem sul formatter della Forza Relativa (sempre <10 nel dominio; stessa igiene).
+3. `app/(app)/dieta/oggi-tab.tsx` — chip variante della card pasto da h-8 a **min-h-11** (44px: è UN gesto primario del flusso del giorno, non un filtro secondario).
+
+**Esiti puliti del grep (nessun fix necessario):** catch silenziosi — le uniche occorrenze sono Badging API best-effort (focus/reminders, pattern documentato run-08), l'update-check del SW in background (pwa-host) e i fallback DICHIARATI del brief/push (la riga deterministica è il prodotto; la card push mostra toast/stati onesti): nessun errore utente-visibile va nel silenzio. `useGrouping`: abitudini/spese/gym/dieta/progression già "always". Skeleton: presenti su ogni tab async di /dieta e su tutte le superfici 07-08 (verificate ai loro run). Undo: ogni distruttiva di /dieta (piano/pasto/variante/riga/extra/alimento) ha il toast Annulla; archivio con undo. Controlli nativi: zero su tutte le superfici (ri-verificato al P2/P3).
+
+### 3. Performance (budget del run)
+
+| Chunk | Pre-run (baseline) | Fine run | Δ |
+| --- | --- | --- | --- |
+| `app/(app)/page-*.js` (Oggi) | 47.683 B | **53.327 B** (15,7 kB gzip) | **+5,6 kB raw** ✓ sotto il budget di +8 kB |
+| `app/(app)/layout-*.js` (shell) | 37.315 B | 38.370 B | +1,0 kB (voce nav + palette + overlay) |
+
+Il delta di Oggi è il tile Pasti (P2) + la riga del brief col composer (P4) — proporzionato. **Nessun lazy-load necessario. Nessun modulo pesante nel grafo di Oggi**: verificato per stringhe nel chunk servito ("Variante vuota", "Copia della base", "Archiviati", "Gestione abitudini", "Copia giorno su" → 0 occorrenze; il builder dieta, la libreria, le schede abitudini NON sono nel grafo).
+
+### 4. Docs
+
+- **README.md**: "quattordici moduli vivi" con l'elenco completo (incl. /abitudini, /settimana, /focus, /dieta, /corpo e cosa fanno); env: `ANTHROPIC_API_KEY` ora cita il brief, aggiunta `NEXT_PUBLIC_VAPID_PUBLIC_KEY` col puntatore alla checklist; **migrazioni: range 0001 → 0031** con la nota d'ordine su `lo_push` (0029 finale a 28 tabelle; 0030/0031 ALTER puri); mappa `lo_*` completa (0019-0031, push sends compresa); "Limiti onesti" aggiornati (il push esiste nel codice, spento finché non attivato — puntatore a `17-activation-checklist.md`).
+- **AGENTS.md**: "fourteen surfaces"; golden-test rule aggiornata (import canonico post-P6, prefissi di convergenza elencati); landmine nuove: **metodo chunk-measure**, **niente setState sincroni negli effetti / niente Date nel render** (con gli idiomi di casa), **ricetta derived-id** (golden pinnati, un-doing sulla stessa riga, crypto.subtle fuori dalle transazioni), **pattern long-press 450ms**, **eccezione Deno** (unica eccezione dipendenze, cartella fuori da tsc/eslint, mai deploy in sessione), **matematica intera della dieta**; `lo_push` range aggiornato.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; lista dei fix dello sweep nel report ✓; tabella dei chunk ✓; docs incrociati e verificati ✓.
+
+**Commit:** `chore(polish): total sweep across v2 modules, dieta wiring, perf budget, docs`
+
+---
+
+## Chiusura del run
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ 437f1a8) | 68 | **844** | — |
+| Prompt 1 (dominio dieta) | 70 | **890** | +46 |
+| Prompt 2 (UI dieta) | 71 | **902** | +12 |
+| Prompt 3 (ricorrenze task) | 72 | **936** | +34 |
+| Prompt 4 (morning brief) | 73 | **944** | +8 |
+| Prompt 5 (push, solo codice) | 74 | **947** | +3 |
+| Prompt 6 (hardening A) | 75 | **952** | +5 |
+| Prompt 7 (hardening B) | 75 | **952** | — |
+
+Verifica finale a HEAD: lint ✓ · typecheck ✓ · sentinels ✓ · **952/952** ✓ · build ✓ · smoke 200 su nove rotte da ospite ✓.
+
+### Commit del branch (`feat/run-09`, off `main` @ `437f1a8`)
+
+```
+134936e  feat(diet): personal food library, weekly plan with variants, converging day log
+bad616b  feat(diet): day log with one-tap meals and variants, plan builder, food library
+1cf8c43  feat(tasks): completion-based recurrence with converging spawn and Italian grammar
+153989d  feat(brief): deterministic morning brief on Oggi with optional key-gated polish
+9608ccf  feat(push): web push code path, opt-in UI, edge sender function (activation pending)
+02c88c6  fix(hardening): proxy fail-fast, canonical id imports, multi-account drive export, stale docs
+<questo>  chore(polish): total sweep across v2 modules, dieta wiring, perf budget, docs
+```
+
+Mai pushato, mai mergiato, `main` intatta. **Zero dipendenze nuove** (`package.json` byte-identico; l'unica eccezione dichiarata sono gli import pinnati Deno DENTRO `supabase/functions/push-sender`, mai deployata). Nessuna migrazione applicata, nessuno script contro il vivo. Zero emoji nel codice. Dexie v10 → **v11** (un solo bump per il run: dieta + backfill ricorrenze, survival test). Migrazioni scritte: **0029, 0030, 0031** (file only).
+
+### Delta vs brief (riepilogo; ognuno argomentato nel suo prompt)
+
+1. La **variante di un pasto SOSTITUISCE la base** (P1); `dayTotals` = pasti mangiati + extra; macro assenti = 0 onesto; `proteinTargetG(weightKg)`; `data/diet.ts` (il "datet.ts" del brief è un refuso).
+2. **Obiettivo kcal dell'header = mantenimento** (nessuna preferenza di goal persistita); chip variante che cicla solo con 2 opzioni; selettore alimenti inline (mai sheet su sheet); totali del giorno via ricorsione di componenti (P2).
+3. **Prima occorrenza OGGI INCLUSO** per le ricorrenze; **v11 estesa col backfill** invece di una v12 (interna al run); `0030_task_recurrence.sql` (numero corretto); uncomplete non tocca spawn già lavorati (P3).
+4. Il **flag `authed` del brief arriva dal server component**; cache per-giorno potata; 503 senza chiave → fallback muto (P4).
+5. **`lo_push_sends`** per l'idempotenza del sender; il sender **marca `fired_at`** sui promemoria pushati (lo scatto è vero); `supabase/functions` escluso da tsc/eslint; GET di lettura sulla route subscribe (P5).
+6. `vitest.config.ts` include `proxy.test.ts`; drive-journal ordina per `last_synced_at` (la tabella non ha updated_at); README-START-HERE riscritto, non cancellato (P6).
+7. Caveat noto di schema-evolution (ereditato, non nuovo): un client NON aggiornato che riscrive una riga evoluta può azzerarne i campi nuovi al push (zod strip). Rimedio pratico invariato: aggiornare tutti i device dopo il deploy.
+
+### GATE DI DAVIDE — CONSOLIDATO E IN ORDINE (la sessione non tocca mai il vivo)
+
+1. **Review + merge**: leggi il diff di `feat/run-09`, poi `git merge --no-ff feat/run-09` su `main`.
+2. **Backup JSON PRIMA di tutto**: export da Impostazioni su ogni dispositivo con dati.
+3. **RIPRISTINA il progetto Supabase in pausa** dalla dashboard (il DNS era morto — è IL blocco di tutto ciò che segue; il proxy ora fallisce in 4 s invece di 36, ma il sync resta giù finché il progetto non torna).
+4. **Applica le migrazioni IN ORDINE col runner**: le pendenti **0019 → 0028** (vedi gate run-06/07/08), poi le nuove:
+   ```
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0029_lo_diet.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0030_task_recurrence.sql
+   node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0031_push_alter.sql
+   ```
+   (0029 ridichiara `lo_push` con l'allowlist FINALE a 28; 0030/0031 sono ALTER puri. `scripts/verify-schema.mjs` per confermare.)
+5. **Vercel**: Root Directory `.` (nota run-06) + push di `main` + primo CI verde.
+6. **OTP template flip + smoke di login** (gate run-04, mai eseguito).
+7. **Ciclo PWA**: installa, offline, update (il toast porterà anche l'SW v2 del push).
+8. **I quattro importer v1** (agenda, esami, spese, sere) + gym legacy da Impostazioni.
+9. **Sync a due dispositivi**: pasti/log dieta, ricorrenze completate offline su entrambi (UNA prossima occorrenza), acqua, check della settimana — convergenza senza doppioni.
+10. **Push (opzionale, quando vuoi)**: VAPID + deploy funzione + cron, per filo e per segno da `docs/plans/lifeos-rebuild/17-activation-checklist.md`, smoke a telefono bloccato.
+11. **La sessione vera su OGNI modulo** (la vera acceptance della v2): dieta d'una settimana scritta nel builder e spuntata a pollice; "porta la borsa ogni lunedì" completato che rispunta giovedì; il brief del mattino; raccogli i paper cut in una lista per la chat dei fix.
+
+**Nota per la prossima chat:** lo scope feature della v2 è CHIUSO con questo run. Il prossimo lavoro è: fix dei paper cut di Davide (Sonnet-tier basta) e, SOLO se richiesto esplicitamente, il ritiro D4 delle superfici legacy nel progetto shared-workspace.
+
+**Run 09 completo.** La dieta è un piano scritto una volta e spuntato a un tocco — varianti che sostituiscono, matematica intera, libreria personale; i task sanno ripetersi completandosi, in italiano ("ogni lunedì") e convergendo tra dispositivi; il mattino ha una riga vera; il push è tutto nel codice e aspetta solo le chiavi; il proxy non si impicca più e i tagli noti sono chiusi. Quattro check verdi a ogni checkpoint; ogni commit su verde; `main` mai toccata.

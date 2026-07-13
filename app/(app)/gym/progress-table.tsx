@@ -24,6 +24,9 @@ import {
 const REL = new Intl.NumberFormat("it-IT", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+  // Sempre < 10 nel dominio (e1RM/peso), ma l'invariante useGrouping
+  // resta greppabile su ogni NumberFormat it-IT (sweep run-09).
+  useGrouping: "always",
 });
 
 export function ProgressTable({

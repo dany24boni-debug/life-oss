@@ -241,7 +241,7 @@ function MealCard({ m, date }: { m: DayDietMeal; date: IsoDay }) {
             type="button"
             onClick={tapVariantChip}
             aria-label={`Variante di ${m.meal.name}: ${chosenName}. Tocca per cambiare.`}
-            className="em-body-sm h-8 shrink-0 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+            className="em-body-sm min-h-11 shrink-0 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
           >
             {chosenName}
           </button>

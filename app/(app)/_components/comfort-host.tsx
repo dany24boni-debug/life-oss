@@ -63,6 +63,7 @@ const NAV_TARGETS: Array<{ id: string; label: string; href: string; keywords: st
   { id: "nav:/abitudini", label: "Abitudini", href: "/abitudini", keywords: "habits anelli acqua streak" },
   { id: "nav:/settimana", label: "Settimana", href: "/settimana", keywords: "planner piano slot settimana tipo" },
   { id: "nav:/focus", label: "Focus", href: "/focus", keywords: "pomodoro timer concentrazione" },
+  { id: "nav:/dieta", label: "Dieta", href: "/dieta", keywords: "pasti alimenti kcal proteine piano" },
   { id: "nav:/esami", label: "Esami", href: "/esami", keywords: "studio università capitoli" },
   { id: "nav:/spese", label: "Spese", href: "/spese", keywords: "soldi uscite finance" },
   { id: "nav:/sera", label: "Sera", href: "/sera", keywords: "diario check-in journal" },
@@ -77,6 +78,7 @@ const GO_KEYS: Record<string, string> = {
   g: "/gym",
   s: "/stats",
   f: "/focus",
+  d: "/dieta",
 };
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -239,6 +241,7 @@ export function ComfortHost() {
             ["g poi g", "Vai a Palestra"],
             ["g poi s", "Vai a Statistiche"],
             ["g poi f", "Vai a Focus"],
+            ["g poi d", "Vai a Dieta"],
             ["?", "Questo riepilogo"],
             ["Esc", "Chiude palette, schede e finestre"],
           ].map(([keys, desc]) => (

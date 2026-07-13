@@ -325,9 +325,11 @@ export default async function ImpostazioniPage() {
               App chiusa
             </dt>
             <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
-              Il web non può suonare da solo ad app chiusa. Per promemoria
+              Con le notifiche push attive (la card qui sopra, quando il
+              server le offre) i promemoria arrivano anche ad app chiusa.
+              Senza, il web non può suonare da solo: per promemoria
               garantiti usa &ldquo;Esporta su Calendario&rdquo; dalla scheda
-              del task: l&apos;allarme lo fa il calendario di sistema.
+              del task — l&apos;allarme lo fa il calendario di sistema.
             </dd>
           </div>
           <div>
