@@ -87,4 +87,51 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓ (più sentinels). Migrazione presente, NON applicata ✓. Golden del prefisso meal-log ✓. Matematica intera testata (incl. anti-float) ✓. Convergenza + s-mangiare che viaggia ✓. Dexie bump con survival ✓. Fence: solo `data/**` + `0029` + test (git status quotato pulito).
 
-**Commit:** `feat(diet): personal food library, weekly plan with variants, converging day log`
+**Commit:** `feat(diet): personal food library, weekly plan with variants, converging day log` → `134936e`
+
+---
+
+## Prompt 2 — UI Dieta (`/dieta`)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ (`ƒ /dieta`) · sentinels ✓ · test **902/902, 71 file** (+12: `app/(app)/dieta/logic.test.ts` nuovo — formattazione it-IT con grouping sempre, ciclo varianti, tono barre al +10%, parse qty/kcal/macro, stepper/default per basis, somma di authoring). **Dev-server DA OSPITE (build di produzione):** `/dieta` **200** con le TRE tab nell'HTML servito (`>Oggi<`, `>Piano<`, `>Alimenti<`); `/` **200**; **zero controlli nativi** nell'HTML di /dieta E nel chunk della route (`<select`, checkbox/date/time/number: 0).
+
+### Struttura (`app/(app)/dieta/**` nuovo)
+
+- **`logic.ts`** (+12 test): `formatInt`/`formatGramsFromDg` (**`useGrouping: "always"`** — la landmine it-IT: "1.640"; i decigrammi si dividono per 10 SOLO in display, mai aritmetica), `kcalProteinLine`, `formatQty` ("80 g", "1,5 pz"), **`cycleSelection`** (base → varianti → base; scelta morta riparte dalla base), **`barTone`** (ember/salvia; **oltre il +10%** dell'obiettivo vira a segnale — solo il colore, mai copy colpevolizzante; il +10% esatto NON vira, testato), `parseQtyInput`/`parseKcalInput`/`parseMacroInput` (virgola o punto, un decimale, garbage → null), `qtyStep` (10 g / 1 pz), `defaultQtyFor` (default_qty dell'alimento o 100 g / 1 pz), `sumItemTotals` (authoring live, alimenti persi fuori dai conti).
+- **`oggi-tab.tsx`** — il giorno: **header quieto** "1.640 / 2.760 kcal · 92 / 144 g proteine" con DUE ProgressBar sottili (kcal ember, proteine salvia, `barTone` oltre il +10%); obiettivi dal profilo (kcal di **mantenimento** — la stessa lettura dell'anteprima profilo run-07 — e `proteinTargetG` dal peso più recente); senza profilo solo il consumato e una riga che spiega dove attivarli (mai barre inventate). **Card pasto**: nome + **chip variante** (una variante = tap che cicla; **due o più = scelta esplicita** in BottomSheet/Modal coi kcal di ogni composizione), righe della selezione con quantità, riga kcal+proteine, **UN TAP "Fatto"** (toast con Annulla → eaten:false; ri-tap sul Fatto = s-mangia senza cerimonie; card spuntata con ring salvia). **Extra**: card con aggiunta veloce (sheet a due modi: **Dalla libreria** — autocomplete + stepper nelle unità della basis — o **Voce libera** — nome + kcal, proteine opzionali) e lista con elimina+undo; copy senza giudizio ("Fuori piano? Si scrive qui… conta nei totali"). Senza piano attivo: EmptyState con CTA che salta alla tab Piano (gli extra restano usabili).
+- **`piano-tab.tsx`** — il builder: lista piani (attiva/apri/crea — il nuovo nasce attivo e apre l'editor, pattern planner), editor con **rinomina inline**, **chips giorno L-D col conteggio pasti**, righe pasto coi **kcal base live**, **"Copia giorno su…"** (copyDayToWeekdays), **Duplica/Elimina piano con undo** (restore del cascade P1). **Scheda pasto** (BottomSheet/Modal): nome, **composizioni a chips** (Base + varianti, ognuna col SUO kcal live), righe alimento con **autocomplete + crea al volo**, **stepper quantità** (±10 g/±1 pz, valore tappabile → input col parse), kcal auto per riga, Togli con undo; **varianti**: "+ Variante vuota" / "+ Copia della base" (one-tap `createVariantFromBase`), rinomina, elimina con undo; **"Copia il pasto in…"** a chips; totali della selezione vivi in coda; Elimina pasto con undo. **Totali del giorno vivi**: RICORSIONE di componenti (un hook per pasto, numero di hook stabile per istanza — le regole di React rispettate senza query dinamiche), documentata nel codice.
+- **`alimenti-tab.tsx`** — la libreria: ricerca (normalizzazione accenti), righe con kcal+proteine per basis, sezione "Archiviati" collassata, **scheda alimento** (nome, **basis a chips SOLO alla creazione** — dopo è una riga che spiega perché non si cambia, kcal/macro con parse decimale, quantità proposta), **Archivia con undo**, Elimina con undo (copy onesta: "le righe che lo usano escono dai conti"). **SEED: NIENTE** — l'EmptyState starter spiega il setup dei due minuti ("Niente database pubblico: crei i TUOI alimenti una volta, dall'etichetta…").
+- **`food-picker.tsx`** — selettore INLINE (mai sheet sopra sheet): ricerca + «Crea "query"» con la scheda minima (nome, basis, kcal, proteine opz.) che consegna subito l'alimento; riusato da scheda pasto ed extra. **`qty-stepper.tsx`** — lo stepper 44px nelle unità della basis. **`dieta-screen.tsx`** — Tabs Oggi/Piano/Alimenti (Oggi default). **`page.tsx`** — shell server pattern corpo.
+
+### Cablaggio (anchored)
+
+- **`icons.tsx`**: `IconMeal` nuova (piatto e posate, tratto 1.8 come le altre).
+- **`app-nav.tsx`** — Rail "Moduli", dopo Focus:
+```
+   { href: "/focus", label: "Focus", icon: IconFocus },
++  { href: "/dieta", label: "Dieta", icon: IconMeal },
+   { href: "/esami", label: "Esami", icon: IconExam },
+```
+- **`impostazioni/page.tsx`** — MODULE_LINKS idem, desc "Pasti del giorno, piano e libreria alimenti" (+ import IconMeal).
+- **`today-tiles.tsx`** — tile **"Pasti"** SOLO quando il piano attivo prevede pasti oggi: "2/4 pasti · 1.640 kcal finora.", avvolto in `<Link href="/dieta">` (focus-visible ring); nel grafo di Oggi entrano SOLO `useDayDiet`/`useDayExtras` (hooks già nel grafo), `dayTotals` e `formatInt` (funzioni pure) — nessun componente della route /dieta.
+
+### Delta di dimensione di Oggi (metodo run-08, budget P7)
+
+| Chunk | Pre-run | Dopo P2 | Δ |
+| --- | --- | --- | --- |
+| `app/(app)/page-*.js` (Oggi) | 47.683 B | **49.710 B** | **+2,0 kB raw** |
+| `app/(app)/layout-*.js` (shell) | 37.315 B | 38.241 B | +0,9 kB (voce nav) |
+
+### Scelte documentate
+
+1. **Obiettivo kcal dell'header = mantenimento** (`calorieTargetKcal(profile, anno, "maintain")`): non esiste una preferenza di goal persistita (run-07 espone il mantenimento nell'anteprima profilo) — la lettura coerente e onesta.
+2. **Chip variante: cicla con UNA variante, sceglie esplicitamente con 2+** ("via BottomSheet when >2" del brief letto come >2 opzioni totali): ciclare alla cieca tra 3+ composizioni confonde.
+3. **Selettore alimenti inline** (non un secondo sheet sopra la scheda pasto): il kit non prevede stacking di sheet; l'inline è più robusto e più veloce.
+4. **Totali del giorno nel builder via ricorsione di componenti**: la fence P2 non include `data/**`, quindi niente hook composto nuovo; la ricorsione tiene un hook per pasto con numero stabile per istanza.
+5. **Dev-check sulla build di produzione** (`npm start`): stesso esito del dev-server, chunk onesti già misurabili.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; `/dieta` 200 da ospite con le tre tab ✓; zero controlli nativi ✓; logica UI testata (ciclo varianti, barre, parse) ✓; delta chunk di Oggi riportato ✓ (+2,0 kB raw, budget P7 rispettato).
+
+**Commit:** `feat(diet): day log with one-tap meals and variants, plan builder, food library`

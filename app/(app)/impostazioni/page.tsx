@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconExam,
   IconFocus,
+  IconMeal,
   IconMoon,
   IconRepeat,
   IconScale,
@@ -49,6 +50,12 @@ const MODULE_LINKS: Array<{
     label: "Focus",
     desc: "Pomodoro con registro dei minuti",
     icon: IconFocus,
+  },
+  {
+    href: "/dieta",
+    label: "Dieta",
+    desc: "Pasti del giorno, piano e libreria alimenti",
+    icon: IconMeal,
   },
   {
     href: "/esami",
