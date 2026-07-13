@@ -377,8 +377,9 @@ bad616b  feat(diet): day log with one-tap meals and variants, plan builder, food
 153989d  feat(brief): deterministic morning brief on Oggi with optional key-gated polish
 9608ccf  feat(push): web push code path, opt-in UI, edge sender function (activation pending)
 02c88c6  fix(hardening): proxy fail-fast, canonical id imports, multi-account drive export, stale docs
-<questo>  chore(polish): total sweep across v2 modules, dieta wiring, perf budget, docs
+93a4b35  chore(polish): total sweep across v2 modules, dieta wiring, perf budget, docs
 ```
+(più il commit `docs(report)` di chiusura che fissa questo hash.)
 
 Mai pushato, mai mergiato, `main` intatta. **Zero dipendenze nuove** (`package.json` byte-identico; l'unica eccezione dichiarata sono gli import pinnati Deno DENTRO `supabase/functions/push-sender`, mai deployata). Nessuna migrazione applicata, nessuno script contro il vivo. Zero emoji nel codice. Dexie v10 → **v11** (un solo bump per il run: dieta + backfill ricorrenze, survival test). Migrazioni scritte: **0029, 0030, 0031** (file only).
 
