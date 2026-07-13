@@ -9,7 +9,7 @@
  */
 
 import type { Exam } from "@/data/schemas";
-import { deriveId } from "../gym/importer";
+import { deriveUuidV8 as deriveId } from "@/data/ids";
 
 /* ── Riga legacy come arriva dal server (già RLS-scoped) ─────────────── */
 

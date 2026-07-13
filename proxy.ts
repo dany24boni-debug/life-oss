@@ -27,6 +27,43 @@ const PROTECTED_PREFIXES = [
 ];
 const AUTH_ONLY_PREFIXES = ["/login"];
 
+/**
+ * Tetto alla verifica auth per-richiesta (run-09 prompt 6). Con
+ * Supabase irraggiungibile (progetto in pausa, DNS morto, rete giù) la
+ * `getUser()` del middleware restava appesa ai timeout di rete — 36
+ * secondi OSSERVATI prima che qualsiasi pagina rispondesse. Il
+ * tradeoff dei 4 secondi: una verifica lenta ma viva viene troncata e
+ * l'utente autenticato naviga da ospite per QUESTA richiesta (i dati
+ * locali sono comunque i suoi); in cambio l'app non si impicca mai
+ * dietro un server morto. Le rotte protette (solo legacy) non
+ * degradano: rimandano a /login con la copy dell'imprevisto.
+ */
+const AUTH_TIMEOUT_MS = 4000;
+
+/**
+ * Corsa pura promise-contro-timeout: null allo scadere, il valore se
+ * arriva prima. Il timer si pulisce sempre; un rigetto della promise
+ * resta un rigetto (lo gestisce il chiamante). Testata in proxy.test.ts.
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Copy onesta del banner di /login quando l'auth non risponde. */
+export const AUTH_OFFLINE_MESSAGE =
+  "Non riesco a verificare l'accesso: il server non risponde. Riprova tra qualche istante.";
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -51,9 +88,18 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Fail-fast: timeout O errore di rete = auth indisponibile, mai un
+  // hang. Le superfici pubbliche (tutto il gruppo (app)) proseguono
+  // SUBITO da ospite; solo le legacy protette rimandano a /login.
+  let user: { id: string } | null = null;
+  let authUnavailable = false;
+  try {
+    const result = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS);
+    if (result === null) authUnavailable = true;
+    else user = result.data.user;
+  } catch {
+    authUnavailable = true;
+  }
 
   const path = request.nextUrl.pathname;
   // Guest mode (prompt 07, run-03): le superfici del gruppo (app) — "/",
@@ -65,6 +111,11 @@ export async function proxy(request: NextRequest) {
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    if (authUnavailable) {
+      // Non "non sei autenticato" ma "non ho potuto verificarlo": il
+      // banner errori di /login mostra il messaggio così com'è.
+      url.searchParams.set("error", AUTH_OFFLINE_MESSAGE);
+    }
     return NextResponse.redirect(url);
   }
 

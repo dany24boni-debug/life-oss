@@ -257,4 +257,51 @@ Otto passi, tutti di Davide: genera VAPID (npx one-shot, non una dipendenza), ap
 
 - Quattro check verdi ✓; build senza env VAPID con card che degrada ✓; SW parse + version bump ✓; endpoint 401 ✓; checklist completa ✓; niente deployato/chiamato ✓.
 
-**Commit:** `feat(push): web push code path, opt-in UI, edge sender function (activation pending)`
+**Commit:** `feat(push): web push code path, opt-in UI, edge sender function (activation pending)` → `9608ccf`
+
+---
+
+## Prompt 6 — Hardening A: la lista dei tagli noti
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **952/952, 75 file** (+5: `proxy.test.ts` nuovo — valore che vince, timeout che scade a null, rigetto che resta rigetto, timer pulito, copy offline). **Golden INTATTI e verdi**: `data/ids.test.ts` 8/8, `app/(app)/gym/importer.test.ts` 8/8, spese/esami/calendar/sera importer 4-5/each — byte-identici, mai riscritti.
+
+### 1. Proxy fail-fast (l'hang osservato di 36 secondi)
+
+`proxy.ts`: la `getUser()` per-richiesta ora corre contro un timeout di **4 s** (`withTimeout`, pura ed esportata, testata). Timeout O errore di rete = auth indisponibile: le superfici PUBBLICHE (tutto il gruppo (app)) proseguono SUBITO da ospite; solo le legacy protette rimandano a `/login` con la copy dell'imprevisto nel banner errori GIÀ esistente (che mostra `?error=` così com'è):
+```
+   if (isProtected && !user) {
+     const url = request.nextUrl.clone();
+     url.pathname = "/login";
++    if (authUnavailable) {
++      url.searchParams.set("error", AUTH_OFFLINE_MESSAGE);
++    }
+     return NextResponse.redirect(url);
+   }
+```
+Il tradeoff è commentato nel file: una verifica lenta ma viva viene troncata e l'autenticato naviga da ospite per quella richiesta (i dati locali sono comunque i suoi); in cambio l'app non si impicca mai dietro un server morto. `vitest.config.ts` include ora `proxy.test.ts` (il test vive alla radice col proxy — delta minimo dichiarato).
+
+### 2. Shim `deriveId` ritirato (grep-gated)
+
+Consumatori della ri-esportazione PRIMA della rimozione:
+```
+$ grep -rn "deriveId.*gym/importer\|from \"../gym/importer\"" app lib data
+app/(app)/spese/importer.ts:11:import { deriveId } from "../gym/importer";
+app/(app)/esami/importer.ts:12:import { deriveId } from "../gym/importer";
+app/(app)/gym/importer.test.ts:5:  deriveId,   (da "./importer")
+```
+Tutti e tre ora importano dal canonico: `import { deriveUuidV8 as deriveId } from "@/data/ids";` — stesse chiavi-prefisso, id byte-identici; `export { deriveId }` rimosso da gym/importer.ts (l'alias interno resta per l'uso proprio, commento aggiornato). Calendar importava già dal canonico dal run-06. **`deriveUuidV8`/`deriveId` mai toccate: i golden sono il contratto e sono verdi.**
+
+### 3. Drive-journal multi-account
+
+`lib/google/drive-journal.ts` `loadAccount`: via il `.maybeSingle()` interno (con DUE account Google PostgREST rifiuta le righe multiple → l'export del diario si rompeva), dentro la **semantica a lista** con scelta DETERMINISTICA — `order(last_synced_at desc nullsFirst:false).order(created_at desc).limit(1)` (la tabella non ha `updated_at`: il più recentemente ATTIVO è la lettura fedele di "most recently updated") — e lo **stesso errore tipizzato** `account_missing` con zero righe. **Ogni firma esportata identica.** Cambio di comportamento dichiarato: l'export non si rompe più con due account Google; usa il più attivo.
+
+### 4. Artefatti stantii
+
+- **`app/dashboard/page.tsx`**: il commento diceva "la protezione del proxy resta com'era (gli ospiti finiscono su /login)" — FALSO dal run-06 (/dashboard non è in PROTECTED_PREFIXES: un ospite atterra su "/"). Corretto, con la nota di correzione.
+- **`README-START-HERE.md`**: scelta la RISCRITTURA (non la cancellazione — è referenziato solo dai report storici, ma un file-porta d'ingresso onesto vale più di un buco): 15 righe accurate che dichiarano il rebuild e puntano a README.md, AGENTS.md e alla storia dei run. La prosa pre-rebuild (task adattivi, health/finance, Chameleon) è morta.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; unit test della parte pura del timeout ✓; golden intatti e verdi ✓; ogni cambio quotato sopra ✓.
+
+**Commit:** `fix(hardening): proxy fail-fast, canonical id imports, multi-account drive export, stale docs`

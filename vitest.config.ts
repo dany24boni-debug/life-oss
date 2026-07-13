@@ -4,7 +4,13 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["lib/**/*.test.ts", "data/**/*.test.ts", "app/**/*.test.ts"],
+    include: [
+      "lib/**/*.test.ts",
+      "data/**/*.test.ts",
+      "app/**/*.test.ts",
+      // Il test del fail-fast del proxy vive alla radice col proxy (run-09 P6).
+      "proxy.test.ts",
+    ],
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts"],

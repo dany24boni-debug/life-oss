@@ -206,15 +206,25 @@ async function loadAccount(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<AccountWithTokens> {
+  // Semantica a LISTA (run-09 prompt 6): con DUE account Google
+  // collegati il vecchio `.maybeSingle()` falliva (PostgREST rifiuta
+  // le righe multiple) e l'export del diario si rompeva. Ora si sceglie
+  // in modo DETERMINISTICO l'account più recentemente attivo
+  // (last_synced_at, poi created_at — la tabella non ha updated_at);
+  // zero account = lo stesso errore tipizzato di sempre.
   const { data } = await supabase
     .from("external_calendar_accounts")
-    .select(`${TOKEN_ACCOUNT_COLUMNS}, scope`)
+    .select(`${TOKEN_ACCOUNT_COLUMNS}, scope, last_synced_at, created_at`)
     .eq("user_id", userId)
     .eq("provider", "google")
-    .maybeSingle<AccountWithTokens>();
-  if (!data) throw new Error("account_missing");
-  if (!hasDriveFileScope(data.scope)) throw new Error("scope_missing");
-  return data;
+    .order("last_synced_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .returns<AccountWithTokens[]>();
+  const account = data?.[0];
+  if (!account) throw new Error("account_missing");
+  if (!hasDriveFileScope(account.scope)) throw new Error("scope_missing");
+  return account;
 }
 
 // ============================================================
