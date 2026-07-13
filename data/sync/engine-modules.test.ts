@@ -681,3 +681,41 @@ describe("SyncEngine — round-trip dieta (run-09 P1)", () => {
     expect((await b.repos.diet.dayExtras("2026-07-13"))).toHaveLength(1);
   });
 });
+
+describe("SyncEngine — ricorrenze dei task (run-09 P3)", () => {
+  it("due device che completano offline la stessa istanza convergono su UNA prossima occorrenza", async () => {
+    const remote = new FakeRemote();
+    const a = makeDevice(remote);
+    const b = makeDevice(remote);
+
+    const task = must(
+      await a.repos.tasks.create({
+        title: "Palestra",
+        date: "2026-07-13", // lunedì
+        recurrence: { freq: "weekly", weekdays: [1, 4] },
+      }),
+    );
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+
+    // Entrambi completano la STESSA istanza prima di sincronizzare: lo
+    // spawn ha id derivato dal task completato → stessa PK, LWW fonde.
+    must(await a.repos.tasks.complete(task.id, { today: "2026-07-13" }));
+    await new Promise((r) => setTimeout(r, 5));
+    must(await b.repos.tasks.complete(task.id, { today: "2026-07-13" }));
+
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    await a.engine.syncNow();
+
+    // Due righe remote in tutto: l'istanza completata + UNA spawn.
+    expect(remote.rowsOf("lo_tasks")).toHaveLength(2);
+    const { taskRecurSpawnId } = await import("../local/tasks");
+    const spawnId = await taskRecurSpawnId(task.id);
+    const suA = await a.repos.tasks.getById(spawnId);
+    const suB = await b.repos.tasks.getById(spawnId);
+    expect(suA).toEqual(suB);
+    expect(suA?.date).toBe("2026-07-16"); // giovedì
+    expect(suA?.recurrence).toEqual({ freq: "weekly", weekdays: [1, 4] });
+  });
+});

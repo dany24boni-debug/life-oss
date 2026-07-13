@@ -17,6 +17,7 @@ import {
   IsoDaySchema,
   IsoWeekSchema,
   PlanSlotPatchSchema,
+  RecurrenceSchema,
   PlanSlotSchema,
   ProgramSlotCreateSchema,
   ProgramSlotPatchSchema,
@@ -518,5 +519,46 @@ describe("dieta (run-09 P1)", () => {
         food_id: uuidv7(),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("ricorrenze dei task (run-09 P3)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+
+  it("weekly senza giorni è rifiutata; daily non li richiede", () => {
+    expect(RecurrenceSchema.safeParse({ freq: "daily" }).success).toBe(true);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [1, 4] }).success,
+    ).toBe(true);
+    expect(RecurrenceSchema.safeParse({ freq: "weekly" }).success).toBe(false);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [] }).success,
+    ).toBe(false);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [8] }).success,
+    ).toBe(false);
+  });
+
+  it("una riga task PRE run-09 (senza la chiave) passa il parse con null", () => {
+    const oldRow = {
+      id: uuidv7(),
+      title: "Riga vecchia",
+      notes: null,
+      date: null,
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "open",
+      completed_at: null,
+      sort_order: 0,
+      subtasks: [],
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    const parsed = TaskSchema.safeParse(oldRow);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.recurrence).toBeNull();
   });
 });

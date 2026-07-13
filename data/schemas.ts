@@ -79,6 +79,26 @@ export const ModuleLinkSchema = z.object({
 });
 export type ModuleLink = z.infer<typeof ModuleLinkSchema>;
 
+/**
+ * Ricorrenza (run-09 prompt 3) — ripetizione BASATA SUL COMPLETAMENTO:
+ * completare un task ricorrente genera la prossima occorrenza (data =
+ * prossimo giorno previsto strettamente dopo max(oggi, data del task)),
+ * con id DERIVATO `lifeos:task-recur:<completed_task_id>` — due
+ * dispositivi che completano offline la stessa istanza convergono
+ * sulla stessa prossima occorrenza. `weekly` richiede almeno un giorno;
+ * il repo normalizza (dedupe, sort; tutti e 7 i giorni = daily).
+ */
+export const RecurrenceSchema = z
+  .object({
+    freq: z.enum(["daily", "weekly"]),
+    /** Giorni ISO 1-7 (solo weekly). */
+    weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7).optional(),
+  })
+  .refine((r) => r.freq === "daily" || (r.weekdays?.length ?? 0) >= 1, {
+    message: "La ripetizione settimanale richiede almeno un giorno.",
+  });
+export type Recurrence = z.infer<typeof RecurrenceSchema>;
+
 export const TaskSchema = z.object({
   id: UuidSchema,
   title: TitleSchema,
@@ -92,6 +112,12 @@ export const TaskSchema = z.object({
   module_link: ModuleLinkSchema.nullable(),
   status: TaskStatusSchema,
   completed_at: IsoInstantSchema.nullable(),
+  /**
+   * Regola di ripetizione; null = mai. `.default(null)`: le righe
+   * pre-run-09 (backup, client non aggiornati) passano il parse
+   * materializzando null, mai scartate (house pattern).
+   */
+  recurrence: RecurrenceSchema.nullable().default(null),
   /** Ordine manuale dentro una giornata (drag to reorder). */
   sort_order: z.number(),
   subtasks: z.array(SubtaskSchema).max(50),
@@ -115,6 +141,7 @@ const taskEditable = {
   priority: TaskPrioritySchema.nullable(),
   tags: z.array(TagSchema).max(20),
   module_link: ModuleLinkSchema.nullable(),
+  recurrence: RecurrenceSchema.nullable(),
   subtasks: z.array(SubtaskInputSchema).max(50),
 };
 

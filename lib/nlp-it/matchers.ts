@@ -20,6 +20,7 @@ import {
   toIso,
   type CivilDate,
 } from "./civil";
+import type { RecurrenceValue } from "./types";
 
 export type Span = { start: number; end: number };
 
@@ -244,6 +245,91 @@ export function matchDates(
 /** Distanza in giorni alla prossima occorrenza STRETTAMENTE futura. */
 function deltaToWeekday(todayIso: number, targetIso: number): number {
   return ((targetIso - todayIso + 6) % 7) + 1;
+}
+
+// ============================================================
+// Ricorrenze (run-09): "ogni giorno", "ogni lunedì", "ogni lun e
+// gio", "ogni lun, mer e ven", "nei feriali". La regola detta il
+// ritmo; la data (esplicita o derivata) la prima occorrenza —
+// risoluzione in parse.ts.
+// ============================================================
+
+export type RecurrenceCandidate = Span & { value: RecurrenceValue };
+
+const WD_PATTERN = WEEKDAY_FORMS.map((w) => w.re).join("|");
+
+export function matchRecurrences(
+  input: string,
+  consumed: Span[],
+): RecurrenceCandidate[] {
+  const out: RecurrenceCandidate[] = [];
+  const taken: Span[] = [...consumed];
+
+  const push = (span: Span, value: RecurrenceValue) => {
+    if (overlaps(taken, span)) return;
+    taken.push(span);
+    out.push({ ...span, value });
+  };
+
+  // R1 — "ogni giorno".
+  const daily = new RegExp(`(^|[^${L}])(ogni\\s+giorno)(?![${L}])`, "giu");
+  for (const m of input.matchAll(daily)) {
+    const start = m.index + m[1].length;
+    push({ start, end: start + m[2].length }, { freq: "daily" });
+  }
+
+  // R2 — "nei feriali" (lun-ven).
+  const feriali = new RegExp(`(^|[^${L}])(nei\\s+feriali)(?![${L}])`, "giu");
+  for (const m of input.matchAll(feriali)) {
+    const start = m.index + m[1].length;
+    push(
+      { start, end: start + m[2].length },
+      { freq: "weekly", weekdays: [1, 2, 3, 4, 5] },
+    );
+  }
+
+  // R3 — "ogni <wd>" con liste ("e" o virgole). Le forme piene stanno
+  // prima delle abbreviazioni dentro OGNI alternativa di WEEKDAY_FORMS,
+  // quindi "lunedì" non si ferma mai a "lun".
+  const list = new RegExp(
+    `(^|[^${L}])(ogni\\s+(?:${WD_PATTERN})(?:(?:\\s*,\\s*|\\s+e\\s+)(?:${WD_PATTERN}))*)(?![${L}])`,
+    "giu",
+  );
+  for (const m of input.matchAll(list)) {
+    const start = m.index + m[1].length;
+    const weekdays = extractWeekdays(m[2]);
+    if (weekdays.length === 0) continue;
+    push(
+      { start, end: start + m[2].length },
+      { freq: "weekly", weekdays },
+    );
+  }
+
+  return out.sort((a, b) => a.start - b.start);
+}
+
+/** I giorni ISO citati nel testo della lista, ordinati e senza doppi. */
+function extractWeekdays(listText: string): number[] {
+  const found = new Set<number>();
+  for (const wd of WEEKDAY_FORMS) {
+    const re = new RegExp(`(^|[^${L}])(${wd.re})(?![${L}])`, "giu");
+    if (re.test(listText)) found.add(wd.iso);
+  }
+  return [...found].sort((a, b) => a - b);
+}
+
+const WEEKDAY_ABBREV_IT = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"];
+
+/** Etichetta del chip: "ogni giorno", "nei feriali", "ogni lun e gio". */
+export function displayRecurrence(value: RecurrenceValue): string {
+  if (value.freq === "daily") return "ogni giorno";
+  const days = [...new Set(value.weekdays ?? [])].sort((a, b) => a - b);
+  if (days.length === 5 && days.every((d, i) => d === i + 1)) {
+    return "nei feriali";
+  }
+  const names = days.map((d) => WEEKDAY_ABBREV_IT[d - 1]);
+  if (names.length === 1) return `ogni ${names[0]}`;
+  return `ogni ${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
 }
 
 // ============================================================

@@ -161,7 +161,9 @@ export const SCHEMA_V10 = {
 /**
  * v11 = v10 + dieta (run-09 prompt 1): libreria alimenti personale,
  * piano pasti con varianti, log per (pasto, giorno — id derivato) ed
- * extra del giorno. Solo additiva: nessun reshaping, nessun backfill.
+ * extra del giorno. Additiva; l'upgrade backfilla anche
+ * `tasks.recurrence = null` (run-09 prompt 3) sulle righe esistenti —
+ * v11 nasce e si estende DENTRO il run-09, mai spedita a metà.
  */
 export const SCHEMA_V11 = {
   ...SCHEMA_V10,
@@ -244,7 +246,18 @@ export class LifeosDb extends Dexie {
     this.version(8).stores(SCHEMA_V8);
     this.version(9).stores(SCHEMA_V9);
     this.version(10).stores(SCHEMA_V10);
-    this.version(11).stores(SCHEMA_V11);
+    this.version(11)
+      .stores(SCHEMA_V11)
+      .upgrade((tx) =>
+        // Backfill run-09: null esplicito al posto di `undefined` sulla
+        // ricorrenza dei task pre-esistenti (stesso pattern del v6 gym).
+        tx
+          .table("tasks")
+          .toCollection()
+          .modify((t: Record<string, unknown>) => {
+            if (t.recurrence === undefined) t.recurrence = null;
+          }),
+      );
   }
 }
 

@@ -6,7 +6,13 @@
  */
 
 import type { LifeosDb } from "../db";
-import { uuidv7 } from "../ids";
+import { deriveUuidV8, uuidv7 } from "../ids";
+import {
+  buildSpawnTask,
+  maxDay,
+  nextOccurrence,
+  normalizeRecurrence,
+} from "../recurrence";
 import { attempt, err, ok, type Result } from "../result";
 import {
   TaskCreateSchema,
@@ -31,6 +37,11 @@ import {
 
 const TASK_NON_TROVATO = "Task non trovato (o già eliminato).";
 
+/** Id deterministico della prossima occorrenza (dal task completato). */
+export function taskRecurSpawnId(completedTaskId: string): Promise<string> {
+  return deriveUuidV8(`lifeos:task-recur:${completedTaskId}`);
+}
+
 export class LocalTasksRepo implements TasksRepo {
   constructor(
     private readonly db: LifeosDb,
@@ -54,6 +65,7 @@ export class LocalTasksRepo implements TasksRepo {
         module_link: data.module_link ?? null,
         status: "open",
         completed_at: null,
+        recurrence: data.recurrence ? normalizeRecurrence(data.recurrence) : null,
         sort_order: await this.nextSortOrder(),
         subtasks: fillSubtaskIds(data.subtasks ?? []),
         created_at: now,
@@ -81,6 +93,12 @@ export class LocalTasksRepo implements TasksRepo {
         ...(data.priority !== undefined && { priority: data.priority }),
         ...(data.tags !== undefined && { tags: data.tags }),
         ...(data.module_link !== undefined && { module_link: data.module_link }),
+        ...(data.recurrence !== undefined && {
+          recurrence:
+            data.recurrence === null
+              ? null
+              : normalizeRecurrence(data.recurrence),
+        }),
         ...(data.subtasks !== undefined && {
           subtasks: fillSubtaskIds(data.subtasks),
         }),
@@ -91,11 +109,17 @@ export class LocalTasksRepo implements TasksRepo {
     });
   }
 
-  complete(id: string): Promise<Result<Task>> {
+  complete(id: string, opts?: { today?: IsoDay }): Promise<Result<Task>> {
     return attempt(async () => {
       const current = await this.getById(id);
       if (!current) return err("not_found", TASK_NON_TROVATO);
       if (current.status === "done") return ok(current); // idempotente
+      // L'id derivato usa crypto.subtle (promise nativa): va calcolato
+      // PRIMA della transazione Dexie (lezione run-07: dentro, la
+      // farebbe committare troppo presto).
+      const spawnId = current.recurrence
+        ? await taskRecurSpawnId(current.id)
+        : null;
       const now = bumpFrom(this.clock, current.updated_at);
       const next: Task = {
         ...current,
@@ -103,8 +127,39 @@ export class LocalTasksRepo implements TasksRepo {
         completed_at: now,
         updated_at: now,
       };
-      await this.db.tasks.put(next);
-      return ok(next);
+      return this.db.transaction("rw", this.db.tasks, async () => {
+        await this.db.tasks.put(next);
+        if (spawnId !== null && current.recurrence) {
+          // Prossima occorrenza: strettamente dopo max(oggi, data del
+          // task) — un ricorrente in ritardo completato oggi riparte
+          // da oggi, non accumula occorrenze fantasma.
+          const today = opts?.today ?? now.slice(0, 10);
+          const date = nextOccurrence(
+            current.recurrence,
+            maxDay(today, current.date ?? today),
+          );
+          const existing = await this.db.tasks.get(spawnId);
+          const spawn = buildSpawnTask(current, {
+            id: spawnId,
+            date,
+            now: this.clock(),
+            sortOrder: await this.nextSortOrder(),
+          });
+          if (existing) {
+            // Già generata (altro device) o tombstonata da un undo:
+            // ri-completare È l'intento — si rianima con la data nuova.
+            await this.db.tasks.put({
+              ...spawn,
+              created_at: existing.created_at,
+              sort_order: existing.sort_order,
+              updated_at: bumpFrom(this.clock, existing.updated_at),
+            });
+          } else {
+            await this.db.tasks.add(spawn);
+          }
+        }
+        return ok(next);
+      });
     });
   }
 
@@ -113,14 +168,32 @@ export class LocalTasksRepo implements TasksRepo {
       const current = await this.getById(id);
       if (!current) return err("not_found", TASK_NON_TROVATO);
       if (current.status === "open") return ok(current); // idempotente
+      const spawnId = current.recurrence
+        ? await taskRecurSpawnId(current.id)
+        : null;
       const next: Task = {
         ...current,
         status: "open",
         completed_at: null,
         updated_at: bumpFrom(this.clock, current.updated_at),
       };
-      await this.db.tasks.put(next);
-      return ok(next);
+      return this.db.transaction("rw", this.db.tasks, async () => {
+        await this.db.tasks.put(next);
+        if (spawnId !== null) {
+          // L'undo del "fatto" annulla anche la prossima occorrenza —
+          // ma solo se è ancora una spawn intonsa (aperta e viva).
+          const spawn = await this.db.tasks.get(spawnId);
+          if (spawn && spawn.deleted_at === null && spawn.status === "open") {
+            const mark = bumpFrom(this.clock, spawn.updated_at);
+            await this.db.tasks.put({
+              ...spawn,
+              deleted_at: mark,
+              updated_at: mark,
+            });
+          }
+        }
+        return ok(next);
+      });
     });
   }
 

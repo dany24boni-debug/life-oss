@@ -134,4 +134,50 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓; `/dieta` 200 da ospite con le tre tab ✓; zero controlli nativi ✓; logica UI testata (ciclo varianti, barre, parse) ✓; delta chunk di Oggi riportato ✓ (+2,0 kB raw, budget P7 rispettato).
 
-**Commit:** `feat(diet): day log with one-tap meals and variants, plan builder, food library`
+**Commit:** `feat(diet): day log with one-tap meals and variants, plan builder, food library` → `bad616b`
+
+---
+
+## Prompt 3 — Ricorrenze dei task ("ogni lunedì")
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ (tre fixture Task nei test esistenti hanno guadagnato `recurrence: null` — ripple di tipo atteso) · build ✓ · sentinels ✓ · test **936/936, 72 file** (+34: 9 `data/recurrence.test.ts` nuovo, +5 `data/local/tasks.test.ts`, +14 `lib/nlp-it/parse.test.ts` (12 casi in tabella + 2 su frammento e contesa), +4 `app/(app)/_components/tasks/logic.test.ts`, +2 `data/schemas.test.ts`, +1 round-trip di convergenza in engine-modules; golden task-recur DENTRO il golden esistente di ids.test). **Dev-server:** `/tasks` **200**, zero controlli nativi — i task non ricorrenti si comportano identici (la ricorrenza è additiva ovunque).
+
+### 1. Modello + spawn (data/**)
+
+- **`Task.recurrence`** nullable: `{freq: "daily" | "weekly", weekdays?: number[]}`; `RecurrenceSchema` con refine (weekly richiede ≥1 giorno); **`.default(null)` sull'entità** — le righe pre-run-09 e i backup passano il parse materializzando null (testato). Editabile in create e patch; il repo **normalizza** (dedupe+sort; weekly con tutti e 7 i giorni = daily — una sola rappresentazione, pattern weekdays abitudini).
+- **`data/recurrence.ts`** (puro, 9 test): `nextOccurrence(rule, after)` STRETTAMENTE dopo (daily +1; weekly il prossimo previsto; testato su confini di mese/anno e sui giorni DST 2026), `firstOccurrence(rule, today)` OGGI INCLUSO (la prima occorrenza del quick-add), `normalizeRecurrence`, `recurrenceLabel` ("ogni giorno" / "nei feriali" / "ogni lun, mer e ven"), `buildSpawnTask` (porta regola/titolo/orario/priorità/tag/note/module_link; **sottotask azzerati con gli stessi id**; status open). Aritmetica a mezzogiorno UTC su stringhe civili (weekdayOfDay riusato).
+- **`complete(id, opts?: {today})`**: completare un ricorrente GENERA la prossima occorrenza — data = `nextOccurrence(rule, max(today, task.date ?? today))` (un ricorrente in ritardo completato oggi riparte da oggi, niente occorrenze fantasma — testato); **id DERIVATO `lifeos:task-recur:<completed_task_id>`** (golden `84131898-…` pinnato) calcolato PRIMA della transazione Dexie (crypto.subtle: la lezione run-07); se la riga spawn esiste già (altro device, o tombstone da undo) si **rianima con la data nuova** (stessa PK, mai una terza riga — testato). Idempotente: ri-completare non tocca lo spawn.
+- **`uncomplete(id)`**: tombstona lo spawn SOLO se ancora intonso (vivo e aperto) — l'undo del "fatto" annulla anche la prossima occorrenza; uno spawn già completato dall'utente non si tocca (testato). Ri-completare rianima (il "restore" del brief).
+- **Day-roll**: un ricorrente scaduto resta in "In ritardo" come ogni task — nessun salto silenzioso (documentato in data/recurrence.ts).
+- **Dexie v11 ESTESA** (non v12): upgrade con backfill `tasks.recurrence = null` (pattern v6 gym) — v11 è nata nel P1 di QUESTO run e non è mai stata spedita: estenderla è pulito e fa una sola migrazione per il run. Survival test v10→v11 esteso (task pre-run-09 guadagna null; riga v1 idem).
+- **Convergenza su FakeRemote**: due device completano offline la STESSA istanza → **2 righe remote in tutto** (l'istanza + UNA spawn sulla PK derivata), identiche su A e B, data giovedì 16 (fixture lun 13 + regola lun/gio) — testato.
+- **Migrazione `0030_task_recurrence.sql` SCRITTA, NON applicata**: SOLO `ALTER TABLE lo_tasks ADD COLUMN IF NOT EXISTS recurrence jsonb` + comment — nessuna tabella nuova, **nessuna ridichiarazione di lo_push** (il SET dinamico raccoglie la colonna da information_schema).
+
+### 2. Parser (lib/nlp-it — grammatica estesa)
+
+- **`FragmentKind` += "recurrence"**, `RecurrenceValue` dichiarato in types.ts (la lib resta autonoma, zero import da data/); `ParseResult.recurrence`.
+- **`matchRecurrences`**: `ogni giorno`; `nei feriali` (lun-ven); `ogni <weekday>` pieno/abbreviato/accentato con **liste** ("e" e virgole: "ogni lun, mer e ven") — riusa le WEEKDAY_FORMS esistenti (piene prima delle abbreviazioni). `displayRecurrence` per il chip.
+- **Ordine di matching**: ricorrenze PRIMA di orari e date — "ogni lunedì" maschera il suo "lunedì" (che altrimenti diventerebbe una data); vince l'ultima regola nel testo, la perdente torna titolo (coerente con le date, testato).
+- **Regola vs data**: la regola detta il RITMO, la data la PRIMA occorrenza — esplicita vince ("ogni lunedì il 15/08" → regola lun + data 15/08); senza, **il primo giorno previsto OGGI INCLUSO** ("ogni ven" di venerdì parte oggi; delta dichiarato: i weekday-data nudi restano strettamente futuri, ma "ogni X" scritto di X intende oggi).
+- **12 casi in tabella** + span esatto del frammento (dismissibile) + guardia ("ogni tanto" resta titolo; "lunedì" nudo = solo data, mai regola).
+
+### 3. UI (quick-add, scheda, liste, toast)
+
+- **Quick-add**: chip "ripeti · ogni lun e gio" dismissibile; `applyDismissals` esteso (con `today`): il chip ripeti porta regola E data derivata (vivono e muoiono insieme, pattern "stasera"); **data esplicita dismessa con regola attiva → la data torna alla prima occorrenza della regola** (testato); `toTaskCreate` porta la regola.
+- **Scheda dettaglio**: riga **"Ripeti"** (Nessuna / Ogni giorno / **Giorni…** con chips L-D 44px, aria-label coi nomi pieni), editabile sempre; "Giorni…" parte dal giorno del task (o di oggi); **deselezionare l'ultimo giorno = Nessuna** (il gesto onesto); hint "Completarlo genera la prossima occorrenza."
+- **Liste**: glifo quieto `IconRepeat` (riusata) nella riga meta dei ricorrenti.
+- **Toast di completamento**: coda **"· prossima: gio 16 lug"** (dayHeading, "domani" quando è domani); `actions.complete` e il check inline dell'agenda passano il giorno civile Europe/Rome al repo.
+
+### Delta dichiarati
+
+1. **Fence "app/(app)/tasks/** + task detail sheet"**: il modulo task vive quasi tutto in `app/(app)/_components/tasks/**` (quick-add, scheda, item, actions, logic) + `agenda-list.tsx` (check inline = completamento) — le superfici toccate sono esattamente quelle che il build spec ordina (chip quick-add, riga Ripeti, glifo, toast).
+2. **Prima occorrenza OGGI INCLUSO** (vs date nude strettamente future): "ogni lunedì" scritto di lunedì parte oggi — la lettura utile; lo spawn resta strettamente-dopo.
+3. **v11 estesa col backfill invece di una v12**: v11 è interna al run-09, mai spedita a metà (documentato in data/db.ts).
+4. **`0030_task_recurrence.sql`**: il nome nel brief ("0_recurrence.sql") è un refuso — numerata 0030 come da sequenza.
+5. **uncomplete non tocca spawn già completati/modificati**: la guardia "intonso" (vivo E aperto) evita di cancellare lavoro fatto sull'occorrenza successiva.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; test di spawn/convergenza/parser ✓ (golden del prefisso, FakeRemote a 2 righe, 12+ casi grammatica); `/tasks` invariato per i non ricorrenti ✓ (dev-server 200, ricorrenza additiva); migrazione presente NON applicata ✓.
+
+**Commit:** `feat(tasks): completion-based recurrence with converging spawn and Italian grammar`

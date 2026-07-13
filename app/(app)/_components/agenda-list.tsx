@@ -13,6 +13,7 @@ import { cx, useToast } from "@/ui";
 import { appRepos } from "@/data/hooks";
 import type { AgendaItem } from "../calendar/agenda";
 import { IconCheck } from "./icons";
+import { APP_TIME_ZONE, todayInZone } from "./tasks/logic";
 
 export function AgendaList({
   items,
@@ -134,7 +135,12 @@ function TaskCheck({
 
   async function toggle() {
     const tasks = appRepos().tasks;
-    const r = done ? await tasks.uncomplete(id) : await tasks.complete(id);
+    // Il giorno civile del gesto: serve al repo per la prossima
+    // occorrenza dei task ricorrenti (run-09).
+    const today = todayInZone(new Date(), APP_TIME_ZONE);
+    const r = done
+      ? await tasks.uncomplete(id)
+      : await tasks.complete(id, { today });
     if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
   }
 

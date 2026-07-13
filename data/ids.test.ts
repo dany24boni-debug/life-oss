@@ -91,6 +91,14 @@ describe("deriveUuidV8 — golden (contratto di idempotenza)", () => {
         "lifeos:meal-log:aaaa1111-0000-4000-8000-000000000001:2026-07-13",
       ),
     ).toBe("ed1d1ff4-860b-822b-a5f9-6df0379aad43");
+    // Prefisso task-recur (run-09): la prossima occorrenza generata dal
+    // completamento — due dispositivi che completano offline la stessa
+    // istanza convergono sulla stessa prossima occorrenza.
+    expect(
+      await deriveUuidV8(
+        "lifeos:task-recur:aaaa1111-0000-4000-8000-000000000001",
+      ),
+    ).toBe("84131898-837d-8b53-8c2d-19a8b103a654");
   });
 
   it("è deterministica e ha forma UUID v8 variant 10", async () => {

@@ -11,9 +11,17 @@
 import { useToast } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
 import { appRepos } from "@/data/hooks";
+import { maxDay, nextOccurrence } from "@/data/recurrence";
 import type { Result } from "@/data/result";
 import type { Task, TaskPatch } from "@/data/schemas";
-import { dayHeading, SNOOZE_LABELS, snoozeDate, type SnoozeOption } from "./logic";
+import {
+  APP_TIME_ZONE,
+  dayHeading,
+  SNOOZE_LABELS,
+  snoozeDate,
+  todayInZone,
+  type SnoozeOption,
+} from "./logic";
 
 const SNOOZE_TOAST: Record<SnoozeOption, string> = {
   stasera: "Spostato a stasera",
@@ -35,10 +43,23 @@ export function useTaskActions() {
   }
 
   async function complete(task: Task): Promise<boolean> {
-    const done = await run(() => appRepos().tasks.complete(task.id));
+    // Il giorno civile del gesto (Europe/Rome): il repo lo usa per la
+    // prossima occorrenza dei ricorrenti (run-09).
+    const today = todayInZone(new Date(), APP_TIME_ZONE);
+    const done = await run(() => appRepos().tasks.complete(task.id, { today }));
     if (done) {
+      // I ricorrenti dichiarano subito la prossima occorrenza generata.
+      const tail = task.recurrence
+        ? ` · prossima: ${dayHeading(
+            nextOccurrence(
+              task.recurrence,
+              maxDay(today, task.date ?? today),
+            ),
+            today,
+          ).toLowerCase()}`
+        : "";
       toast.show({
-        message: `Fatto: ${task.title}`,
+        message: `Fatto: ${task.title}${tail}`,
         tone: "success",
         action: {
           label: "Annulla",

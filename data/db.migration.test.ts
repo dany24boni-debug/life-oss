@@ -25,6 +25,7 @@ describe("schema bump v1 -> v2", () => {
       module_link: null,
       status: "open" as const,
       completed_at: null,
+      recurrence: null,
       sort_order: 0,
       subtasks: [],
       created_at: "2026-07-10T08:00:00.000Z",
@@ -305,12 +306,36 @@ describe("schema bump v1 -> v2", () => {
       deleted_at: null,
     };
     await v10.table("focus_sessions").add(fase);
+    // Un task pre-run-09: SENZA la chiave recurrence.
+    const vecchioTask = {
+      id: "01980000-0000-7000-8000-000000000506",
+      title: "Riga run-08",
+      notes: null,
+      date: "2026-07-12",
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "open",
+      completed_at: null,
+      sort_order: 0,
+      subtasks: [],
+      created_at: "2026-07-12T08:00:00.000Z",
+      updated_at: "2026-07-12T08:00:00.000Z",
+      deleted_at: null,
+    };
+    await v10.table("tasks").add(vecchioTask);
     v10.close();
 
     const current = new LifeosDb(name);
     await current.open();
     expect(current.verno).toBe(11);
     expect(await current.focus_sessions.get(fase.id)).toEqual(fase);
+    // Il backfill run-09 P3 normalizza la ricorrenza a null esplicito.
+    expect(await current.tasks.get(vecchioTask.id)).toEqual({
+      ...vecchioTask,
+      recurrence: null,
+    });
 
     // Le tabelle dieta funzionano, indici compresi.
     await current.foods.add({
@@ -398,7 +423,11 @@ describe("schema bump v1 -> v2", () => {
     const current = new LifeosDb(name);
     await current.open();
     expect(current.verno).toBe(11);
-    expect(await current.tasks.get(row.id)).toEqual(row);
+    // Il backfill run-09 aggiunge recurrence: null alla riga v1.
+    expect(await current.tasks.get(row.id)).toEqual({
+      ...row,
+      recurrence: null,
+    });
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");
     // La tabella nuova è subito usabile sul database migrato.

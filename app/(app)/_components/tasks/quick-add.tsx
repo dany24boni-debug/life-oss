@@ -62,7 +62,7 @@ export function QuickAdd({
     if (!text) return null;
     const result = parse(value, { now: new Date(), timeZone: APP_TIME_ZONE });
     return withDefaultDate(
-      applyDismissals(value, result, dismissed),
+      applyDismissals(value, result, dismissed, today),
       defaultDate,
       defaultDismissed,
       today,
@@ -154,6 +154,7 @@ const KIND_LABEL: Record<Chip["kind"], string> = {
   priority: "priorità",
   tag: "tag",
   module: "modulo",
+  recurrence: "ripeti",
 };
 
 function ParseChip({ chip, onDismiss }: { chip: Chip; onDismiss: () => void }) {

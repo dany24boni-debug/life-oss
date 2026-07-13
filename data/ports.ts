@@ -103,8 +103,21 @@ import type {
 export interface TasksRepo {
   create(input: TaskCreate): Promise<Result<Task>>;
   update(id: string, patch: TaskPatch): Promise<Result<Task>>;
-  /** Idempotente: completare un task già fatto restituisce ok. */
-  complete(id: string): Promise<Result<Task>>;
+  /**
+   * Idempotente: completare un task già fatto restituisce ok. Se il
+   * task è RICORRENTE, genera la prossima occorrenza (run-09): data =
+   * prossimo giorno previsto strettamente dopo max(today, data del
+   * task); id derivato dal task completato — i device convergono.
+   * `today` è il giorno civile del chiamante (la UI passa il giorno
+   * Europe/Rome); assente, si degrada al giorno UTC del clock.
+   */
+  complete(id: string, opts?: { today?: IsoDay }): Promise<Result<Task>>;
+  /**
+   * Riapre il task. Se è ricorrente, mette una tombstone alla prossima
+   * occorrenza generata dal completamento (se ancora aperta): l'undo
+   * del "fatto" annulla anche lo spawn; ri-completare la rianima
+   * (stesso id derivato).
+   */
   uncomplete(id: string): Promise<Result<Task>>;
   /** Tombstone: la riga resta fisicamente, sparisce da ogni lettura. */
   softDelete(id: string): Promise<Result<void>>;

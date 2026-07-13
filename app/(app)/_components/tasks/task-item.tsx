@@ -15,7 +15,14 @@ import { useEffect, useRef, useState } from "react";
 import { cx } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
 import type { Task } from "@/data/schemas";
-import { IconCheck, IconClock, IconDots, IconGrip, IconTrash } from "../icons";
+import {
+  IconCheck,
+  IconClock,
+  IconDots,
+  IconGrip,
+  IconRepeat,
+  IconTrash,
+} from "../icons";
 import type { TaskActions } from "./actions";
 import { dayHeading } from "./logic";
 
@@ -137,6 +144,14 @@ export function TaskItem({
     meta.push(
       <span key="time" className="em-num">
         {task.time}
+      </span>,
+    );
+  }
+  if (task.recurrence) {
+    // Il glifo quieto dei ricorrenti (run-09): si ripete, senza parole.
+    meta.push(
+      <span key="rec" title="Si ripete" aria-label="si ripete">
+        <IconRepeat className="h-3.5 w-3.5" />
       </span>,
     );
   }
