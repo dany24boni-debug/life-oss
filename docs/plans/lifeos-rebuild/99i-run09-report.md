@@ -213,4 +213,48 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓; fixture del composer (ospite-minimale, giornata piena, vuoto→null) ✓; `/` da ospite serve lo slot del brief ✓; route 401 da non autenticato nel dev-server pass ✓; senza chiave: zero comportamento oltre la riga deterministica ✓ (503 → fallback muto).
 
-**Commit:** `feat(brief): deterministic morning brief on Oggi with optional key-gated polish`
+**Commit:** `feat(brief): deterministic morning brief on Oggi with optional key-gated polish` → `153989d`
+
+---
+
+## Prompt 5 — Notifiche push, SOLO CODICE (blueprint 17)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ (`ƒ /api/push/subscribe` e `ƒ /api/push/unsubscribe`; **build SENZA alcuna env VAPID**: la card degrada, il percorso subscribe è irraggiungibile) · sentinels ✓ · test **947/947, 74 file** (+3: `data/push.test.ts` nuovo — conversione base64url della chiave VAPID su valori noti incl. lunghezza 65 della P-256, estrazione del payload di subscription con rifiuto delle rotte, schema categorie chiuso). **SW**: `node --check public/sw.js` ✓ e `SW_VERSION` **v1 → v2**. **Dev-server:** `POST /api/push/subscribe` **401**, `POST /api/push/unsubscribe` **401** da non autenticato; `/impostazioni` 200. **NIENTE deployato, NIENTE chiamato sul vivo.**
+
+### 1. Audit di 0020 → migrazione `0031_push_alter.sql` (SCRITTA, NON applicata)
+
+0020 ha GIÀ endpoint/p256dh/auth/user_agent/created/updated e la UNIQUE (user_id, endpoint). Manca SOLO l'opt-in per categoria → `ALTER … ADD COLUMN IF NOT EXISTS categories jsonb` (+ comment; null = nessuna attiva). In più **`lo_push_sends`** (delta motivato): il registro di IDEMPOTENZA del sender — PK (user_id, dedupe_key: `reminder:<id>` / `brief:<data>` / `streak:<data>`), **RLS accesa e NESSUNA policy** = solo service role; NON è una tabella sync (nessuna voce nel registro client, **nessuna ridichiarazione di lo_push**).
+
+### 2. Client (`data/push.ts` + card Impostazioni)
+
+- **`data/push.ts`** (additivo, testato): `PushCategoriesSchema` (reminders/brief/streak), etichette italiane, `urlBase64ToUint8Array` (per `applicationServerKey`), `subscriptionPayload` (da `PushSubscription.toJSON()`, null se rotta), `PushSubscribeSchema` riusato dal server (mai fidarsi del client).
+- **`push-section.tsx`** (Impostazioni, SOLO account — `{user ? <PushSection/> : null}` nel server component, posizionata sopra il pannello di verità): copy onesta sui requisiti ("su iPhone serve LifeOS installata come app"); **senza `NEXT_PUBLIC_VAPID_PUBLIC_KEY` la card dice "non ancora attivo su questo server" e non mostra MAI un bottone rotto**; browser senza PushManager = copy dedicata; permesso negato = spiegazione senza colpa. Attiva → `Notification.requestPermission` SOLO al gesto → `pushManager.subscribe` con la chiave → POST; **switch per categoria** (Promemoria task / Brief del mattino / Streak a rischio — Switch del kit); **Disattiva** = DELETE server + `subscription.unsubscribe()` (mai endpoint orfani). Stato reale al mount (capacità, permesso, subscription, categorie dal server via GET), tutto in effetto async.
+
+### 3. SW (`public/sw.js`, edit versionata)
+
+`SW_VERSION` v2 (il toast di aggiornamento esistente porta il cambio); handler **`push`** (payload `{title, body, tag, url}` difensivo campo per campo, icona /icon-512, badge /icon) e **`notificationclick`** (focus-or-open con navigate try/catch). Kill-switch template intatto.
+
+### 4. API (`app/api/push/**`)
+
+`subscribe` POST (authed 401, zod `PushSubscribeSchema`, **upsert RLS-scoped** su (user_id, endpoint) col client dell'UTENTE — la policy "Users own" di 0020 fa il resto; errore colonna mancante pre-0031 → 503 e la card resta onesta) + GET (categorie del proprio endpoint); `unsubscribe` POST (delete della propria riga).
+
+### 5. Edge Function `supabase/functions/push-sender/` (Deno — MAI deployata dalla sessione)
+
+Bersaglio di cron (ogni 5'): legge col service role, spinge Web Push VAPID rispettando `categories`. **Import pinnati** `jsr:@supabase/supabase-js@2.45.4` e `jsr:@negrel/webpush@0.3.0` — l'ECCEZIONE Deno dichiarata del run (solo qui; `package.json` byte-identico; la checklist ordina di verificare i pin alla prima deploy). Chiavi VAPID di `web-push` (base64url raw) convertite in JWK P-256 ES256 nel codice (x/y dal punto non compresso, d dallo scalare — commentato). **Tre categorie**: promemoria scaduti (dopo l'invio marca `fired_at`+`updated_at` su lo_reminders: i client lo pullano e non lo risuonano, "Mentre eri via" lo mostra — commentato); brief 07-08 Roma una volta al giorno (conteggio VERO dei task del giorno — la riga ricca resta nel client); streak 20-21 SOLO se ieri attivo e oggi no (semplificazione onesta, commentata — al massimo TACE). **Idempotenza conquistata** con `INSERT … lo_push_sends` (23505 = già mandata, si salta); endpoint 404/410 → riga pulita. **Mai payload nei log, solo conteggi.**
+
+### 6. `17-activation-checklist.md`
+
+Otto passi, tutti di Davide: genera VAPID (npx one-shot, non una dipendenza), applica 0031, 3+1 env (Vercel + function secrets, redeploy per la NEXT_PUBLIC), `supabase functions deploy push-sender --no-verify-jwt` con verifica dei pin, cron pg_cron/pg_net (SQL pronto), requisiti iOS, smoke a telefono bloccato (con le query di verifica), rollback in due minuti.
+
+### Delta dichiarati
+
+1. **`lo_push_sends` in 0031**: il brief chiede "marking sent (idempotent per reminder)" — per brief/streak (senza riga da marcare) serve un registro; una tabella server-only è più onesta di colonne sparse.
+2. **Il sender marca `fired_at` sui promemoria pushati**: la notifica sul telefono È lo scatto — i client non risuonano il già-suonato e "Mentre eri via" resta corretto (fired, non dismissed).
+3. **`tsconfig.json` + `eslint.config.mjs`**: `supabase/functions` escluso dalla toolchain Node (mondo Deno: global `Deno`, import `jsr:` — la piattaforma lo valida al deploy). Conseguenza necessaria del fence, commentata nei file.
+4. **GET su `/api/push/subscribe`**: la card deve mostrare le categorie salvate del dispositivo — lettura minima per endpoint, stessa route.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; build senza env VAPID con card che degrada ✓; SW parse + version bump ✓; endpoint 401 ✓; checklist completa ✓; niente deployato/chiamato ✓.
+
+**Commit:** `feat(push): web push code path, opt-in UI, edge sender function (activation pending)`

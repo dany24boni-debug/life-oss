@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Edge Functions Supabase: mondo Deno (import jsr:, global Deno) —
+    // le linta/valida la piattaforma al deploy, non la toolchain Node.
+    "supabase/functions/**",
   ]),
 ]);
 

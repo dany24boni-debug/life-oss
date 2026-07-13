@@ -19,6 +19,7 @@ import { SeraImportButton } from "../sera/import-button";
 import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProfileSection } from "./profile-section";
+import { PushSection } from "./push-section";
 import { ProtectedDays } from "./protected-days";
 import { ThemeSection } from "./theme-section";
 
@@ -288,6 +289,10 @@ export default async function ImpostazioniPage() {
 
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />
+
+      {/* Notifiche push (run-09 prompt 5, blueprint 17): solo account,
+          opt-in per categoria; senza chiave server la card lo dice. */}
+      {user ? <PushSection /> : null}
 
       {/* Pannello di verità sulle notifiche (run-03 prompt 5, B2.2):
           esattamente quando LifeOS può avvisare — e quando non può. */}
