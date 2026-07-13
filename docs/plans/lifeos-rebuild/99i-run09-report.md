@@ -180,4 +180,37 @@ Pre-flight PASS.
 
 - Quattro check verdi ✓; test di spawn/convergenza/parser ✓ (golden del prefisso, FakeRemote a 2 righe, 12+ casi grammatica); `/tasks` invariato per i non ricorrenti ✓ (dev-server 200, ricorrenza additiva); migrazione presente NON applicata ✓.
 
-**Commit:** `feat(tasks): completion-based recurrence with converging spawn and Italian grammar`
+**Commit:** `feat(tasks): completion-based recurrence with converging spawn and Italian grammar` → `1cf8c43`
+
+---
+
+## Prompt 4 — Morning brief su Oggi (nucleo deterministico, rifinitura LLM facoltativa)
+
+**Checkpoint: VERDE.** lint ✓ (un `set-state-in-effect` intermedio sul ramo cache — risolto con la lettura nell'initializer lazy, l'idioma dei run 07/08) · tsc ✓ · build ✓ (`ƒ /api/brief`) · sentinels ✓ · test **944/944, 73 file** (+8: `data/brief.test.ts` nuovo — fixture ospite-minimale, giornata piena, vuoto→null, priorità a 4 pezzi, ritardi, forme di palestra/slot/pasti/acqua/streak, validazione dello snapshot). **Dev-server:** `POST /api/brief` **401** da non autenticato ✓ (il primo tentativo dava 404: race con il boot del server, ritentato pulito); `/` **200** con le stringhe del composer nel chunk servito di Oggi (la riga monta coi dati IndexedDB del client — l'interpretazione chunk-level dei run precedenti).
+
+### 1. Il composer (`data/brief.ts`, puro — 8 test su fixture)
+
+- **`BriefSnapshotSchema`** (zod): lo snapshot AGGREGATO — conteggi task (aperti/in ritardo), next-up gym + fatto-oggi, slot del piano (in corso o prossimo), pasti mangiati/totale, acqua ml/obiettivo, streak. Mai liste, mai dump: è l'unico payload che il modello vedrà.
+- **`composeBrief(snapshot)`**: UNA frase italiana, ordine di priorità fisso (palestra → task, coi ritardi che pesano → slot del piano → pasti → acqua → streak), **al più QUATTRO pezzi** (oltre non è più una frase), omissioni oneste (acqua a 0 e streak a 0 non compaiono; ospite con soli task = riga solo dei task; zero dati = **null**, mai una frase vuota). Mai un throw (clamp difensivi), mai un numero inventato. Esempio testato byte-per-byte: *"Palestra: Torso A, 4 task aperti (2 in ritardo), alle 09:00 Deep work, 1/4 pasti."*
+
+### 2. `TodayBrief` (`_components/today-brief.tsx` + wiring ancorato)
+
+- Riga quieta `em-body-sm` SENZA chrome, subito sotto il saluto di Oggi; con zero dati (o durante il load) rende null. Snapshot composto dagli hook esistenti (useTasksSummary/useOverdueTasks/useNextUpDay/useGymSessionsByDay/useTodayPlanSlots+adessoEntry/useHabitBoard (acqua)/useStreak/useDayDiet) — nessuna query nuova, solo composizione.
+- **Wiring `app/(app)/page.tsx`** (anchored):
+```
+         <h1 …>{displayName ? `Ciao, ${displayName}` : "Ciao"}</h1>
++        {/* La riga del buongiorno (run-09 prompt 4) … */}
++        <TodayBrief authed={Boolean(user)} />
+```
+  Il flag `authed` arriva dal server component (che l'utente già lo sa): il client non fa MAI la chiamata da ospite.
+
+### 3. Rifinitura LLM (`app/api/brief/route.ts` — chiave e account soltanto)
+
+- **Auth 401** → **rate-limit** (limiter esistente, `brief:<userId>` 5/min — il client chiama una volta al giorno) → **503 senza `ANTHROPIC_API_KEY`** → body ≤10 KB → **snapshot rivalidato con lo STESSO schema zod del composer** (mai fidarsi del client) → Haiku **pinnato** (`MODELS.HAIKU`, riuso di lib/anthropic/client READ-ONLY) con system prompt che vieta emoji/esclamativi/fatti non nello snapshot, ≤160 caratteri → risposta `{line}`; risposta strana (vuota, >180 char) o errore modello → `{line: null}` (log server-side, mai dettagli al client — pattern overseer).
+- **Client**: cache per-giorno in localStorage (`lifeos.brief.<date>`, giorni vecchi potati) = UNA chiamata a mattina; fallback SILENZIOSO alla frase deterministica su qualunque intoppo (401/429/503/rete/risposta invalida). La copy non promette mai l'LLM: la frase deterministica È il prodotto.
+
+### Acceptance del prompt
+
+- Quattro check verdi ✓; fixture del composer (ospite-minimale, giornata piena, vuoto→null) ✓; `/` da ospite serve lo slot del brief ✓; route 401 da non autenticato nel dev-server pass ✓; senza chiave: zero comportamento oltre la riga deterministica ✓ (503 → fallback muto).
+
+**Commit:** `feat(brief): deterministic morning brief on Oggi with optional key-gated polish`
