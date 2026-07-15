@@ -9,6 +9,7 @@ import {
 } from "./_components/reminders-cards";
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
 import { TodayAdesso } from "./_components/today-adesso";
+import { TodayBrief } from "./_components/today-brief";
 import { TodayAgenda } from "./_components/today-agenda";
 import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
@@ -67,6 +68,9 @@ export default async function TodayPage() {
         <h1 className="em-title-lg mt-1 text-[var(--em-text)]">
           {displayName ? `Ciao, ${displayName}` : "Ciao"}
         </h1>
+        {/* La riga del buongiorno (run-09 prompt 4): deterministica dai
+            dati veri; rifinitura LLM solo con account e chiave server. */}
+        <TodayBrief authed={Boolean(user)} />
         {/* Il ponte "Vecchia dashboard" è caduto (run-05 prompt 1): la
             destinazione ora è un redirect proprio qui. */}
         {!user ? (

@@ -15,7 +15,24 @@ export type Priority = 1 | 2 | 3;
 /** Moduli suggeribili dal testo; per ora solo la palestra. */
 export type ModuleHint = "gym";
 
-export type FragmentKind = "date" | "time" | "priority" | "tag" | "module";
+/**
+ * Regola di ripetizione riconosciuta ("ogni lunedì", "nei feriali"):
+ * stessa forma del dominio ma dichiarata qui — la libreria resta
+ * autonoma, senza import da data/.
+ */
+export type RecurrenceValue = {
+  freq: "daily" | "weekly";
+  /** Giorni ISO 1-7 (solo weekly), ordinati e senza duplicati. */
+  weekdays?: number[];
+};
+
+export type FragmentKind =
+  | "date"
+  | "time"
+  | "priority"
+  | "tag"
+  | "module"
+  | "recurrence";
 
 /**
  * Frammento riconosciuto: span di caratteri sull'input ORIGINALE
@@ -42,6 +59,9 @@ export type ParseOptions = {
  * Esito del parse. `title` è l'input meno i frammenti consumati,
  * normalizzato negli spazi. Il frammento module NON viene consumato:
  * la parola resta nel titolo e il chip è solo un suggerimento.
+ * Una ricorrenza senza data esplicita valorizza `date` col PRIMO
+ * giorno previsto (oggi incluso): la regola detta il ritmo, la data
+ * la prima occorrenza.
  */
 export type ParseResult = {
   title: string;
@@ -50,5 +70,6 @@ export type ParseResult = {
   priority?: Priority;
   tags: string[];
   moduleHint?: ModuleHint;
+  recurrence?: RecurrenceValue;
   fragments: Fragment[];
 };

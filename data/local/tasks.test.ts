@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LifeosDb } from "../db";
-import { LocalTasksRepo } from "./tasks";
+import { LocalTasksRepo, taskRecurSpawnId } from "./tasks";
 import type { Task } from "../schemas";
 import type { Clock } from "./util";
 
@@ -245,5 +245,91 @@ describe("LocalTasksRepo — reorder", () => {
     const a = await mustCreate({ title: "a" });
     const b = await mustCreate({ title: "b" });
     expect(b.sort_order).toBeGreaterThan(a.sort_order);
+  });
+});
+
+describe("LocalTasksRepo — ricorrenze (run-09)", () => {
+  it("completare un ricorrente genera la prossima occorrenza (id derivato)", async () => {
+    const task = await mustCreate({
+      title: "Palestra",
+      date: "2026-07-13", // lunedì
+      time: "18:00",
+      recurrence: { freq: "weekly", weekdays: [1, 4] },
+    });
+    const r = await repo.complete(task.id, { today: "2026-07-13" });
+    expect(r.ok).toBe(true);
+
+    const spawnId = await taskRecurSpawnId(task.id);
+    const spawn = await repo.getById(spawnId);
+    expect(spawn).not.toBeNull();
+    expect(spawn?.date).toBe("2026-07-16"); // giovedì
+    expect(spawn?.time).toBe("18:00");
+    expect(spawn?.status).toBe("open");
+    expect(spawn?.recurrence).toEqual({ freq: "weekly", weekdays: [1, 4] });
+
+    // Idempotente: ri-completare non genera doppioni né tocca lo spawn.
+    const before = (await db.tasks.get(spawnId)) as Task;
+    await repo.complete(task.id, { today: "2026-07-13" });
+    expect(await db.tasks.count()).toBe(2);
+    expect((await db.tasks.get(spawnId)) as Task).toEqual(before);
+  });
+
+  it("un ricorrente IN RITARDO completato oggi riparte da oggi", async () => {
+    const task = await mustCreate({
+      title: "Ogni giorno",
+      date: "2026-07-01", // molto in ritardo
+      recurrence: { freq: "daily" },
+    });
+    await repo.complete(task.id, { today: "2026-07-13" });
+    const spawn = await repo.getById(await taskRecurSpawnId(task.id));
+    // max(oggi, data) = oggi → domani, non il 2 luglio.
+    expect(spawn?.date).toBe("2026-07-14");
+  });
+
+  it("uncomplete tombstona lo spawn; ri-completare lo rianima (stessa PK)", async () => {
+    const task = await mustCreate({
+      title: "Lettura",
+      date: "2026-07-13",
+      recurrence: { freq: "daily" },
+    });
+    await repo.complete(task.id, { today: "2026-07-13" });
+    const spawnId = await taskRecurSpawnId(task.id);
+    expect(await repo.getById(spawnId)).not.toBeNull();
+
+    await repo.uncomplete(task.id);
+    expect(await repo.getById(spawnId)).toBeNull(); // tombstone, non purge
+    expect((await db.tasks.get(spawnId))?.deleted_at).not.toBeNull();
+
+    await repo.complete(task.id, { today: "2026-07-13" });
+    const revived = await repo.getById(spawnId);
+    expect(revived).not.toBeNull();
+    expect(revived?.date).toBe("2026-07-14");
+    expect(await db.tasks.count()).toBe(2); // mai una terza riga
+  });
+
+  it("uncomplete NON tocca uno spawn già completato dall'utente", async () => {
+    const task = await mustCreate({
+      title: "Abitudine",
+      date: "2026-07-13",
+      recurrence: { freq: "daily" },
+    });
+    await repo.complete(task.id, { today: "2026-07-13" });
+    const spawnId = await taskRecurSpawnId(task.id);
+    await repo.complete(spawnId, { today: "2026-07-14" });
+    await repo.uncomplete(task.id);
+    // Lo spawn è "done", non più intonso: resta vivo.
+    expect((await db.tasks.get(spawnId))?.deleted_at).toBeNull();
+  });
+
+  it("un task normale non genera nulla; la regola si normalizza", async () => {
+    const plain = await mustCreate({ title: "Una volta", date: "2026-07-13" });
+    await repo.complete(plain.id, { today: "2026-07-13" });
+    expect(await db.tasks.count()).toBe(1);
+
+    const norm = await mustCreate({
+      title: "Tutti i giorni",
+      recurrence: { freq: "weekly", weekdays: [7, 1, 2, 3, 4, 5, 6] },
+    });
+    expect(norm.recurrence).toEqual({ freq: "daily" });
   });
 });

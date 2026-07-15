@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # LifeOS — house style for agents
 
 The app lives at the **repository root** (moved out of `life-os/` in run-06). Run every
-command from the root. LifeOS is a guest-first, local-first life dashboard: nine surfaces
+command from the root. LifeOS is a guest-first, local-first life dashboard: fourteen surfaces
 under the `(app)` shell, local data in Dexie behind `data/ports.ts`, LWW sync in `data/sync/`
 mirroring to `lo_*` tables on Supabase. See `README.md` for the product + architecture map.
 
@@ -33,9 +33,11 @@ CI (`.github/workflows/ci.yml`) runs lint · typecheck · sentinels · tests · 
 - **Anchored edits.** Quote the before/after for every pre-existing file you modify.
 - **Grep-gated deletion.** Before deleting any file or export, grep the whole repo for its
   consumers and quote the grep. A live consumer outside the deletion set = don't delete; adapt.
-- **Golden tests for derived ids.** `data/ids.ts#deriveUuidV8` (re-exported as `deriveId` from
-  `app/(app)/gym/importer.ts`) is pinned byte-for-byte in `data/ids.test.ts` and
-  `app/(app)/gym/importer.test.ts`. If those fail, every importer's idempotency is broken —
+- **Golden tests for derived ids.** `data/ids.ts#deriveUuidV8` (imported directly by every
+  consumer since run-09; the old `deriveId` re-export from `app/(app)/gym/importer.ts` is
+  retired) is pinned byte-for-byte in `data/ids.test.ts` and
+  `app/(app)/gym/importer.test.ts`. If those fail, every importer's idempotency AND every
+  derived-id convergence (sera/body/habit-log/slot-check/meal-log/task-recur) is broken —
   never "update" the expected UUIDs; fix the derivation.
 - **Commit-per-prompt on run branches.** One Conventional Commit per prompt, only after a green
   checkpoint (lint · typecheck · build · test). Never commit on red.
@@ -54,10 +56,37 @@ CI (`.github/workflows/ci.yml`) runs lint · typecheck · sentinels · tests · 
 - **Service worker never caches redirected responses.** `public/sw.js` must not cache a response
   with `response.redirected === true` — caching a redirected response breaks navigation. Emergency
   kill-switch: deploy `public/sw-kill.js.txt` as `sw.js`.
-- **`lo_push` allowlist redeclaration.** Migrations 0021 / 0022 / 0023 each redeclare
-  `lo_push_subscriptions` with a growing allowlist — apply them IN ORDER (0023 is final).
+- **`lo_push` allowlist redeclaration.** Every migration that adds SYNC tables redeclares
+  the `lo_push` RPC with a growing allowlist (0021-0023, 0024-0029) — apply them IN ORDER;
+  **0029 is final (28 tables)**. Pure ALTERs (0030, 0031) don't touch it. Full migration
+  range as of run-09: **0001 → 0031** (with the duplicate 0016 below).
 - **Duplicate 0016 migration.** Two files share the number 0016 (`0016_gym_sessions.sql` and
   `0016_remove_hardcoded_owner_email.sql`) — both must be applied.
 - **Next 16 ≠ your training data.** Read `node_modules/next/dist/docs/` before writing Next code
   (see the top block). Example that already bit us: `turbopack.root` auto-detection after the
   repo-root move.
+- **Chunk-measure method (run-08+).** Next 16 (webpack) no longer prints per-route "First
+  Load JS": the honest size measure is the route client chunk,
+  `.next/static/chunks/app/(app)/page-*.js` (raw bytes + gzip). Run-report budgets use this.
+- **No sync setState in effects.** `react-hooks/set-state-in-effect` fires on synchronous
+  `setState` inside `useEffect`. House idioms: module-level store + `useSyncExternalStore`
+  (pwa-store, focus/use-focus) or a LAZY `useState(() => …)` initializer (SSR-guarded) for
+  initial reads — and never `Date.now()`/`new Date()` in render (event handlers and lazy
+  initializers only; ticking clocks live in interval effects, see settimana `useNowHhmm`).
+- **Derived-id convergence recipe.** "One row per (entity, day/week)" derives the PK:
+  `deriveUuidV8("lifeos:<prefix>:<parts>")` — sera-day, body-day, habit-log, slot-check,
+  meal-log, task-recur. Every NEW prefix gets a byte-pinned golden in `data/ids.test.ts`.
+  Un-doing travels by writing the neutral state on the SAME row (eaten:false, state:null),
+  never by deleting. `crypto.subtle` is a native promise: derive ids BEFORE opening a Dexie
+  transaction (inside, the transaction commits early).
+- **Long-press pattern (run-08).** 450ms pointer-based long-press = secondary action (slot
+  "saltato"), with keyboard fallback ("s") and an aria-label that declares the gesture —
+  reuse settimana/week-board SlotRow before inventing a new gesture.
+- **Deno exception (run-09).** `supabase/functions/**` is Deno: pinned `jsr:`/URL imports
+  are the platform convention — the ONLY sanctioned dependency exception (`package.json`
+  stays byte-identical). The folder is excluded from tsconfig/eslint; the platform validates
+  it at deploy. Sessions never deploy: activation lives in
+  `docs/plans/lifeos-rebuild/17-activation-checklist.md`.
+- **Diet math is integer math.** kcal are integers, macros are INTEGER DECIGRAMS
+  (`data/diet.ts`): one rounding in `itemTotals`, then only integer sums (the spese-cents
+  lesson). Display divides by 10 at the very end (`formatGramsFromDg`), never mid-math.

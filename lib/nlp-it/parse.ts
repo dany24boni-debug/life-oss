@@ -18,19 +18,32 @@
  *   - titolo = input meno gli span consumati, spazi normalizzati.
  */
 
-import { todayInTimeZone } from "./civil";
+import {
+  addDays,
+  isoWeekday,
+  todayInTimeZone,
+  toIso,
+  type CivilDate,
+} from "./civil";
 import {
   displayDate,
+  displayRecurrence,
   EVENING_DEFAULT,
   isoDate,
   matchDates,
   matchModule,
   matchPriorities,
+  matchRecurrences,
   matchTags,
   matchTimes,
   type Span,
 } from "./matchers";
-import type { Fragment, ParseOptions, ParseResult } from "./types";
+import type {
+  Fragment,
+  ParseOptions,
+  ParseResult,
+  RecurrenceValue,
+} from "./types";
 
 export function parse(input: string, opts: ParseOptions): ParseResult {
   try {
@@ -48,13 +61,20 @@ function parseInner(input: string, opts: ParseOptions): ParseResult {
   // 1) Tag: non ambigui, tutti consumati.
   const tags = matchTags(input);
 
-  // 2) Orari e date: si raccolgono TUTTI i candidati (mascherati tra
-  //    loro), poi per ciascuna famiglia vince l'ultimo nel testo.
+  // 2) Ricorrenze PRIMA di orari e date: "ogni lunedì" maschera il suo
+  //    "lunedì" (che altrimenti diventerebbe una data), poi per ogni
+  //    famiglia vince l'ultimo match nel testo.
   const tagSpans: Span[] = [...tags];
-  const times = matchTimes(input, tagSpans);
-  const dates = matchDates(input, today, [...tagSpans, ...times]);
+  const recurrences = matchRecurrences(input, tagSpans);
+  const times = matchTimes(input, [...tagSpans, ...recurrences]);
+  const dates = matchDates(input, today, [
+    ...tagSpans,
+    ...recurrences,
+    ...times,
+  ]);
   const priorities = matchPriorities(input);
 
+  const winningRecurrence = recurrences.at(-1);
   const winningTime = times.at(-1);
   const winningDate = dates.at(-1);
   const winningPriority = priorities.at(-1);
@@ -65,9 +85,19 @@ function parseInner(input: string, opts: ParseOptions): ParseResult {
     winningTime?.hhmm ??
     (winningDate?.eveningDefault ? EVENING_DEFAULT : undefined);
 
+  // 3b) La regola detta il ritmo, la data la PRIMA occorrenza: con una
+  //     data esplicita vince quella; senza, il primo giorno previsto
+  //     dalla regola (oggi incluso — "ogni lunedì" di lunedì parte oggi).
+  const date = winningDate
+    ? isoDate(winningDate)
+    : winningRecurrence
+      ? firstScheduledDay(winningRecurrence.value, today)
+      : undefined;
+
   // 4) Titolo: via gli span consumati (i perdenti restano testo).
   const consumed: Span[] = [
     ...tags,
+    ...(winningRecurrence ? [winningRecurrence] : []),
     ...(winningTime ? [winningTime] : []),
     ...(winningDate ? [winningDate] : []),
     ...(winningPriority ? [winningPriority] : []),
@@ -77,6 +107,15 @@ function parseInner(input: string, opts: ParseOptions): ParseResult {
   // 5) Frammenti per i chip, ordinati per posizione nel testo.
   const fragments: Fragment[] = [
     ...tags.map((t) => frag("tag", t, `#${t.value}`)),
+    ...(winningRecurrence
+      ? [
+          frag(
+            "recurrence",
+            winningRecurrence,
+            displayRecurrence(winningRecurrence.value),
+          ),
+        ]
+      : []),
     ...(winningTime ? [frag("time", winningTime, time ?? winningTime.hhmm)] : []),
     ...(winningDate ? [frag("date", winningDate, displayDate(winningDate))] : []),
     ...(winningPriority
@@ -87,13 +126,28 @@ function parseInner(input: string, opts: ParseOptions): ParseResult {
 
   return {
     title,
-    ...(winningDate && { date: isoDate(winningDate) }),
+    ...(date && { date }),
     ...(time && { time }),
     ...(winningPriority && { priority: winningPriority.priority }),
     tags: dedupeTags(tags.map((t) => t.value)),
     ...(moduleHint && { moduleHint: moduleHint.hint }),
+    ...(winningRecurrence && { recurrence: winningRecurrence.value }),
     fragments,
   };
+}
+
+/** Primo giorno previsto dalla regola, oggi INCLUSO. */
+function firstScheduledDay(
+  value: RecurrenceValue,
+  today: CivilDate,
+): string {
+  if (value.freq === "daily") return toIso(today);
+  const weekdays = value.weekdays ?? [];
+  for (let i = 0; i <= 7; i++) {
+    const candidate = addDays(today, i);
+    if (weekdays.includes(isoWeekday(candidate))) return toIso(candidate);
+  }
+  return toIso(today);
 }
 
 function frag(

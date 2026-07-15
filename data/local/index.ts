@@ -9,6 +9,7 @@
 import type { LifeosDb } from "../db";
 import type { Repos } from "../ports";
 import { LocalBodyRepo } from "./body";
+import { LocalDietRepo } from "./diet";
 import { LocalEsamiRepo } from "./esami";
 import { LocalEventsRepo } from "./events";
 import { LocalFocusRepo } from "./focus";
@@ -24,6 +25,7 @@ import { LocalTasksRepo } from "./tasks";
 import type { Clock } from "./util";
 
 export { LocalBodyRepo, bodyDayId } from "./body";
+export { LocalDietRepo, mealLogId } from "./diet";
 export { LocalEsamiRepo } from "./esami";
 export { LocalEventsRepo } from "./events";
 export { LocalFocusRepo } from "./focus";
@@ -47,6 +49,7 @@ export function createLocalRepos(db: LifeosDb, clock?: Clock): Repos {
     body: new LocalBodyRepo(db, clock),
     habits: new LocalHabitsRepo(db, clock),
     planner: new LocalPlannerRepo(db, clock),
+    diet: new LocalDietRepo(db, clock),
     focus: new LocalFocusRepo(db, clock),
     gym: new LocalGymRepo(db, clock),
     stats: new LocalStatsRepo(db),

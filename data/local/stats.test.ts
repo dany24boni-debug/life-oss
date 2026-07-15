@@ -118,6 +118,7 @@ describe("LocalStatsRepo — streak e giorni attivi (run-03)", () => {
       title: "fatto",
       notes: null,
       date: null,
+      recurrence: null,
       time: null,
       priority: null,
       tags: [],

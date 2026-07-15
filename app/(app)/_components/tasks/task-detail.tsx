@@ -25,7 +25,11 @@ import {
   useToast,
   type SelectOption,
 } from "@/ui";
-import { formatDayShort, type DayString } from "@/ui/calendar-core";
+import {
+  formatDayShort,
+  weekdayMondayFirst,
+  type DayString,
+} from "@/ui/calendar-core";
 import { appRepos, useTask, useTaskReminder } from "@/data/hooks";
 import type { Reminder, Task, TaskPriority } from "@/data/schemas";
 import { civilDayInZone } from "@/data/streak";
@@ -324,6 +328,24 @@ function TaskEditor({
         )}
       </Field>
 
+      <Field
+        label="Ripeti"
+        hint={
+          task.recurrence
+            ? "Completarlo genera la prossima occorrenza."
+            : undefined
+        }
+      >
+        {(p) => (
+          <RecurrenceEditor
+            id={p.id}
+            task={task}
+            today={today}
+            actions={actions}
+          />
+        )}
+      </Field>
+
       <Field label="Tag">
         {(p) => (
           <div className="flex flex-col gap-2">
@@ -497,6 +519,120 @@ function reminderOptions(task: Task, reminder: Reminder | null): SelectOption[] 
     });
   }
   return options;
+}
+
+/* ── Ripeti (run-09): Nessuna / Ogni giorno / Giorni… a chips ─────────── */
+
+const WEEKDAY_CHIP_LABELS = ["L", "M", "M", "G", "V", "S", "D"];
+const WEEKDAY_CHIP_NAMES = [
+  "lunedì",
+  "martedì",
+  "mercoledì",
+  "giovedì",
+  "venerdì",
+  "sabato",
+  "domenica",
+];
+
+function RecurrenceEditor({
+  id,
+  task,
+  today,
+  actions,
+}: {
+  id: string;
+  task: Task;
+  today: DayString;
+  actions: TaskActions;
+}) {
+  const rule = task.recurrence;
+  const mode: "none" | "daily" | "weekly" =
+    rule === null ? "none" : rule.freq === "daily" ? "daily" : "weekly";
+
+  function set(recurrence: Task["recurrence"]) {
+    void actions.patch(task.id, { recurrence });
+  }
+
+  function pickWeekly() {
+    if (mode === "weekly") return;
+    // Default onesto: il giorno del task (o di oggi) è già selezionato.
+    const seed = weekdayMondayFirst(task.date ?? today) + 1;
+    set({ freq: "weekly", weekdays: [seed] });
+  }
+
+  function toggleWeekday(day: number) {
+    if (rule === null || rule.freq !== "weekly") return;
+    const current = rule.weekdays ?? [];
+    const next = current.includes(day)
+      ? current.filter((d) => d !== day)
+      : [...current, day].sort((a, b) => a - b);
+    // Deselezionare l'ultimo giorno È dire "nessuna ripetizione".
+    set(next.length === 0 ? null : { freq: "weekly", weekdays: next });
+  }
+
+  const modeChip = (
+    active: boolean,
+    label: string,
+    onClick: () => void,
+  ) => (
+    <button
+      key={label}
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cx(
+        "min-h-[var(--em-control-h-sm)] flex-1 rounded-[var(--em-r-sm)] px-2",
+        "em-body-sm font-medium transition-[background,box-shadow,color] duration-[var(--em-dur-tap)]",
+        active
+          ? "bg-[var(--em-ember-tint)] text-[var(--em-ember-text)] shadow-[0_0_0_1px_var(--em-ember-edge)]"
+          : "text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:shadow-[0_0_0_1px_var(--em-hairline-strong)]",
+      )}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div id={id} className="flex flex-col gap-2">
+      <div role="group" aria-label="Ripetizione" className="flex gap-1.5">
+        {modeChip(mode === "none", "Nessuna", () => set(null))}
+        {modeChip(mode === "daily", "Ogni giorno", () =>
+          set({ freq: "daily" }),
+        )}
+        {modeChip(mode === "weekly", "Giorni…", pickWeekly)}
+      </div>
+      {mode === "weekly" && rule?.freq === "weekly" ? (
+        <div
+          role="group"
+          aria-label="Giorni della settimana"
+          className="flex gap-1.5"
+        >
+          {WEEKDAY_CHIP_LABELS.map((label, i) => {
+            const day = i + 1;
+            const on = (rule.weekdays ?? []).includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={on}
+                aria-label={WEEKDAY_CHIP_NAMES[i]}
+                onClick={() => toggleWeekday(day)}
+                className={cx(
+                  "grid h-11 min-w-0 flex-1 place-items-center rounded-[var(--em-r-sm)]",
+                  "em-body-sm font-medium transition-[background,box-shadow,color] duration-[var(--em-dur-tap)]",
+                  on
+                    ? "bg-[var(--em-ember-tint)] text-[var(--em-ember-text)] shadow-[0_0_0_1px_var(--em-ember-edge)]"
+                    : "text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:shadow-[0_0_0_1px_var(--em-hairline-strong)]",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function CrossSmall() {

@@ -15,7 +15,12 @@ import {
   weekdayMondayFirst,
   type DayString,
 } from "@/ui/calendar-core";
-import type { Fragment, FragmentKind, ParseResult } from "@/lib/nlp-it";
+import type {
+  Fragment,
+  FragmentKind,
+  ParseResult,
+  RecurrenceValue,
+} from "@/lib/nlp-it";
 import type { Task, TaskCreate } from "@/data/schemas";
 
 /** Fuso dell'app per parsing e viste (brief run-03: Europe/Rome iniettato). */
@@ -76,6 +81,7 @@ export type EffectiveParse = {
   priority?: 1 | 2 | 3;
   tags: string[];
   moduleHint?: "gym";
+  recurrence?: RecurrenceValue;
   chips: Chip[];
 };
 
@@ -99,20 +105,39 @@ export const DEFAULT_DATE_CHIP_KEY = "date:__default__";
  *     data viene dismesso decadono data E orario insieme (un concetto solo);
  *   - dismettere il chip orario esplicito NON fa risorgere il default di
  *     "stasera" (l'utente ha appena detto "niente orario": vince);
- *   - il chip module non è mai consumato, il dismissal spegne solo il hint.
+ *   - il chip module non è mai consumato, il dismissal spegne solo il hint;
+ *   - una ricorrenza SENZA data esplicita porta la data derivata (prima
+ *     occorrenza): vive e muore col chip "ripeti"; se c'era una data
+ *     esplicita e viene dismessa, con la regola ancora attiva la data
+ *     torna alla prima occorrenza della regola (serve `today`).
  */
 export function applyDismissals(
   input: string,
   result: ParseResult,
   dismissed: ReadonlySet<string>,
+  today?: DayString,
 ): EffectiveParse {
   const active = result.fragments.filter(
     (f) => !dismissed.has(chipKey(input, f)),
   );
   const activeOf = (kind: FragmentKind) => active.some((f) => f.kind === kind);
   const hasTimeFragment = result.fragments.some((f) => f.kind === "time");
+  const hasDateFragment = result.fragments.some((f) => f.kind === "date");
 
-  const dateActive = activeOf("date");
+  const recurrenceActive =
+    activeOf("recurrence") && result.recurrence !== undefined;
+
+  // La data effettiva: esplicita attiva > derivata dalla regola.
+  let date: string | undefined;
+  if (hasDateFragment && activeOf("date") && result.date !== undefined) {
+    date = result.date;
+  } else if (recurrenceActive && !hasDateFragment) {
+    date = result.date; // già la prima occorrenza calcolata dal parser
+  } else if (recurrenceActive && today !== undefined && result.recurrence) {
+    date = firstOccurrenceOf(result.recurrence, today);
+  }
+  const dateActive = date !== undefined;
+
   const timeActive = hasTimeFragment
     ? activeOf("time")
     : // orario implicito di "stasera": vive e muore col chip data
@@ -127,19 +152,34 @@ export function applyDismissals(
 
   return {
     title,
-    ...(dateActive && result.date !== undefined && { date: result.date }),
+    ...(dateActive && { date }),
     ...(timeActive && result.time !== undefined && { time: result.time }),
     ...(activeOf("priority") &&
       result.priority !== undefined && { priority: result.priority }),
     tags,
     ...(activeOf("module") &&
       result.moduleHint !== undefined && { moduleHint: result.moduleHint }),
+    ...(recurrenceActive && { recurrence: result.recurrence }),
     chips: active.map((f) => ({
       key: chipKey(input, f),
       kind: f.kind,
       label: f.display,
     })),
   };
+}
+
+/** Prima occorrenza della regola, oggi incluso (specchio del parser). */
+export function firstOccurrenceOf(
+  rule: RecurrenceValue,
+  today: DayString,
+): DayString {
+  if (rule.freq === "daily") return today;
+  const weekdays = rule.weekdays ?? [];
+  for (let i = 0; i <= 7; i++) {
+    const candidate = addDays(today, i);
+    if (weekdays.includes(weekdayMondayFirst(candidate) + 1)) return candidate;
+  }
+  return today;
 }
 
 /**
@@ -180,6 +220,9 @@ export function toTaskCreate(effective: EffectiveParse): TaskCreate {
     ...(effective.tags.length > 0 && { tags: effective.tags }),
     ...(effective.moduleHint === "gym" && {
       module_link: { kind: "gym" as const, ref_id: null },
+    }),
+    ...(effective.recurrence !== undefined && {
+      recurrence: effective.recurrence,
     }),
   };
 }

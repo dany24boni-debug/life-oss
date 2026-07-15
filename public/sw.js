@@ -16,7 +16,7 @@
  * Kill-switch documentato in public/sw-kill.js.txt.
  */
 
-const SW_VERSION = "v1";
+const SW_VERSION = "v2";
 const CACHE_PAGES = `lifeos-pages-${SW_VERSION}`;
 const CACHE_STATIC = `lifeos-static-${SW_VERSION}`;
 const CACHE_ASSETS = `lifeos-assets-${SW_VERSION}`;
@@ -50,6 +50,61 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+// ── Push (run-09 prompt 5, blueprint 17) ──────────────────────────────
+// Il payload arriva dalla Edge Function push-sender: { title, body,
+// tag, url }. Difensivo su ogni campo: un payload rotto mostra comunque
+// una notifica onesta (il permesso è stato speso: qualcosa si mostra).
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title =
+    typeof data.title === "string" && data.title !== "" ? data.title : "LifeOS";
+  const options = {
+    body: typeof data.body === "string" ? data.body : "",
+    icon: "/icon-512",
+    badge: "/icon",
+    data: { url: typeof data.url === "string" ? data.url : "/" },
+  };
+  if (typeof data.tag === "string" && data.tag !== "") options.tag = data.tag;
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tocco sulla notifica: focus di una finestra aperta (navigando all'url
+// del payload) oppure apertura di una nuova.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url =
+    (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of windows) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client && url !== "/") {
+            try {
+              await client.navigate(url);
+            } catch {
+              // Navigazione negata (origine diversa dopo un redirect):
+              // il focus da solo è già la cosa giusta.
+            }
+          }
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });
 
 /** true per gli asset immutabili di Next (nome file content-hashed). */

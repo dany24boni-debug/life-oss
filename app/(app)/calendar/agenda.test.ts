@@ -48,6 +48,7 @@ function task(over: Partial<Task>): Task {
     priority: null,
     tags: [],
     module_link: null,
+    recurrence: null,
     status: "open",
     completed_at: null,
     sort_order: 0,

@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconExam,
   IconFocus,
+  IconMeal,
   IconMoon,
   IconRepeat,
   IconScale,
@@ -18,6 +19,7 @@ import { SeraImportButton } from "../sera/import-button";
 import { SpeseImportButton } from "../spese/import-button";
 import { DataButtons, SignOutControl, SyncStatusLine } from "./account-sync";
 import { ProfileSection } from "./profile-section";
+import { PushSection } from "./push-section";
 import { ProtectedDays } from "./protected-days";
 import { ThemeSection } from "./theme-section";
 
@@ -49,6 +51,12 @@ const MODULE_LINKS: Array<{
     label: "Focus",
     desc: "Pomodoro con registro dei minuti",
     icon: IconFocus,
+  },
+  {
+    href: "/dieta",
+    label: "Dieta",
+    desc: "Pasti del giorno, piano e libreria alimenti",
+    icon: IconMeal,
   },
   {
     href: "/esami",
@@ -282,6 +290,10 @@ export default async function ImpostazioniPage() {
       {/* Giorni protetti della streak (run-03 prompt 4, B2.5). */}
       <ProtectedDays />
 
+      {/* Notifiche push (run-09 prompt 5, blueprint 17): solo account,
+          opt-in per categoria; senza chiave server la card lo dice. */}
+      {user ? <PushSection /> : null}
+
       {/* Pannello di verità sulle notifiche (run-03 prompt 5, B2.2):
           esattamente quando LifeOS può avvisare — e quando non può. */}
       <section aria-label="Promemoria e notifiche" className="em-card p-5">
@@ -313,9 +325,11 @@ export default async function ImpostazioniPage() {
               App chiusa
             </dt>
             <dd className="em-body-sm mt-0.5 text-[var(--em-text-3)]">
-              Il web non può suonare da solo ad app chiusa. Per promemoria
+              Con le notifiche push attive (la card qui sopra, quando il
+              server le offre) i promemoria arrivano anche ad app chiusa.
+              Senza, il web non può suonare da solo: per promemoria
               garantiti usa &ldquo;Esporta su Calendario&rdquo; dalla scheda
-              del task: l&apos;allarme lo fa il calendario di sistema.
+              del task — l&apos;allarme lo fa il calendario di sistema.
             </dd>
           </div>
           <div>

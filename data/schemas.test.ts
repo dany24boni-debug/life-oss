@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DietExtraCreateSchema,
   EventCreateSchema,
   FocusSessionSchema,
+  FoodSchema,
   GymProgramSlotSchema,
+  MealItemPatchSchema,
+  MealItemSchema,
+  MealLogSchema,
   GymSessionSchema,
   GymSetSchema,
   HabitCreateSchema,
@@ -12,6 +17,7 @@ import {
   IsoDaySchema,
   IsoWeekSchema,
   PlanSlotPatchSchema,
+  RecurrenceSchema,
   PlanSlotSchema,
   ProgramSlotCreateSchema,
   ProgramSlotPatchSchema,
@@ -415,5 +421,144 @@ describe("focus (run-08 P5)", () => {
     expect(
       FocusSessionSchema.safeParse({ ...base, minutes: 25.5 }).success,
     ).toBe(false);
+  });
+});
+
+describe("dieta (run-09 P1)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+  const audit = { created_at: now, updated_at: now, deleted_at: null };
+
+  it("Food: kcal intere, macro a un decimale, basis chiusa", () => {
+    const base = {
+      id: uuidv7(),
+      name: "Pasta",
+      basis: "per100g",
+      kcal: 353,
+      protein_g: 13.5,
+      carbs_g: 70.2,
+      fat_g: 1.8,
+      default_qty: 80,
+      archived_at: null,
+      ...audit,
+    };
+    expect(FoodSchema.safeParse(base).success).toBe(true);
+    expect(FoodSchema.safeParse({ ...base, kcal: 353.4 }).success).toBe(false);
+    expect(
+      FoodSchema.safeParse({ ...base, protein_g: 13.55 }).success,
+    ).toBe(false); // due decimali: rifiutato
+    expect(
+      FoodSchema.safeParse({ ...base, basis: "per_kg" }).success,
+    ).toBe(false);
+    expect(FoodSchema.safeParse({ ...base, default_qty: null }).success).toBe(
+      true,
+    );
+  });
+
+  it("MealItem: qty positiva a un decimale; variant_id nullable", () => {
+    const base = {
+      id: uuidv7(),
+      meal_id: uuidv7(),
+      variant_id: null,
+      food_id: uuidv7(),
+      qty: 62.5,
+      sort_order: 0,
+      ...audit,
+    };
+    expect(MealItemSchema.safeParse(base).success).toBe(true);
+    expect(MealItemSchema.safeParse({ ...base, qty: 0 }).success).toBe(false);
+    expect(MealItemSchema.safeParse({ ...base, qty: 62.55 }).success).toBe(
+      false,
+    );
+    // meal_id e variant_id fuori dal patch: righe che non migrano.
+    const patch = MealItemPatchSchema.safeParse({
+      meal_id: uuidv7(),
+      variant_id: uuidv7(),
+      qty: 100,
+    });
+    expect(patch.success).toBe(true);
+    if (patch.success) {
+      expect(patch.data).toEqual({ qty: 100 });
+    }
+  });
+
+  it("MealLog: eaten booleano e variante nullable sulla riga derivata", () => {
+    const base = {
+      id: uuidv7(),
+      meal_id: uuidv7(),
+      date: "2026-07-13",
+      eaten: false,
+      variant_id: null,
+      ...audit,
+    };
+    expect(MealLogSchema.safeParse(base).success).toBe(true);
+    expect(MealLogSchema.safeParse({ ...base, eaten: 1 }).success).toBe(false);
+  });
+
+  it("DietExtraCreate: aut-aut alimento+qty O nome+kcal", () => {
+    expect(
+      DietExtraCreateSchema.safeParse({
+        date: "2026-07-13",
+        food_id: uuidv7(),
+        qty: 125,
+      }).success,
+    ).toBe(true);
+    expect(
+      DietExtraCreateSchema.safeParse({
+        date: "2026-07-13",
+        name: "Gelato",
+        kcal: 320,
+      }).success,
+    ).toBe(true);
+    expect(
+      DietExtraCreateSchema.safeParse({ date: "2026-07-13", name: "Solo" })
+        .success,
+    ).toBe(false);
+    expect(
+      DietExtraCreateSchema.safeParse({
+        date: "2026-07-13",
+        food_id: uuidv7(),
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("ricorrenze dei task (run-09 P3)", () => {
+  const now = "2026-07-12T08:00:00.000Z";
+
+  it("weekly senza giorni è rifiutata; daily non li richiede", () => {
+    expect(RecurrenceSchema.safeParse({ freq: "daily" }).success).toBe(true);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [1, 4] }).success,
+    ).toBe(true);
+    expect(RecurrenceSchema.safeParse({ freq: "weekly" }).success).toBe(false);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [] }).success,
+    ).toBe(false);
+    expect(
+      RecurrenceSchema.safeParse({ freq: "weekly", weekdays: [8] }).success,
+    ).toBe(false);
+  });
+
+  it("una riga task PRE run-09 (senza la chiave) passa il parse con null", () => {
+    const oldRow = {
+      id: uuidv7(),
+      title: "Riga vecchia",
+      notes: null,
+      date: null,
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "open",
+      completed_at: null,
+      sort_order: 0,
+      subtasks: [],
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    const parsed = TaskSchema.safeParse(oldRow);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.recurrence).toBeNull();
   });
 });

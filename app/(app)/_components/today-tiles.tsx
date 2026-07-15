@@ -8,15 +8,20 @@
  * (prompt 10), sul port StatsRepo.gymVolumeInRange che aspettava da lì.
  */
 
+import Link from "next/link";
 import { StatCard } from "@/ui";
+import { dayTotals } from "@/data/diet";
 import {
   useBodyRecent,
   useCompletionByDay,
+  useDayDiet,
+  useDayExtras,
   useGymVolume,
   useStreak,
   useTasksSummary,
 } from "@/data/hooks";
 import { formatBodyDelta, formatBodyKg } from "../corpo/logic";
+import { formatInt } from "../dieta/logic";
 import { formatKg } from "../gym/logic";
 import { remainingCount } from "../settimana/logic";
 import { completionPercent, fillDays, weekBounds } from "../stats/logic";
@@ -45,6 +50,17 @@ export function TodayTiles() {
   // che prevede qualcosa oggi.
   const todayPlan = useTodayPlanSlots();
   const planEntries = todayPlan.entries;
+
+  // Pasti (run-09 P2): tile compatto SOLO quando il piano attivo prevede
+  // pasti oggi — linka a /dieta. Solo dati e funzioni pure nel grafo.
+  const dayDiet = useDayDiet(today);
+  const dayExtras = useDayExtras(today);
+  const mealsToday = dayDiet?.meals ?? [];
+  const mealsEaten = mealsToday.filter((m) => m.eaten).length;
+  const dietKcal =
+    dayDiet !== undefined && dayExtras !== undefined
+      ? dayTotals(dayDiet, dayExtras).kcal
+      : null;
 
   // Peso corporeo (run-07 P4): tile compatto SOLO quando esistono dati.
   const weights = useBodyRecent(today, 2);
@@ -156,6 +172,25 @@ export function TodayTiles() {
               : "Ancora senza esito."
           }
         />
+      ) : null}
+      {mealsToday.length > 0 ? (
+        <Link
+          href="/dieta"
+          aria-label="Pasti di oggi: apri Dieta"
+          className="rounded-[var(--em-r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--em-ember)]"
+        >
+          <StatCard
+            label="Pasti"
+            value={`${mealsEaten}/${mealsToday.length}`}
+            unit="pasti"
+            hint={
+              dietKcal === null
+                ? undefined
+                : `${formatInt(dietKcal)} kcal finora.`
+            }
+            className="h-full"
+          />
+        </Link>
       ) : null}
     </section>
   );

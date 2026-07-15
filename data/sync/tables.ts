@@ -18,10 +18,14 @@ import type { Table } from "dexie";
 import type { LifeosDb } from "../db";
 import {
   BodyEntrySchema,
+  DietExtraSchema,
+  DietMealSchema,
+  DietPlanSchema,
   EveningCheckinSchema,
   ExamSchema,
   ExpenseSchema,
   FocusSessionSchema,
+  FoodSchema,
   GymExerciseSchema,
   GymPlanSchema,
   GymProgramDaySchema,
@@ -32,6 +36,9 @@ import {
   HabitLogSchema,
   HabitSchema,
   LocalEventSchema,
+  MealItemSchema,
+  MealLogSchema,
+  MealVariantSchema,
   PlanSlotSchema,
   ReminderSchema,
   SettingsSchema,
@@ -61,6 +68,13 @@ export type LocalTableName =
   | "plan_slots"
   | "slot_checks"
   | "focus_sessions"
+  | "foods"
+  | "diet_plans"
+  | "diet_meals"
+  | "meal_variants"
+  | "meal_items"
+  | "meal_logs"
+  | "diet_extras"
   | "gym_exercises"
   | "gym_plans"
   | "gym_programs"
@@ -165,6 +179,48 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     local: "focus_sessions",
     remote: "lo_focus_sessions",
     parse: parserFor(FocusSessionSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "foods",
+    remote: "lo_foods",
+    parse: parserFor(FoodSchema),
+    instantColumns: [...AUDIT, "archived_at"],
+  },
+  {
+    local: "diet_plans",
+    remote: "lo_diet_plans",
+    parse: parserFor(DietPlanSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "diet_meals",
+    remote: "lo_diet_meals",
+    parse: parserFor(DietMealSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "meal_variants",
+    remote: "lo_meal_variants",
+    parse: parserFor(MealVariantSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "meal_items",
+    remote: "lo_meal_items",
+    parse: parserFor(MealItemSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "meal_logs",
+    remote: "lo_meal_logs",
+    parse: parserFor(MealLogSchema),
+    instantColumns: AUDIT,
+  },
+  {
+    local: "diet_extras",
+    remote: "lo_diet_extras",
+    parse: parserFor(DietExtraSchema),
     instantColumns: AUDIT,
   },
   {

@@ -31,10 +31,14 @@
 import Dexie, { type Table } from "dexie";
 import type {
   BodyEntry,
+  DietExtra,
+  DietMeal,
+  DietPlan,
   EveningCheckin,
   Exam,
   Expense,
   FocusSession,
+  Food,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -45,6 +49,9 @@ import type {
   Habit,
   HabitLog,
   LocalEvent,
+  MealItem,
+  MealLog,
+  MealVariant,
   PlanSlot,
   Reminder,
   Settings,
@@ -151,6 +158,24 @@ export const SCHEMA_V10 = {
   focus_sessions: "id, date, updated_at",
 } as const;
 
+/**
+ * v11 = v10 + dieta (run-09 prompt 1): libreria alimenti personale,
+ * piano pasti con varianti, log per (pasto, giorno — id derivato) ed
+ * extra del giorno. Additiva; l'upgrade backfilla anche
+ * `tasks.recurrence = null` (run-09 prompt 3) sulle righe esistenti —
+ * v11 nasce e si estende DENTRO il run-09, mai spedita a metà.
+ */
+export const SCHEMA_V11 = {
+  ...SCHEMA_V10,
+  foods: "id, updated_at",
+  diet_plans: "id, updated_at",
+  diet_meals: "id, plan_id, updated_at",
+  meal_variants: "id, meal_id, updated_at",
+  meal_items: "id, meal_id, updated_at",
+  meal_logs: "id, meal_id, date, updated_at",
+  diet_extras: "id, date, updated_at",
+} as const;
+
 /** Riga chiave/valore dello stato sync (cursori, account collegato...). */
 export type SyncMetaRow = { key: string; value: string };
 
@@ -167,6 +192,13 @@ export class LifeosDb extends Dexie {
   plan_slots!: Table<PlanSlot, string>;
   slot_checks!: Table<SlotCheck, string>;
   focus_sessions!: Table<FocusSession, string>;
+  foods!: Table<Food, string>;
+  diet_plans!: Table<DietPlan, string>;
+  diet_meals!: Table<DietMeal, string>;
+  meal_variants!: Table<MealVariant, string>;
+  meal_items!: Table<MealItem, string>;
+  meal_logs!: Table<MealLog, string>;
+  diet_extras!: Table<DietExtra, string>;
   gym_exercises!: Table<GymExercise, string>;
   gym_plans!: Table<GymPlan, string>;
   gym_programs!: Table<GymProgram, string>;
@@ -214,6 +246,18 @@ export class LifeosDb extends Dexie {
     this.version(8).stores(SCHEMA_V8);
     this.version(9).stores(SCHEMA_V9);
     this.version(10).stores(SCHEMA_V10);
+    this.version(11)
+      .stores(SCHEMA_V11)
+      .upgrade((tx) =>
+        // Backfill run-09: null esplicito al posto di `undefined` sulla
+        // ricorrenza dei task pre-esistenti (stesso pattern del v6 gym).
+        tx
+          .table("tasks")
+          .toCollection()
+          .modify((t: Record<string, unknown>) => {
+            if (t.recurrence === undefined) t.recurrence = null;
+          }),
+      );
   }
 }
 

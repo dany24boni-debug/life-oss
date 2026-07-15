@@ -236,6 +236,20 @@ export function IconFocus({ className }: IconProps) {
   );
 }
 
+/** Dieta: piatto e posate (modulo, run-09). */
+export function IconMeal({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="5" />
+      <path d="M4.5 8.5V20" />
+      <path d="M3 4v2.5a1.5 1.5 0 0 0 3 0V4" />
+      <path d="M4.5 4v4.5" />
+      <path d="M19.5 10.5V20" />
+      <path d="M19.5 10.5c-1.7-1.9-1.7-4.7 0-6.5Z" />
+    </svg>
+  );
+}
+
 /** Fiamma della streak per-abitudine. */
 export function IconFlame({ className }: IconProps) {
   return (

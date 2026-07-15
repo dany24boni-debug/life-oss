@@ -247,3 +247,42 @@ describe("giorni e raggruppamenti", () => {
     expect(groups[0].tasks.map((x) => x.id)).toEqual(["1", "2"]);
   });
 });
+
+describe("applyDismissals — ricorrenze (run-09)", () => {
+  function effectiveWithToday(input: string, dismissedKeys: string[] = []) {
+    return applyDismissals(input, parsed(input), new Set(dismissedKeys), TODAY);
+  }
+
+  it("il chip ripeti porta regola e prima occorrenza derivata", () => {
+    const e = effectiveWithToday("palestra ogni lunedì");
+    expect(e.title).toBe("palestra");
+    expect(e.recurrence).toEqual({ freq: "weekly", weekdays: [1] });
+    expect(e.date).toBe("2026-07-13");
+    // "palestra" in testa accende anche il hint modulo (mai consumato).
+    expect(e.chips.map((c) => c.kind)).toEqual(["module", "recurrence"]);
+  });
+
+  it("dismettere il chip ripeti: regola E data derivata decadono insieme", () => {
+    const input = "palestra ogni lunedì";
+    const e = effectiveWithToday(input, ["recurrence:ogni lunedì"]);
+    expect(e.recurrence).toBeUndefined();
+    expect(e.date).toBeUndefined();
+    expect(e.title).toBe("palestra ogni lunedì");
+  });
+
+  it("data esplicita dismessa con regola attiva: torna alla prima occorrenza", () => {
+    const input = "ogni lunedì il 15/08 palestra";
+    const conData = effectiveWithToday(input);
+    expect(conData.date).toBe("2026-08-15");
+    const senzaData = effectiveWithToday(input, ["date:il 15/08"]);
+    expect(senzaData.recurrence).toEqual({ freq: "weekly", weekdays: [1] });
+    expect(senzaData.date).toBe("2026-07-13"); // il primo lunedì utile
+  });
+
+  it("toTaskCreate porta la regola nel payload", () => {
+    const e = effectiveWithToday("ogni giorno vitamine");
+    const payload = toTaskCreate(e);
+    expect(payload.recurrence).toEqual({ freq: "daily" });
+    expect(payload.date).toBe("2026-07-10");
+  });
+});

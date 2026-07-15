@@ -25,9 +25,12 @@ import { createLocalRepos } from "./local";
 import type { HabitBoardEntry, Repos } from "./ports";
 import type {
   BodyEntry,
+  DietMeal,
+  DietPlan,
   EveningCheckin,
   Exam,
   Expense,
+  Food,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -40,6 +43,8 @@ import type {
   IsoDay,
   IsoInstant,
   LocalEvent,
+  MealItem,
+  MealVariant,
   MuscleGroup,
   PlanSlot,
   Reminder,
@@ -48,6 +53,7 @@ import type {
   WeekPlan,
 } from "./schemas";
 import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
+import type { DayDiet, DietExtraView } from "./diet";
 import type { StreakSummary } from "./streak";
 import type { SyncState } from "./sync/engine";
 import { META_LAST_ERROR, META_LAST_SYNC_AT, getMeta } from "./sync/meta";
@@ -313,6 +319,63 @@ export function useWeekStats(
         : Promise.resolve({ weeks: [], mostSkipped: [] }),
     [planId, lastNWeeks, currentWeek],
   );
+}
+
+/** Alimenti vivi della libreria personale (run-09 prompt 1). */
+export function useFoods(opts?: {
+  includeArchived?: boolean;
+}): Food[] | undefined {
+  const includeArchived = opts?.includeArchived ?? false;
+  return useLiveQuery(
+    () => appRepos().diet.listFoods({ includeArchived }),
+    [includeArchived],
+  );
+}
+
+/** Piani dieta vivi: l'attivo per primo, poi per nome. */
+export function useDietPlans(): DietPlan[] | undefined {
+  return useLiveQuery(() => appRepos().diet.listPlans(), []);
+}
+
+/** Il piano dieta attivo; null senza piani attivi. */
+export function useActiveDietPlan(): DietPlan | null | undefined {
+  return useLiveQuery(() => appRepos().diet.activePlan(), []);
+}
+
+/** Pasti vivi del piano (weekday, poi sort_order). */
+export function useDietMeals(planId: string | null): DietMeal[] | undefined {
+  return useLiveQuery(
+    () => (planId ? appRepos().diet.listMeals(planId) : Promise.resolve([])),
+    [planId],
+  );
+}
+
+/** Varianti vive del pasto, per sort_order. */
+export function useMealVariants(
+  mealId: string | null,
+): MealVariant[] | undefined {
+  return useLiveQuery(
+    () => (mealId ? appRepos().diet.listVariants(mealId) : Promise.resolve([])),
+    [mealId],
+  );
+}
+
+/** TUTTE le righe vive del pasto (base + varianti), per sort_order. */
+export function useMealItems(mealId: string | null): MealItem[] | undefined {
+  return useLiveQuery(
+    () => (mealId ? appRepos().diet.listItems(mealId) : Promise.resolve([])),
+    [mealId],
+  );
+}
+
+/** La giornata alimentare composta (pasti del piano attivo + totali). */
+export function useDayDiet(date: IsoDay): DayDiet | undefined {
+  return useLiveQuery(() => appRepos().diet.dayDiet(date), [date]);
+}
+
+/** Extra vivi del giorno con alimento risolto e totali. */
+export function useDayExtras(date: IsoDay): DietExtraView[] | undefined {
+  return useLiveQuery(() => appRepos().diet.dayExtras(date), [date]);
 }
 
 /** Singolo esame per id (scheda dettaglio); null se assente o tombstone. */

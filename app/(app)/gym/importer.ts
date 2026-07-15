@@ -46,14 +46,12 @@ export type LegacyWorkoutRow = {
   created_at: string;
 };
 
-/* ── UUID deterministico (v8, RFC 9562): implementazione condivisa ───── */
-
-// `deriveId` è ora un alias della `deriveUuidV8` UNICA in data/ids.ts
-// (cleanup 16, run-06: prima era duplicata qui, nata al run-04). Ri-esportata
-// col nome storico così gli importer sorelli (spese, esami) e i test la
-// importano ancora da qui con le stesse chiavi-prefisso → id byte-identici
-// (fissati nei golden test di importer.test.ts e data/ids.test.ts).
-export { deriveId };
+/* ── UUID deterministico (v8, RFC 9562): implementazione condivisa ─────
+   `deriveId` è l'alias locale della `deriveUuidV8` UNICA di data/ids.ts.
+   La RI-ESPORTAZIONE storica è stata ritirata (run-09 prompt 6): gli
+   importer sorelli (spese, esami) e i test ora importano direttamente
+   dal canonico — stesse chiavi-prefisso, id byte-identici (golden test
+   INTATTI in importer.test.ts e data/ids.test.ts). ─────────────────── */
 
 /* ── Normalizzazione nomi esercizio ──────────────────────────────────── */
 

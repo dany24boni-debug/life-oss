@@ -83,6 +83,22 @@ describe("deriveUuidV8 — golden (contratto di idempotenza)", () => {
         "lifeos:slot-check:aaaa1111-0000-4000-8000-000000000001:2027-W01",
       ),
     ).toBe("14828f50-c9bc-8e13-8135-cf85d241821e");
+    // Prefisso meal-log (run-09): una riga per (pasto, giorno) — se
+    // questo assert fallisce, i log dieta di due dispositivi smettono
+    // di convergere sulla stessa PK.
+    expect(
+      await deriveUuidV8(
+        "lifeos:meal-log:aaaa1111-0000-4000-8000-000000000001:2026-07-13",
+      ),
+    ).toBe("ed1d1ff4-860b-822b-a5f9-6df0379aad43");
+    // Prefisso task-recur (run-09): la prossima occorrenza generata dal
+    // completamento — due dispositivi che completano offline la stessa
+    // istanza convergono sulla stessa prossima occorrenza.
+    expect(
+      await deriveUuidV8(
+        "lifeos:task-recur:aaaa1111-0000-4000-8000-000000000001",
+      ),
+    ).toBe("84131898-837d-8b53-8c2d-19a8b103a654");
   });
 
   it("è deterministica e ha forma UUID v8 variant 10", async () => {

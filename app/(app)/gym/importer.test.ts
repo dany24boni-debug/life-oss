@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { GYM_SEED } from "@/data/gym-seed";
+import { deriveUuidV8 as deriveId } from "@/data/ids";
 import {
   buildImportPlan,
-  deriveId,
   normalizeExerciseName,
   type LegacySessionRow,
   type LegacyWorkoutRow,

@@ -453,3 +453,124 @@ describe("parse — rollover di fine anno", () => {
     );
   });
 });
+
+describe("parse — ricorrenze (run-09): la regola detta il ritmo", () => {
+  // NOW è venerdì 10 luglio 2026 (ISO 5) a Roma.
+  const RECUR_CASES: Array<{
+    name: string;
+    input: string;
+    title: string;
+    date?: string;
+    recurrence?: { freq: "daily" | "weekly"; weekdays?: number[] };
+  }> = [
+    {
+      name: "ogni giorno: daily, prima occorrenza oggi",
+      input: "ogni giorno bere acqua",
+      title: "bere acqua",
+      date: "2026-07-10",
+      recurrence: { freq: "daily" },
+    },
+    {
+      name: "ogni lunedì (pieno): weekly, primo lunedì utile",
+      input: "palestra ogni lunedì",
+      title: "palestra",
+      date: "2026-07-13",
+      recurrence: { freq: "weekly", weekdays: [1] },
+    },
+    {
+      name: "ogni ven (abbreviato): oggi È venerdì → parte oggi",
+      input: "ogni ven report",
+      title: "report",
+      date: "2026-07-10",
+      recurrence: { freq: "weekly", weekdays: [5] },
+    },
+    {
+      name: "lista con e: ogni lunedì e giovedì",
+      input: "ogni lunedì e giovedì palestra",
+      title: "palestra",
+      date: "2026-07-13",
+      recurrence: { freq: "weekly", weekdays: [1, 4] },
+    },
+    {
+      name: "lista con virgole e chiusa da e",
+      input: "ogni lun, mer e ven review",
+      title: "review",
+      date: "2026-07-10",
+      recurrence: { freq: "weekly", weekdays: [1, 3, 5] },
+    },
+    {
+      name: "nei feriali: lun-ven",
+      input: "nei feriali standup",
+      title: "standup",
+      date: "2026-07-10",
+      recurrence: { freq: "weekly", weekdays: [1, 2, 3, 4, 5] },
+    },
+    {
+      name: "ogni sabato: accenti e futuro",
+      input: "ogni sabato spesa",
+      title: "spesa",
+      date: "2026-07-11",
+      recurrence: { freq: "weekly", weekdays: [6] },
+    },
+    {
+      name: "maiuscole: Ogni Domenica",
+      input: "Ogni Domenica chiamata",
+      title: "chiamata",
+      date: "2026-07-12",
+      recurrence: { freq: "weekly", weekdays: [7] },
+    },
+    {
+      name: "conflitto: la data esplicita vince sulla PRIMA occorrenza",
+      input: "ogni lunedì il 15/08 palestra",
+      title: "palestra",
+      date: "2026-08-15",
+      recurrence: { freq: "weekly", weekdays: [1] },
+    },
+    {
+      name: "conflitto con parola-data: ogni giorno da domani",
+      input: "ogni giorno domani vitamine",
+      title: "vitamine",
+      date: "2026-07-11",
+      recurrence: { freq: "daily" },
+    },
+    {
+      name: "ogni senza giorno riconoscibile: resta titolo",
+      input: "ogni tanto pulire",
+      title: "ogni tanto pulire",
+    },
+    {
+      name: "weekday nudo senza ogni: solo data, nessuna regola",
+      input: "lunedì riunione",
+      title: "riunione",
+      date: "2026-07-13",
+    },
+  ];
+
+  for (const c of RECUR_CASES) {
+    it(c.name, () => {
+      const r = p(c.input);
+      expect(r.title).toBe(c.title);
+      expect(r.date).toBe(c.date);
+      expect(r.recurrence).toEqual(c.recurrence);
+    });
+  }
+
+  it("il frammento è dismissibile: span esatto e display parlante", () => {
+    const r = p("ogni lun e gio palestra");
+    const frag = r.fragments.find((f) => f.kind === "recurrence");
+    expect(frag).toBeDefined();
+    expect("ogni lun e gio palestra".slice(frag!.start, frag!.end)).toBe(
+      "ogni lun e gio",
+    );
+    expect(frag!.display).toBe("ogni lun e gio");
+    // Nessun frammento data: la prima occorrenza è derivata dalla regola.
+    expect(r.fragments.some((f) => f.kind === "date")).toBe(false);
+    expect(r.date).toBe("2026-07-13");
+  });
+
+  it("con più regole vince l'ultima; la perdente torna titolo", () => {
+    const r = p("ogni giorno anzi ogni sabato spesa");
+    expect(r.recurrence).toEqual({ freq: "weekly", weekdays: [6] });
+    expect(r.title).toBe("ogni giorno anzi spesa");
+  });
+});

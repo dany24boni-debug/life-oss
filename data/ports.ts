@@ -15,10 +15,20 @@
 import type { Result } from "./result";
 import type { StreakSummary } from "./streak";
 import type { IsoWeek, WeekBoardDay, WeekStats } from "./planner";
+import type { DayDiet, DietExtraView } from "./diet";
 import type {
   BodyEntry,
   BodyPatch,
   CheckinPatch,
+  DietExtra,
+  DietExtraCreate,
+  DietExtraPatch,
+  DietMeal,
+  DietMealCreate,
+  DietMealPatch,
+  DietPlan,
+  DietPlanCreate,
+  DietPlanPatch,
   EveningCheckin,
   EventCreate,
   EventPatch,
@@ -31,6 +41,16 @@ import type {
   ExpenseCreate,
   ExpensePatch,
   FocusSession,
+  Food,
+  FoodCreate,
+  FoodPatch,
+  MealItem,
+  MealItemCreate,
+  MealItemPatch,
+  MealLog,
+  MealVariant,
+  MealVariantCreate,
+  MealVariantPatch,
   GymExercise,
   GymPlan,
   GymProgram,
@@ -83,8 +103,21 @@ import type {
 export interface TasksRepo {
   create(input: TaskCreate): Promise<Result<Task>>;
   update(id: string, patch: TaskPatch): Promise<Result<Task>>;
-  /** Idempotente: completare un task già fatto restituisce ok. */
-  complete(id: string): Promise<Result<Task>>;
+  /**
+   * Idempotente: completare un task già fatto restituisce ok. Se il
+   * task è RICORRENTE, genera la prossima occorrenza (run-09): data =
+   * prossimo giorno previsto strettamente dopo max(today, data del
+   * task); id derivato dal task completato — i device convergono.
+   * `today` è il giorno civile del chiamante (la UI passa il giorno
+   * Europe/Rome); assente, si degrada al giorno UTC del clock.
+   */
+  complete(id: string, opts?: { today?: IsoDay }): Promise<Result<Task>>;
+  /**
+   * Riapre il task. Se è ricorrente, mette una tombstone alla prossima
+   * occorrenza generata dal completamento (se ancora aperta): l'undo
+   * del "fatto" annulla anche lo spawn; ri-completare la rianima
+   * (stesso id derivato).
+   */
   uncomplete(id: string): Promise<Result<Task>>;
   /** Tombstone: la riga resta fisicamente, sparisce da ogni lettura. */
   softDelete(id: string): Promise<Result<void>>;
@@ -398,6 +431,153 @@ export interface PlannerRepo {
 }
 
 // ============================================================
+// Dieta (run-09 prompt 1)
+// ============================================================
+
+export interface DietRepo {
+  // Alimenti (libreria PERSONALE)
+  createFood(input: FoodCreate): Promise<Result<Food>>;
+  updateFood(id: string, patch: FoodPatch): Promise<Result<Food>>;
+  /** Archivia: sparisce dall'autocomplete, la storia resta. Idempotente. */
+  archiveFood(id: string): Promise<Result<Food>>;
+  unarchiveFood(id: string): Promise<Result<Food>>;
+  softDeleteFood(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restoreFood(id: string): Promise<Result<Food>>;
+  getFoodById(id: string): Promise<Food | null>;
+  /** Vivi per nome (it); archiviati solo su richiesta. */
+  listFoods(opts?: { includeArchived?: boolean }): Promise<Food[]>;
+
+  // Piani
+  createPlan(input: DietPlanCreate): Promise<Result<DietPlan>>;
+  /** `is_active: true` disattiva ogni altro piano nella transazione. */
+  updatePlan(id: string, patch: DietPlanPatch): Promise<Result<DietPlan>>;
+  /**
+   * Tombstone al piano E a pasti/varianti/righe/log vivi, tutti con lo
+   * STESSO deleted_at (pattern cascade dei programmi gym): l'undo revive
+   * solo le righe di quel cascade.
+   */
+  softDeletePlan(id: string): Promise<Result<void>>;
+  restorePlan(id: string): Promise<Result<DietPlan>>;
+  /**
+   * Copia profonda (pasti + varianti + righe), nome " (copia)", mai
+   * attiva; la storia dei log resta all'originale.
+   */
+  duplicatePlan(id: string): Promise<Result<DietPlan>>;
+  getPlanById(id: string): Promise<DietPlan | null>;
+  /** Piani vivi: l'attivo per primo, poi per nome. */
+  listPlans(): Promise<DietPlan[]>;
+  /** Il piano attivo; più attivi post-merge: vince updated_at. */
+  activePlan(): Promise<DietPlan | null>;
+
+  // Pasti
+  createMeal(input: DietMealCreate): Promise<Result<DietMeal>>;
+  updateMeal(id: string, patch: DietMealPatch): Promise<Result<DietMeal>>;
+  /** Cascade su varianti, righe e log del pasto (stesso deleted_at). */
+  softDeleteMeal(id: string): Promise<Result<void>>;
+  restoreMeal(id: string): Promise<Result<DietMeal>>;
+  /** Copia profonda nello stesso giorno, in coda, nome " (copia)". */
+  duplicateMeal(id: string): Promise<Result<DietMeal>>;
+  /** Copia profonda negli altri giorni dati (authoring veloce). */
+  copyMealToWeekdays(
+    id: string,
+    weekdays: number[],
+  ): Promise<Result<DietMeal[]>>;
+  /** Copia profonda di TUTTI i pasti di un giorno negli altri giorni. */
+  copyDayToWeekdays(
+    planId: string,
+    fromWeekday: number,
+    weekdays: number[],
+  ): Promise<Result<DietMeal[]>>;
+  getMealById(id: string): Promise<DietMeal | null>;
+  /** Pasti vivi del piano: weekday, poi sort_order, poi created_at. */
+  listMeals(planId: string): Promise<DietMeal[]>;
+  /** sort_order = indice; id d'altri piani o giorni saltati. */
+  reorderMeals(
+    planId: string,
+    weekday: number,
+    orderedIds: string[],
+  ): Promise<Result<void>>;
+
+  // Varianti (una variante SOSTITUISCE la composizione base)
+  createVariant(input: MealVariantCreate): Promise<Result<MealVariant>>;
+  /** One-tap: variante nuova con le righe COPIATE dalla base del pasto. */
+  createVariantFromBase(
+    mealId: string,
+    name?: string,
+  ): Promise<Result<MealVariant>>;
+  updateVariant(
+    id: string,
+    patch: MealVariantPatch,
+  ): Promise<Result<MealVariant>>;
+  /** Cascade sulle righe della variante (stesso deleted_at). */
+  softDeleteVariant(id: string): Promise<Result<void>>;
+  restoreVariant(id: string): Promise<Result<MealVariant>>;
+  /** Varianti vive del pasto, per sort_order (poi created_at). */
+  listVariants(mealId: string): Promise<MealVariant[]>;
+  reorderVariants(
+    mealId: string,
+    orderedIds: string[],
+  ): Promise<Result<void>>;
+
+  // Righe (base del pasto o di una variante)
+  createItem(input: MealItemCreate): Promise<Result<MealItem>>;
+  updateItem(id: string, patch: MealItemPatch): Promise<Result<MealItem>>;
+  softDeleteItem(id: string): Promise<Result<void>>;
+  /** Undo del toast — semantica di EventsRepo.restore. */
+  restoreItem(id: string): Promise<Result<MealItem>>;
+  /** TUTTE le righe vive del pasto (base + varianti), per sort_order. */
+  listItems(mealId: string): Promise<MealItem[]>;
+  /** Riordina dentro lo stesso genitore (variantId null = base). */
+  reorderItems(
+    mealId: string,
+    variantId: string | null,
+    orderedIds: string[],
+  ): Promise<Result<void>>;
+
+  // Log del giorno (id derivato: un log per pasto per giorno)
+  /**
+   * Upsert di (pasto, giorno): eaten true/false sulla STESSA riga —
+   * anche lo s-mangiare viaggia col sync. Una tombstone del giorno
+   * viene rianimata (loggare È l'intento).
+   */
+  logMeal(
+    mealId: string,
+    date: IsoDay,
+    eaten: boolean,
+  ): Promise<Result<MealLog>>;
+  /**
+   * Sceglie la variante del giorno (null = base) sulla stessa riga di
+   * log, senza toccare eaten. La variante deve appartenere al pasto.
+   */
+  setVariant(
+    mealId: string,
+    date: IsoDay,
+    variantId: string | null,
+  ): Promise<Result<MealLog>>;
+  getMealLog(mealId: string, date: IsoDay): Promise<MealLog | null>;
+  /** I log vivi del giorno (tutti i pasti). */
+  listLogsByDay(date: IsoDay): Promise<MealLog[]>;
+
+  // Extra del giorno (append-only: due spuntini = due righe)
+  addExtra(input: DietExtraCreate): Promise<Result<DietExtra>>;
+  updateExtra(id: string, patch: DietExtraPatch): Promise<Result<DietExtra>>;
+  softDeleteExtra(id: string): Promise<Result<void>>;
+  restoreExtra(id: string): Promise<Result<DietExtra>>;
+  /** Extra vivi del giorno con alimento risolto e totali già calcolati. */
+  dayExtras(date: IsoDay): Promise<DietExtraView[]>;
+
+  /**
+   * La giornata alimentare: i pasti del giorno feriale della data dal
+   * piano ATTIVO, con righe, varianti, stato del log e kcal/macro per
+   * pasto e per selezione (matematica pura in data/diet.ts).
+   */
+  dayDiet(date: IsoDay): Promise<DayDiet>;
+
+  purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
+}
+
+// ============================================================
 // Focus (run-08 prompt 5)
 // ============================================================
 
@@ -654,6 +834,7 @@ export interface Repos {
   body: BodyRepo;
   habits: HabitsRepo;
   planner: PlannerRepo;
+  diet: DietRepo;
   focus: FocusRepo;
   gym: GymRepo;
   stats: StatsRepo;

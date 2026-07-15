@@ -20,4 +20,5 @@ export type {
   ParseOptions,
   ParseResult,
   Priority,
+  RecurrenceValue,
 } from "./types";
