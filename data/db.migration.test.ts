@@ -1,7 +1,15 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
-import { DB_NAME, LifeosDb, SCHEMA_V1, SCHEMA_V5, SCHEMA_V7, SCHEMA_V10 } from "./db";
+import {
+  DB_NAME,
+  LifeosDb,
+  SCHEMA_V1,
+  SCHEMA_V5,
+  SCHEMA_V7,
+  SCHEMA_V10,
+  SCHEMA_V11,
+} from "./db";
 
 /**
  * Il test del "bump di schema": la garanzia che quando (prompt 08+) si
@@ -26,6 +34,7 @@ describe("schema bump v1 -> v2", () => {
       status: "open" as const,
       completed_at: null,
       recurrence: null,
+      estimate_min: null,
       sort_order: 0,
       subtasks: [],
       created_at: "2026-07-10T08:00:00.000Z",
@@ -66,14 +75,14 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
-  it("LifeosDb apre a versione 11 con tutte le tabelle attese", async () => {
+  it("LifeosDb apre a versione 12 con tutte le tabelle attese", async () => {
     const dbTest = new LifeosDb("schema-shape-test");
     await dbTest.open();
     // v3 (run-05): + esami. v4: + spese. v5: + sera. v6 (run-07): +
     // programmi. v7 (run-07 P4): + body. v8 (run-08): + abitudini.
     // v9 (run-08 P3): + planner settimanale. v10 (run-08 P5): + focus.
-    // v11 (run-09): + dieta.
-    expect(dbTest.verno).toBe(11);
+    // v11 (run-09): + dieta. v12 (run-11): solo backfill (stessi store).
+    expect(dbTest.verno).toBe(12);
     expect(dbTest.tables.map((t) => t.name).sort()).toEqual([
       "body",
       "diet_extras",
@@ -145,7 +154,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(11);
+    expect(current.verno).toBe(12);
 
     // Nulla si perde, e il backfill normalizza i campi nuovi a null.
     const survivedSession = await current.gym_sessions.get(session.id);
@@ -222,7 +231,7 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(11);
+    expect(current.verno).toBe(12);
     expect(await current.body.get(pesata.id)).toEqual(pesata);
 
     // Le tabelle nuove funzionano, indici compresi.
@@ -329,12 +338,13 @@ describe("schema bump v1 -> v2", () => {
 
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(11);
+    expect(current.verno).toBe(12);
     expect(await current.focus_sessions.get(fase.id)).toEqual(fase);
-    // Il backfill run-09 P3 normalizza la ricorrenza a null esplicito.
+    // I backfill run-09 P3 e run-11 normalizzano i campi nuovi a null.
     expect(await current.tasks.get(vecchioTask.id)).toEqual({
       ...vecchioTask,
       recurrence: null,
+      estimate_min: null,
     });
 
     // Le tabelle dieta funzionano, indici compresi.
@@ -393,6 +403,84 @@ describe("schema bump v1 -> v2", () => {
     await Dexie.delete(name);
   });
 
+  it("v11 → v12: task e varianti sopravvivono, campi run-11 riempiti a null", async () => {
+    const name = "v11-to-v12-guided-day-survival";
+    // Simula un dispositivo run-09/10: db creato con la v11 reale.
+    const v11 = new Dexie(name);
+    v11.version(11).stores(SCHEMA_V11);
+    await v11.open();
+    // Un task run-10: SENZA la chiave estimate_min.
+    const vecchioTask = {
+      id: "01980000-0000-7000-8000-000000000601",
+      title: "Riga run-10",
+      notes: null,
+      date: "2026-07-16",
+      time: null,
+      priority: null,
+      tags: [],
+      module_link: null,
+      status: "open" as const,
+      completed_at: null,
+      recurrence: null,
+      sort_order: 3,
+      subtasks: [],
+      created_at: "2026-07-16T08:00:00.000Z",
+      updated_at: "2026-07-16T08:00:00.000Z",
+      deleted_at: null,
+    };
+    // Una variante run-09: SENZA la chiave training.
+    const vecchiaVariante = {
+      id: "01980000-0000-7000-8000-000000000602",
+      meal_id: "01980000-0000-7000-8000-000000000603",
+      name: "Variante B",
+      sort_order: 0,
+      created_at: "2026-07-16T08:00:00.000Z",
+      updated_at: "2026-07-16T08:00:00.000Z",
+      deleted_at: null,
+    };
+    await v11.table("tasks").add(vecchioTask);
+    await v11.table("meal_variants").add(vecchiaVariante);
+    v11.close();
+
+    const current = new LifeosDb(name);
+    await current.open();
+    expect(current.verno).toBe(12);
+
+    // ZERO perdita: le righe v11 sono intatte, i campi nuovi a null
+    // esplicito (così zod, LWW e UI vedono righe complete).
+    expect(await current.tasks.get(vecchioTask.id)).toEqual({
+      ...vecchioTask,
+      estimate_min: null,
+    });
+    expect(await current.meal_variants.get(vecchiaVariante.id)).toEqual({
+      ...vecchiaVariante,
+      training: null,
+    });
+
+    // I campi nuovi funzionano sulle righe nuove.
+    await current.tasks.put({
+      ...vecchioTask,
+      id: "01980000-0000-7000-8000-000000000604",
+      estimate_min: 30,
+    });
+    expect(
+      (await current.tasks.get("01980000-0000-7000-8000-000000000604"))
+        ?.estimate_min,
+    ).toBe(30);
+    await current.meal_variants.put({
+      ...vecchiaVariante,
+      id: "01980000-0000-7000-8000-000000000605",
+      training: true,
+    });
+    expect(
+      (await current.meal_variants.get("01980000-0000-7000-8000-000000000605"))
+        ?.training,
+    ).toBe(true);
+
+    current.close();
+    await Dexie.delete(name);
+  });
+
   it("un database scritto a v1 si apre alla versione corrente coi dati intatti", async () => {
     const name = "v1-to-current-real-schema";
     // Simula un dispositivo run-03: db creato con SOLO la v1 reale.
@@ -422,11 +510,12 @@ describe("schema bump v1 -> v2", () => {
     // Apertura con la classe reale (v1..v8): upgrade additivo.
     const current = new LifeosDb(name);
     await current.open();
-    expect(current.verno).toBe(11);
-    // Il backfill run-09 aggiunge recurrence: null alla riga v1.
+    expect(current.verno).toBe(12);
+    // I backfill run-09 e run-11 aggiungono i campi nuovi alla riga v1.
     expect(await current.tasks.get(row.id)).toEqual({
       ...row,
       recurrence: null,
+      estimate_min: null,
     });
     await current.sync_meta.put({ key: "prova", value: "1" });
     expect((await current.sync_meta.get("prova"))?.value).toBe("1");

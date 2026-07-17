@@ -118,6 +118,13 @@ export const TaskSchema = z.object({
    * materializzando null, mai scartate (house pattern).
    */
   recurrence: RecurrenceSchema.nullable().default(null),
+  /**
+   * Durata stimata in MINUTI INTERI (run-11, rituale del mattino:
+   * chips 15/30/60/90); null = nessuna stima, mai obbligatoria.
+   * `.default(null)`: le righe pre-run-11 passano il parse (house
+   * pattern della ricorrenza).
+   */
+  estimate_min: z.number().int().min(1).max(1440).nullable().default(null),
   /** Ordine manuale dentro una giornata (drag to reorder). */
   sort_order: z.number(),
   subtasks: z.array(SubtaskSchema).max(50),
@@ -142,6 +149,7 @@ const taskEditable = {
   tags: z.array(TagSchema).max(20),
   module_link: ModuleLinkSchema.nullable(),
   recurrence: RecurrenceSchema.nullable(),
+  estimate_min: z.number().int().min(1).max(1440).nullable(),
   subtasks: z.array(SubtaskInputSchema).max(50),
 };
 
@@ -697,6 +705,13 @@ export const MealVariantSchema = z.object({
   /** "Variante B". */
   name: DietNameSchema,
   sort_order: z.number(),
+  /**
+   * true = variante da giorno di allenamento (run-11, CROSS-02): nei
+   * giorni di allenamento la card del pasto la PROPONE, mai la impone.
+   * null/false = variante normale. `.default(null)`: righe pre-run-11
+   * mai scartate al parse (house pattern).
+   */
+  training: z.boolean().nullable().default(null),
   ...audit,
 });
 export type MealVariant = z.infer<typeof MealVariantSchema>;
@@ -705,6 +720,7 @@ const mealVariantEditable = {
   meal_id: UuidSchema,
   name: DietNameSchema,
   sort_order: z.number(),
+  training: z.boolean().nullable(),
 };
 
 export const MealVariantCreateSchema = z

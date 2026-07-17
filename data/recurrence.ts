@@ -103,6 +103,8 @@ export function buildSpawnTask(
     status: "open",
     completed_at: null,
     recurrence: completed.recurrence,
+    // La stima viaggia con l'occorrenza: stessa attività, stessa durata.
+    estimate_min: completed.estimate_min,
     sort_order: input.sortOrder,
     subtasks: completed.subtasks.map((s) => ({ ...s, done: false })),
     created_at: input.now,

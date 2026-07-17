@@ -36,3 +36,36 @@ Questo report è fence-exempt e viene aggiornato a ogni prompt.
 Pre-flight PASS.
 
 **Commit:** `run-11/P0: preflight + baseline`
+
+---
+
+## P1 · Schema decision (+0032)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **965/965, 76 file** (+1: survival v11→v12).
+
+### L'enumerazione (cosa deve PERSISTERE perché la giornata guidata esista)
+
+| Bisogno | Decisione | Schema? |
+| --- | --- | --- |
+| **Rollover targeting** (P2a, P4 "Prepara domani") | Derivato + mutazioni esistenti: i candidati sono i task aperti con `date < oggi` (`listOverdue`, già in porta); "→ Oggi" / "→ Più avanti" / "Prepara domani" sono patch di `date` (il pattern `moveAllToToday`/`snooze` di casa, con undo cumulativo). | **NO** |
+| **Ordine playlist** (P2c) | `tasks.sort_order` ESISTE dal v1 ("Ordine manuale dentro una giornata"), con `TasksRepo.reorder` + drag/tastiera già cablati in `task-list.tsx`. Il rituale riusa, non inventa. | **NO** |
+| **Stima di durata** (P2b/d, PROP-task-05) | Non esiste nulla → **`tasks.estimate_min`**: minuti INTERI (chips 15/30/60/90), `null` = nessuna stima, mai obbligatoria. | **SÌ — colonna nullable** |
+| **Stamp "giorno pianificato"** (P2→P5c) | localStorage per-dispositivo (pattern `lifeos.brief.<day>` con potatura dei giorni vecchi): deterministico, guest-first, zero flicker SSR. Il PIANO in sé (date, ordine, stime) è già tutto sincronizzato — solo il bit "il rituale è girato qui" resta locale. Se servirà cross-device, è una PROP per run-12. | **NO** |
+| **Variante allenamento** (P5b, CROSS-02 fase 2) | La proposta della variante giusta richiede di sapere QUALE variante è da allenamento → **`meal_variants.training`**: `true` = variante da giorno di allenamento (proposta, mai imposta), `null/false` = normale. | **SÌ — colonna nullable** |
+| **Intenzione "domani" su Sera** (PROP-sera-02 `[schema]` del Set A §4) | FUORI RUN — il brief run-11 al P4 la sostituisce con "Prepara domani" (marcatura rollover, zero schema). Il brief vince sullo scope; la PROP resta aperta per un run futuro. **Delta dichiarato.** | **NO** |
+
+### Il percorso scelto: column-only, una migrazione, un bump
+
+Esattamente il cerimoniale preferito dal brief — **colonne nullable su tabelle ESISTENTI, nessuna tabella nuova**:
+
+- **`supabase/migrations/0032_guided_day_fields.sql`** (SCRITTA, MAI applicata): due `alter table … add column if not exists` (`lo_tasks.estimate_min integer`, `lo_meal_variants.training boolean`), commenti di colonna, `notify pgrst`. Idempotente. **Niente ridichiarazione di `lo_push`** (0029 resta finale a 28 tabelle): il precedente 0030 documenta che il SET dinamico raccoglie le colonne nuove via `information_schema`; in più `jsonb_populate_recordset` IGNORA le chiavi json che non sono ancora colonne — un client nuovo che pusha su un server non migrato NON rompe: il campo cade a terra finché Davide non applica la 0032 (finestra deploy→apply sicura, il valore si risincronizza al push successivo post-apply).
+- **Niente entità nuove, niente id derivati nuovi** → zero prefissi, zero golden test nuovi (legge di repo rispettata per assenza di caso).
+- **Zod** (`data/schemas.ts`): `TaskSchema.estimate_min = int 1..1440 nullable .default(null)` + `taskEditable`; `MealVariantSchema.training = boolean nullable .default(null)` + `mealVariantEditable`. Il `.default(null)` è il house pattern run-09: righe pre-run-11 e backup passano il parse senza scarti.
+- **Repo locali**: `LocalTasksRepo.create/update` e `LocalDietRepo.createVariant/createVariantFromBase/updateVariant` materializzano/patchano i campi nuovi (righe sempre complete). `buildSpawnTask` (ricorrenze) fa viaggiare `estimate_min` con l'occorrenza — stessa attività, stessa durata; il test di convergenza two-device l'ha preteso subito (`engine-modules.test.ts` rosso finché lo spawn non portava la stima: il guard-rail funziona).
+- **Dexie v12** (`data/db.ts`): NESSUN indice nuovo (stores invariati — la stima si legge dentro liste già filtrate per giorno), solo l'upgrade che backfilla `estimate_min`/`training` a `null` esplicito (pattern v6/v11: zod, LWW e UI vedono righe complete). **Survival test**: `db.migration.test.ts` nuovo caso "v11 → v12" — task e variante scritti a v11 REALE sopravvivono al bump con ZERO perdita, campi nuovi a null, campi nuovi funzionanti sulle righe nuove; aggiornati i `verno` attesi (11→12) e le fixture dei test esistenti.
+
+### Fence e delta
+
+Fence dichiarata: `data/**`, `supabase/migrations/**`, loro test. **Estensione mecanica dichiarata:** `app/(app)/calendar/agenda.test.ts` (factory `task()` tipata su `Task`: una riga `estimate_min: null` — fix di fixture forzato dal tipo, zero comportamento). Prima stesura del commento in 0032 conteneva un nome proprio → BLOCCATA da `lint:sentinels` (il guard-rail di share-prep funziona); riformulato neutro.
+
+**Commit:** `run-11/P1: schema decision (+0032)`

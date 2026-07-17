@@ -258,6 +258,26 @@ export class LifeosDb extends Dexie {
             if (t.recurrence === undefined) t.recurrence = null;
           }),
       );
+    // v12 (run-11): NESSUN indice nuovo (stores invariati — la stima si
+    // legge sempre dentro liste già filtrate per giorno); solo il
+    // backfill dei campi della giornata guidata a null esplicito, così
+    // schemi zod, LWW e UI vedono righe complete (pattern v6/v11).
+    this.version(12).upgrade((tx) =>
+      Promise.all([
+        tx
+          .table("tasks")
+          .toCollection()
+          .modify((t: Record<string, unknown>) => {
+            if (t.estimate_min === undefined) t.estimate_min = null;
+          }),
+        tx
+          .table("meal_variants")
+          .toCollection()
+          .modify((v: Record<string, unknown>) => {
+            if (v.training === undefined) v.training = null;
+          }),
+      ]).then(() => undefined),
+    );
   }
 }
 
