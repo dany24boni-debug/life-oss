@@ -104,6 +104,21 @@ export function DayEditor({
     },
   );
 
+  // Fallback tastiera del riordino (il contratto di use-row-drag): frecce
+  // sul grip, stessa persistenza del drag.
+  function moveByKey(index: number, delta: -1 | 1) {
+    const to = index + delta;
+    if (to < 0 || to >= list.length) return;
+    void appRepos().gym.reorderProgramSlots(
+      dayId,
+      moveIndex(
+        list.map((s) => s.id),
+        index,
+        to,
+      ),
+    );
+  }
+
   async function patchSlot(
     slot: GymProgramSlot,
     patch: Parameters<ReturnType<typeof appRepos>["gym"]["updateProgramSlot"]>[1],
@@ -292,10 +307,19 @@ export function DayEditor({
                       >
                         <button
                           type="button"
-                          aria-label={`Trascina ${nameOf(slot.exercise_id)} per riordinare`}
+                          aria-label={`Riordina ${nameOf(slot.exercise_id)}: trascina, o frecce su e giù`}
                           onPointerDown={
                             list.length > 1 ? (e) => startDrag(i, e) : undefined
                           }
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              moveByKey(i, -1);
+                            } else if (e.key === "ArrowDown") {
+                              e.preventDefault();
+                              moveByKey(i, 1);
+                            }
+                          }}
                           className="grid h-10 w-7 cursor-grab touch-none place-items-center rounded-[var(--em-r-sm)] text-[var(--em-text-3)]"
                         >
                           <GripIcon />
@@ -459,10 +483,19 @@ export function DayEditor({
                   >
                     <button
                       type="button"
-                      aria-label={`Trascina ${nameOf(slot.exercise_id)} per riordinare`}
+                      aria-label={`Riordina ${nameOf(slot.exercise_id)}: trascina, o frecce su e giù`}
                       onPointerDown={
                         list.length > 1 ? (e) => startDrag(i, e) : undefined
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          moveByKey(i, -1);
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          moveByKey(i, 1);
+                        }
+                      }}
                       className="grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-[var(--em-r-sm)] text-[var(--em-text-3)]"
                     >
                       <GripIcon />
@@ -572,7 +605,7 @@ function SectionHeader({
       <button
         type="button"
         onClick={onAdd}
-        className="em-body-sm flex h-8 items-center rounded-full px-2.5 font-medium text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+        className="em-body-sm flex h-11 items-center rounded-full px-2.5 font-medium text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
       >
         + aggiungi qui
       </button>
@@ -714,7 +747,7 @@ function WeekdayChips({
           aria-label={d.full}
           onClick={() => onChange(value === d.value ? null : d.value)}
           className={cx(
-            "em-body-sm grid h-8 w-8 place-items-center rounded-full font-medium transition-colors duration-[var(--em-dur-tap)]",
+            "em-hit em-body-sm grid h-8 w-8 place-items-center rounded-full font-medium transition-colors duration-[var(--em-dur-tap)]",
             value === d.value
               ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
               : "bg-[var(--em-surface-2)] text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",

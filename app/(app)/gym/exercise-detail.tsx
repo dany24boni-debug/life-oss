@@ -16,6 +16,7 @@ import {
   Input,
   Modal,
   Select,
+  Skeleton,
   useToast,
 } from "@/ui";
 import {
@@ -258,7 +259,11 @@ function ExerciseProgress({ exercise }: { exercise: GymExercise }) {
 
       <div className="flex flex-col gap-1.5 pt-1">
         <p className="em-eyebrow">Le ultime sedute</p>
-        {loading ? null : (
+        {loading ? (
+          <div aria-busy="true">
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
           <ProgressTable
             sets={sets ?? []}
             dateBySession={days}

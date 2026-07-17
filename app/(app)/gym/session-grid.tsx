@@ -554,7 +554,7 @@ function RestChip({
         aria-label={`Recupero: ${formatElapsed(elapsedS)} trascorsi${targetS !== null ? ` su ${formatRestShort(targetS)} di obiettivo` : ""}`}
         className={cx(
           "em-body-sm em-num font-medium",
-          over ? "text-[var(--em-salvia)]" : "text-[var(--em-text-2)]",
+          over ? "text-[var(--em-salvia-text)]" : "text-[var(--em-text-2)]",
         )}
       >
         {formatElapsed(elapsedS)}
@@ -572,7 +572,7 @@ function RestChip({
         }
         onClick={toggleChime}
         className={cx(
-          "grid h-9 w-9 place-items-center rounded-full transition-colors duration-[var(--em-dur-tap)]",
+          "grid h-11 w-11 place-items-center rounded-full transition-colors duration-[var(--em-dur-tap)]",
           chime
             ? "bg-[var(--em-ember-tint)] text-[var(--em-text)]"
             : "text-[var(--em-text-3)] hover:text-[var(--em-text)]",

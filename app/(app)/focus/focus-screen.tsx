@@ -210,7 +210,7 @@ function ConfigCard({
               aria-pressed={active}
               onClick={() => onConfig(preset.config)}
               className={cx(
-                "em-body-sm h-9 rounded-full px-3 font-medium transition-colors duration-[var(--em-dur-tap)]",
+                "em-body-sm h-11 rounded-full px-3 font-medium transition-colors duration-[var(--em-dur-tap)]",
                 active
                   ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
                   : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",

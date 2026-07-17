@@ -287,7 +287,7 @@ export function GymScreen({ authed }: { authed: boolean }) {
         onChange={setTab}
       >
         {(activeTab) => (
-          <div className="pt-4">
+          <div>
             {activeTab === "scheda" ? renderScheda() : null}
 
             {activeTab === "storico" ? (
@@ -426,7 +426,7 @@ function FinishBody({ finish }: { finish: FinishSummary }) {
               onClick={() => void rate(v)}
               className={
                 session?.rating_1_10 === v
-                  ? "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-ember-tint)] font-semibold text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+                  ? "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-ember-tint)] font-semibold text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)] transition-colors duration-[var(--em-dur-tap)]"
                   : "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
               }
             >
@@ -623,8 +623,8 @@ function LibraryPanel({
             onClick={() => setGroup((cur) => (cur === g ? null : g))}
             className={
               group === g
-                ? "em-body-sm h-8 rounded-full bg-[var(--em-ember-tint)] px-3 font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
-                : "em-body-sm h-8 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+                ? "em-body-sm h-11 rounded-full bg-[var(--em-ember-tint)] px-3 font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)] transition-colors duration-[var(--em-dur-tap)]"
+                : "em-body-sm h-11 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
             }
           >
             {groupLabel(g)}
