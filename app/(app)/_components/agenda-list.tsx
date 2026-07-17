@@ -141,7 +141,24 @@ function TaskCheck({
     const r = done
       ? await tasks.uncomplete(id)
       : await tasks.complete(id, { today });
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    // Undo anche dal check in agenda (run-10 P4, PROP-task-02): lo
+    // stesso toast delle liste task; l'uncomplete ritira anche la
+    // prossima occorrenza generata da un ricorrente (garanzia del repo,
+    // run-09). Il ri-aprire resta muto: È l'annullamento.
+    if (!done) {
+      toast.show({
+        message: `Fatto: ${title}`,
+        tone: "success",
+        action: {
+          label: "Annulla",
+          onClick: () => void appRepos().tasks.uncomplete(id),
+        },
+      });
+    }
   }
 
   return (

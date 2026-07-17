@@ -83,6 +83,8 @@ riferimento interno.
 - **PROP-task-02 — Undo sul check inline in agenda.** Il completamento dall'agenda usa lo
   stesso toast "Fatto: … · Annulla" delle liste task (riuso di `useTaskActions` o del suo
   pattern). Effort S · Valore H · `[cross]` (il file è condiviso con Calendario/Oggi).
+  **DONE-IN-RUN-10** (P4: pattern replicato in TaskCheck; la coda "prossima:" dei
+  ricorrenti resta solo nelle liste task — il check agenda non ha il Task intero).
 - **PROP-task-03 — Ricorrenze mensili.** "il 15 di ogni mese", "ultimo giorno del mese"
   nel parser + `RecurrenceSchema`. Effort M · Valore M · `[schema]` (il campo è jsonb ma
   il contratto zod/sync evolve: client vecchi rifiuterebbero la regola nuova al pull).
