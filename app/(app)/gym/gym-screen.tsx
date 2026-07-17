@@ -54,6 +54,7 @@ import type { GymExercise, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
 import { WeightQuickEntry } from "../corpo/corpo-screen";
+import { LazyBoundary } from "../_components/lazy-boundary";
 import { useToday } from "../_components/tasks/screen-hooks";
 // Split run-13 P5a: la scheda esercizio (grafico + ProgressTable + form)
 // si carica alla PRIMA apertura — React.lazy, mai next/dynamic nel
@@ -326,16 +327,18 @@ export function GymScreen({ authed }: { authed: boolean }) {
       </Tabs>
 
       {detailMounted ? (
-        <Suspense fallback={null}>
-          <LazyExerciseDetailSheet
-            exercise={detailExercise}
-            createOpen={createExercise}
-            onClose={() => {
-              setDetailExercise(null);
-              setCreateExercise(false);
-            }}
-          />
-        </Suspense>
+        <LazyBoundary>
+          <Suspense fallback={null}>
+            <LazyExerciseDetailSheet
+              exercise={detailExercise}
+              createOpen={createExercise}
+              onClose={() => {
+                setDetailExercise(null);
+                setCreateExercise(false);
+              }}
+            />
+          </Suspense>
+        </LazyBoundary>
       ) : null}
       <HistorySessionSheet
         sessionId={historySessionId}

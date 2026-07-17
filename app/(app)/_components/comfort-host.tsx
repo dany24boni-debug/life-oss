@@ -30,7 +30,14 @@ const CHORD_TIMEOUT_MS = 900;
  * chunk della home (+78 B sul congelato — misurato al P4). Il corpo
  * rende solo su gesto client (⌘K): l'SSR non lo incontra mai.
  */
-const PaletteBody = lazy(() => import("./palette/palette-body"));
+// Il .catch è l'hardening P5c (run-13): un chunk che non arriva (offline
+// al primo ⌘K) degrada a null invece di abbattere la shell su error.tsx.
+const PaletteBody = lazy(() =>
+  import("./palette/palette-body").catch(() => ({
+    default: (() =>
+      null) as unknown as (typeof import("./palette/palette-body"))["default"],
+  })),
+);
 
 /** Le go-to della tastiera: `g` poi questa lettera. */
 const GO_KEYS: Record<string, string> = {

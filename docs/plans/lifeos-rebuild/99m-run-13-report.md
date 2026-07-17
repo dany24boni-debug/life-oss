@@ -160,3 +160,34 @@ La PROP dice "CTA 'com'è andata?' → **voto** o nuova data, dalla scheda esist
 Nessuna spec single-affordance esiste (v3-proposals non la contempla; 99l P5a la annota solo come asimmetria per il triage). Sette controlli ripetuti = rumore per legge del brief. **Fuori run**, JUDGMENT list.
 
 **Cap rispettato:** niente altro promosso dal backlog PROP.
+
+---
+
+## P5 · Performance & hardening — misurato prima, churn mai
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · test **1043/1043, 83 file** ✓ · build fresca ✓ · **smoke di produzione (porta chiusa per PID): 16 probe tutte 200** (le 14 superfici + `/gym?scheda=x` + `/offline`), log del server pulito (zero warn/error).
+
+### a · Lo split di /gym: −10,3 kB, A/B misurato (`fc19b90`)
+
+Metodo residenza: probe di stringhe distintive nel route chunk → equipment-editor, exercise-detail, day-editor, session-grid/runner, exercise-picker TUTTI residenti. Due seam puliti su gesto utente, **React.lazy** (mai next/dynamic nel gruppo — legge run-12):
+- **EquipmentEditor** (swap dentro lo sheet del set, gesto raro settings-like) → chunk lazy da **3.851 B**, Suspense con skeleton.
+- **ExerciseDetailSheet** (grafico + ProgressTable + form; si apre dal tap su un esercizio) → chunk lazy da **8.492 B**; gate "everMounted" (monta al primo bisogno, poi RESTA: riaperture istantanee e le exit-animation P2 sopravvivono alla chiusura).
+- **A/B: /gym 103.983 → 93.194 (−10.789 raw, −10,4%)**; con l'hardening P5c finale **93.674**. Oggi INVARIATO a ogni misura. Nessun altro seam pagava abbastanza da giustificare churn (day-editor/programs-panel = tab primaria, non gesto).
+
+### b · Console hygiene — esito e limite del metodo dichiarato
+
+Statico: **zero `console.log/warn/info` nei percorsi felici** di (app)/ui/lib/data — ogni `console.error` censito è error-path legittimo (import legacy falliti, azioni server, il boundary stesso). Dinamico: il log del SERVER di produzione sulle 16 probe è pulito. **Limite dichiarato:** la console del BROWSER non è verificabile in questa sessione (niente browser) — la verifica client resta al device tour; la superficie di rischio è coperta dallo statico.
+
+### c · Error boundaries — la copertura verificata, il gap vero chiuso
+
+- **Verifica:** `app/(app)/error.tsx` (route-group) copre i crash di RENDER di tutte le 14 superfici, timeline/rituale/pannelli stats/palette compresi. Nessun buco di copertura render.
+- **Il gap REALE era il chunk lazy che non arriva** (offline al primo uso, deploy a cavallo): la promise rigettata bubbla al boundary di route e abbatte la SHELL per un accessorio. Chiusura su misura di budget:
+  - **palette + rituale** (layout/home, budget stretti): `.catch` sulla factory lazy → il corpo degrada a null (~30 B a sito). Un tentativo con boundary di classe condiviso costava +378 B su ENTRAMBI i chunk (modulo piccolo duplicato da webpack) e sfondava il budget layout di 123 B → sostituito, a verbale.
+  - **gym** (route chunk, nessun budget): `_components/lazy-boundary.tsx` (il boundary di casa, class component minimale) sui due mount lazy — l'equipment editor degrada a un messaggio onesto ("Editor non disponibile ora"), la scheda esercizio a null.
+- Budget finali: **Oggi 59.461** (tetto 60.000, headroom 539) · **layout 31.211** (+777 vs baseline, budget ≤ +1.000 ✓).
+
+### d · PWA/offline — spot-check a livello build
+
+`/offline` prerender ✓ (probe 200); `public/sw.js`: runtime caching con navigazioni network-first→cache→/offline, `/_next/static` cache-first (i chunk lazy nuovi vi rientrano dopo il primo fetch) e la **landmine del redirect presidiata** (`fresh.ok && !fresh.redirected`, riga 149). Le superfici nuove leggono da Dexie via gli stessi hook delle vecchie: offline-by-construction una volta servito il bundle.
+
+**Commit:** `run-13/P5: gym route split — equipment editor + exercise detail lazy (−10.8 kB, A/B)` + `run-13/P5: hardening — lazy failure degrades, not crashes`

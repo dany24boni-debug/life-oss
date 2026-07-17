@@ -44,6 +44,7 @@ import {
   useSettings,
 } from "@/data/hooks";
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
+import { LazyBoundary } from "../_components/lazy-boundary";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
 import { ExercisePicker } from "./exercise-picker";
 import { nowInstant, stepReps, stepWeight } from "./logic";
@@ -815,19 +816,27 @@ function SetEditorForm({
   // form sopravvivono alla deviazione. Dopo tutti gli hook, per contratto.
   if (equipOpen && settings !== undefined) {
     return (
-      <Suspense
+      <LazyBoundary
         fallback={
-          <div aria-busy="true" className="flex flex-col gap-3">
-            <Skeleton className="h-11 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+          <p className="em-body-sm py-4 text-[var(--em-text-3)]">
+            Editor non disponibile ora (rete?). Chiudi e riprova.
+          </p>
         }
       >
-        <LazyEquipmentEditor
-          settings={settings}
-          onDone={() => setEquipOpen(false)}
-        />
-      </Suspense>
+        <Suspense
+          fallback={
+            <div aria-busy="true" className="flex flex-col gap-3">
+              <Skeleton className="h-11 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          }
+        >
+          <LazyEquipmentEditor
+            settings={settings}
+            onDone={() => setEquipOpen(false)}
+          />
+        </Suspense>
+      </LazyBoundary>
     );
   }
 
