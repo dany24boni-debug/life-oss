@@ -9,8 +9,9 @@
  * questo snapshot aggregato — mai dump di tabelle.
  *
  * Regole di priorità (ordine fisso, al più QUATTRO pezzi per restare
- * una frase): palestra → task (i ritardi pesano) → slot del piano →
- * pasti → acqua → streak.
+ * una frase): piano del rituale (run-11) → palestra → task (i "da
+ * ieri" pesano) → slot del piano → variante dieta → pasti → acqua →
+ * streak.
  */
 
 import { z } from "zod";
@@ -19,6 +20,19 @@ import { IsoDaySchema } from "./schemas";
 /** Lo snapshot aggregato: il client lo compone dagli hook locali. */
 export const BriefSnapshotSchema = z.object({
   date: IsoDaySchema,
+  /**
+   * Lo stamp del rituale del mattino (run-11 P5c): presente solo se il
+   * rituale è girato su QUESTO dispositivo oggi. `estimatedLabel` è la
+   * somma stime già formattata dal client ("3h30"); `over` = pianificato
+   * oltre il tempo libero calcolato allo stamp.
+   */
+  plan: z
+    .object({
+      tasks: z.number().int().min(0).max(10_000),
+      estimatedLabel: z.string().trim().min(1).max(20).nullable(),
+      over: z.boolean(),
+    })
+    .nullable(),
   /** Task aperti di oggi e in ritardo (conteggi, mai liste). */
   tasksOpen: z.number().int().min(0).max(10_000),
   tasksOverdue: z.number().int().min(0).max(10_000),
@@ -33,6 +47,11 @@ export const BriefSnapshotSchema = z.object({
       now: z.boolean(),
     })
     .nullable(),
+  /**
+   * La variante dieta del giorno di allenamento (nome), run-11 P5c:
+   * presente solo nei giorni di allenamento con una variante marcata.
+   */
+  dietVariant: z.string().trim().min(1).max(120).nullable(),
   /** Pasti di oggi; null senza piano con pasti oggi. */
   meals: z
     .object({
@@ -66,6 +85,16 @@ const MAX_CLAUSES = 4;
 export function composeBrief(snapshot: BriefSnapshot): string | null {
   const clauses: string[] = [];
 
+  // 0. Il piano del rituale (run-11): quando il mattino è già stato
+  //    pianificato, la frase si apre col piano — è l'atto dell'utente.
+  if (snapshot.plan !== null) {
+    const p = snapshot.plan;
+    const head = p.over ? "giornata piena" : "giornata pianificata";
+    const tasksBit = p.tasks > 0 ? `: ${p.tasks} task` : "";
+    const estBit = p.estimatedLabel !== null ? ` (~${p.estimatedLabel})` : "";
+    clauses.push(`${head}${tasksBit}${estBit}`);
+  }
+
   // 1. Palestra: il next-up, o il fatto.
   if (snapshot.gymDoneToday) {
     clauses.push("palestra già fatta");
@@ -73,18 +102,19 @@ export function composeBrief(snapshot: BriefSnapshot): string | null {
     clauses.push(`palestra: ${snapshot.gymNextUp}`);
   }
 
-  // 2. Task: i ritardi pesano di più dei conteggi.
+  // 2. Task: i "da ieri" pesano di più dei conteggi (run-11: il
+  //    rollover ha un nome, non un generico "in ritardo").
   const open = Math.max(0, snapshot.tasksOpen);
   const overdue = Math.max(0, snapshot.tasksOverdue);
   if (overdue > 0 && open > 0) {
     clauses.push(
-      `${open} task aperti (${overdue} in ritardo)`.replace(
+      `${open} task aperti (${overdue} da ieri)`.replace(
         "1 task aperti",
         "1 task aperto",
       ),
     );
   } else if (overdue > 0) {
-    clauses.push(`${overdue} task in ritardo`);
+    clauses.push(`${overdue} task da ieri`);
   } else if (open > 0) {
     clauses.push(open === 1 ? "1 task aperto" : `${open} task aperti`);
   }
@@ -96,6 +126,11 @@ export function composeBrief(snapshot: BriefSnapshot): string | null {
         ? `adesso ${snapshot.planSlot.title}`
         : `alle ${snapshot.planSlot.start_hhmm} ${snapshot.planSlot.title}`,
     );
+  }
+
+  // 3b. La variante dieta del giorno di allenamento (run-11).
+  if (snapshot.dietVariant !== null) {
+    clauses.push(`variante ${snapshot.dietVariant}`);
   }
 
   // 4. Pasti del piano.
