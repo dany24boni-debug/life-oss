@@ -10,6 +10,7 @@ import {
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
 import { TodayRitual } from "./_components/ritual/today-ritual";
 import { TodayBrief } from "./_components/today-brief";
+import { TodaySera } from "./_components/today-sera";
 import { TodayTimeline } from "./_components/today-timeline";
 import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
@@ -102,6 +103,10 @@ export default async function TodayPage() {
       {/* La timeline unica (run-11 P3, CROSS-05): Agenda + "Adesso"
           convergono qui — slot, eventi, task e focus in una colonna. */}
       <TodayTimeline google={googleEvents} />
+
+      {/* L'aggancio serale (run-11 P4, PROP-sera-01): dopo le 20, se il
+          check-in non c'è, l'invito quieto a chiudere la giornata. */}
+      <TodaySera />
 
       {/* Mini-launcher del pomodoro (run-08 prompt 5). */}
       <TodayFocus />

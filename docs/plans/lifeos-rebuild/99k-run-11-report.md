@@ -141,3 +141,36 @@ Delta: (1) il marker dieta è "Pasti · N di M" (stato del giorno) — la "varia
 **Nota di processo:** il primo smoke sembrava mostrare la timeline assente dall'SSR — era un server `next start` SOPRAVVISSUTO dallo smoke P2 sulla porta 3000 che serviva la build vecchia (il `pkill` non l'aveva preso). Da qui in poi gli smoke chiudono la porta per PID. Nessun bug nel codice: sulla porta pulita l'SSR è corretto al primo colpo.
 
 **Commit:** `run-11/P3: today timeline`
+
+---
+
+## P4 · La chiusura della sera — Sera si de-siloizza
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **991/991, 78 file** (nessun test nuovo: composizione di selettori già testati ai loro run; zero logica pura nuova — il riuso è il punto). **Smoke produzione (server chiuso per PID prima di ogni build):** `/sera` **200** con recap E storico nell'HTML SSR, zero error-digest; `/` **200** con la timeline.
+
+### Il recap ("La giornata") — i fatti prima del come è andata
+
+`SeraRecap` in testa a /sera, TUTTO da selettori read-only esistenti:
+- **Task** `3 su 5` (`useTasksSummary`) · **Abitudini** `4 su 6` (`useHabitBoard`) · **Focus** `50'` (`useFocusMinutesByDay`, formato `formatMin` condiviso).
+- **Palestra: QUALE scheda** — sessione conclusa → il NOME del giorno-scheda (`useProgramDay(program_day_id)`, hook già esistente) con deep-link `gymCardHref` alla card; in corso → "in corso"; niente → "—" quieto, mai colpevolizzante.
+- **Dieta — `remainingVsTarget` FINALMENTE renderizzato** (il fantasma dell'audit P1): "Dieta: 1.850 / 2.100 kcal · ne restano 250 · 128 / 160 g proteine" — stessa derivazione degli obiettivi di /dieta (`calorieTargetKcal`/`proteinTargetG` dal profilo+pesata), stessi formatter (`formatInt`, `formatGramsFromDg` — la lezione it-IT del grouping resta in UN posto). Sopra il target: "N oltre", onesto. Senza piano né extra: nessuna riga; senza profilo: solo il consumato.
+
+**"Prepara domani":** i task APERTI di oggi → `date = domani` (`snoozeDate("domani")`, la stessa pura dello snooze) con UN toast cumulativo "N task pronti per domani · Annulla" (undo ripristina ogni data) — il calco di `moveAllToToday`, scritto contro `appRepos()` direttamente (il precedente è il TaskCheck dell'agenda). Domattina il rituale si apre già carico: i task SONO di domani, il passo rollover non ha nulla da chiedere. Diario e Drive: byte intoccati.
+
+### PROP-sera-01 — l'aggancio serale su Oggi (fence estesa, dichiarata)
+
+`TodaySera` su Oggi: dopo le 20:00 (orologio condiviso `useNowHhmm`), se il check-in di stasera NON esiste, una card quieta "Sera — Com'è andata la giornata? →" che porta a /sera e sparisce da sola a check-in iniziato (`useCheckin === null` come unico gate dati; in SSR/caricamento rende null, zero flicker). È il pezzo di Set A che chiude CROSS-04 lato sera; il brief P4 non lo nominava esplicitamente ma Set A sì — fence estesa a `_components/today-sera.tsx` + una riga di mount in `page.tsx`, dichiarato qui.
+
+### Budget Oggi
+
+**56.574 B raw (17.604 gzip)** = +798 per l'aggancio serale (il recap vive nel chunk di /sera, non della home). Headroom al tetto: **3.426 B** per P5c/P5d.
+
+### Delta dichiarati
+
+1. **PROP-sera-02 ("Domani" testuale) NON in questo run** — sostituita dal brief con "Prepara domani" (già annotato al P1): il cerchio CROSS-04 si chiude coi TASK veri invece che con una frase da ricopiare.
+2. **Niente util condivisa per remaining-vs-target**: PROP-diet-01 la colloca nell'header di /dieta (dove `consumato / target` è GIÀ renderizzato dal run-09) — la riga di Sera riusa le pure esistenti e i formatter; una util di rendering condivisa non è specificata dalla PROP e sarebbe un'astrazione per due usi divergenti. PROP-diet-01 (il numero "restano" DENTRO /dieta) resta aperta per il triage.
+3. **Nessun test nuovo**: il recap è composizione 1:1 di selettori/pure già golden/testati (remainingVsTarget, snoozeDate, formatMin, dayTotals); l'unica "logica" nuova è formattazione di stringhe a vista.
+
+**Nota di processo (il digest fantasma):** il primo smoke di /sera mostrava un error-digest SSR con fallback allo skeleton — non era il codice: era la build rigenerata SOTTO un `next start` sopravvissuto (manifest disallineati al volo). Con la sequenza onesta (kill per PID → build → start → curl) l'SSR è pulito e stabile su due probe consecutivi. Gli smoke del run da qui in poi usano lo script `probe` con questa sequenza.
+
+**Commit:** `run-11/P4: evening shutdown + sera recap`
