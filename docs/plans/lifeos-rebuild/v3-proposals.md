@@ -286,7 +286,7 @@ stantio). (3) Un esame "Scaduto" mostra solo il badge: nessun CTA per chiudere o
 rimandare. (4) Superficie statica (1 transizione in tutto).
 
 - **PROP-esami-01 — Toast+undo su "Capitolo fatto".** "Capitolo 6 di 12 · Annulla".
-  Effort S · Valore M.
+  Effort S · Valore M. **DONE-IN-RUN-10** (P4).
 - **PROP-esami-02 — Countdown su Oggi.** → PROP-oggi-04.
 - **PROP-esami-03 — CTA sugli scaduti.** Su badge "Scaduto": "com'è andata?" → voto o
   nuova data, dalla scheda esistente. Effort S-M · Valore M.

@@ -219,13 +219,28 @@ function ExamRow({
     exam.total_chapters > 0 && exam.completed_chapters < exam.total_chapters;
 
   async function advance() {
+    const previous = exam.completed_chapters;
+    const next = Math.min(exam.total_chapters, previous + 1);
     const r = await appRepos().esami.update(exam.id, {
-      completed_chapters: Math.min(
-        exam.total_chapters,
-        exam.completed_chapters + 1,
-      ),
+      completed_chapters: next,
     });
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    // Il log a un tocco parla e si annulla (run-10 P4, PROP-esami-01):
+    // prima era muto — un +1 sbagliato si correggeva solo dalla scheda.
+    toast.show({
+      message: `Capitolo ${next} di ${exam.total_chapters}: fatto.`,
+      tone: "success",
+      action: {
+        label: "Annulla",
+        onClick: () =>
+          void appRepos().esami.update(exam.id, {
+            completed_chapters: previous,
+          }),
+      },
+    });
   }
 
   return (
