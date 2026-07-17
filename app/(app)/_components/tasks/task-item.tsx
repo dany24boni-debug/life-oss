@@ -191,7 +191,7 @@ export function TaskItem({
         <div aria-hidden="true" className="absolute inset-0 flex">
           <div
             className={cx(
-              "flex flex-1 items-center gap-2 bg-[var(--em-salvia-tint)] pl-5 text-[var(--em-salvia-text)]",
+              "flex flex-1 items-center gap-2 bg-[var(--em-salvia-tint)] pl-5 text-[var(--em-salvia-text)] transition-opacity duration-[var(--em-dur-tap)]",
               dx > 0 ? "opacity-100" : "opacity-0",
             )}
           >
@@ -200,7 +200,7 @@ export function TaskItem({
           </div>
           <div
             className={cx(
-              "flex flex-1 items-center justify-end gap-2 bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] pr-5 text-[var(--em-text-2)]",
+              "flex flex-1 items-center justify-end gap-2 bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] pr-5 text-[var(--em-text-2)] transition-opacity duration-[var(--em-dur-tap)]",
               dx < 0 ? "opacity-100" : "opacity-0",
             )}
           >
@@ -230,6 +230,7 @@ export function TaskItem({
           data-no-swipe
           onClick={() => void toggleDone()}
           aria-label={done ? `Riapri: ${task.title}` : `Completa: ${task.title}`}
+          aria-pressed={done}
           className="grid h-11 w-11 shrink-0 place-items-center"
         >
           <span

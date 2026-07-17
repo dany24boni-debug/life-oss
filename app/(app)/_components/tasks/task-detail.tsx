@@ -361,7 +361,7 @@ function TaskEditor({
                       type="button"
                       aria-label={`Rimuovi tag ${tag}`}
                       onClick={() => removeTag(tag)}
-                      className="grid h-6 w-6 place-items-center rounded-full text-[var(--em-text-3)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
+                      className="em-hit grid h-6 w-6 place-items-center rounded-full text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
                     >
                       <CrossSmall />
                     </button>
@@ -404,7 +404,7 @@ function TaskEditor({
                   type="button"
                   aria-label={`Elimina sottotask: ${s.title}`}
                   onClick={() => removeSubtask(s.id)}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--em-r-sm)] text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_9%,transparent)] hover:text-[var(--em-text)]"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--em-r-sm)] text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_9%,transparent)] hover:text-[var(--em-text)]"
                 >
                   <IconTrash className="h-4 w-4" />
                 </button>

@@ -179,7 +179,7 @@ function BoardTab({ onGoToPlans }: { onGoToPlans: () => void }) {
         />
       )}
       <p className="em-body-sm text-[var(--em-text-3)]">
-        Tocca il cerchio per &quot;fatto&quot;; tienilo premuto per
+        Tocca il cerchio per &quot;fatto&quot;; tienilo premuto (o premi S) per
         &quot;saltato&quot;.
       </p>
     </div>

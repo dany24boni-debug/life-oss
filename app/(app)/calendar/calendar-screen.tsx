@@ -240,7 +240,7 @@ function GoogleBlock({ google }: { google: GoogleBlockView }) {
                   {relativeTimeIt(account.lastSyncedAt)}
                 </p>
                 {account.lastSyncError ? (
-                  <p className="em-body-sm mt-1 text-[var(--em-segnale)]">
+                  <p className="em-body-sm mt-1 text-[var(--em-segnale-text)]">
                     {SYNC_ERROR_LABELS[account.lastSyncError] ??
                       SYNC_ERROR_LABELS.sync_failed}
                   </p>

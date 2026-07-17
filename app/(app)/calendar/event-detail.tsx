@@ -21,6 +21,7 @@ import {
   Modal,
   Switch,
   Textarea,
+  Skeleton,
   TimePicker,
   useToast,
 } from "@/ui";
@@ -42,7 +43,13 @@ export function EventDetailSheet({
   const open = eventId !== null;
 
   const body =
-    event === undefined ? null : event === null ? (
+    event === undefined ? (
+      <div className="flex flex-col gap-3 pb-4" aria-busy="true">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-2/3" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    ) : event === null ? (
       <p className="em-body-sm py-4 text-[var(--em-text-3)]">
         Questo evento non c&apos;è più.
       </p>
@@ -202,7 +209,12 @@ function EventForm({
       </Field>
 
       <div className="flex items-center justify-between pt-1">
-        <Button type="button" variant="ghost" onClick={() => void remove()}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => void remove()}
+          className="text-[var(--em-segnale-text)] hover:bg-[var(--em-segnale-tint)]"
+        >
           Elimina evento
         </Button>
       </div>
