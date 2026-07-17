@@ -12,6 +12,7 @@ import {
   snoozeDate,
   todayInZone,
   toTaskCreate,
+  laterRange,
   upcomingRange,
   withDefaultDate,
 } from "./logic";
@@ -224,6 +225,14 @@ describe("giorni e raggruppamenti", () => {
       from: "2026-07-11",
       to: "2026-07-17",
     });
+  });
+
+  it("laterRange parte dove finisce la settimana: zona morta chiusa", () => {
+    const later = laterRange(TODAY);
+    expect(later.from).toBe("2026-07-18");
+    expect(later.to).toBe("2027-07-10");
+    // Contiguità con upcomingRange: nessun giorno datato resta invisibile.
+    expect(later.from > upcomingRange(TODAY).to).toBe(true);
   });
 
   it("dayHeading: Oggi, Domani, poi etichetta breve", () => {

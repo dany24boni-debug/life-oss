@@ -80,6 +80,8 @@ riferimento interno.
 - **PROP-task-01 — Chiudere la zona morta di "Prossimi".** Sotto i 7 giorni a sezioni,
   una sezione "Più avanti" con i task datati oltre la finestra (query esistente
   `useUpcomingTasks` con range esteso, raggruppati per mese). Effort S · Valore H.
+  **DONE-IN-RUN-10** (P4: lista unica con data per riga — il pattern `showDate` del
+  blocco In ritardo — invece dei gruppi per mese: più onesta per task sparsi).
 - **PROP-task-02 — Undo sul check inline in agenda.** Il completamento dall'agenda usa lo
   stesso toast "Fatto: … · Annulla" delle liste task (riuso di `useTaskActions` o del suo
   pattern). Effort S · Valore H · `[cross]` (il file è condiviso con Calendario/Oggi).

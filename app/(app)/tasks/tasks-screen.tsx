@@ -23,7 +23,12 @@ import {
   onQuickAddRequest,
 } from "../_components/quick-add-bus";
 import { useTaskActions, type TaskActions } from "../_components/tasks/actions";
-import { dayHeading, groupTasksByDay, upcomingRange } from "../_components/tasks/logic";
+import {
+  dayHeading,
+  groupTasksByDay,
+  laterRange,
+  upcomingRange,
+} from "../_components/tasks/logic";
 import { QuickAdd } from "../_components/tasks/quick-add";
 import { useToday } from "../_components/tasks/screen-hooks";
 import { SnoozeMenu } from "../_components/tasks/snooze-menu";
@@ -204,15 +209,22 @@ function ViewOggi({ ctx }: { ctx: ViewCtx }) {
 
 function ViewProssimi({ ctx }: { ctx: ViewCtx }) {
   const range = upcomingRange(ctx.today);
+  const later = laterRange(ctx.today);
   const tasks = useUpcomingTasks(range.from, range.to);
-  if (tasks === undefined) return <ListSkeleton />;
+  // La zona morta +8g è chiusa (run-10 P4, PROP-task-01): il futuro
+  // oltre la settimana vive nella sezione "Più avanti".
+  const laterTasks = useUpcomingTasks(later.from, later.to);
+  if (tasks === undefined || laterTasks === undefined) {
+    return <ListSkeleton />;
+  }
 
   const open = tasks.filter((t) => t.status === "open");
-  if (open.length === 0) {
+  const laterOpen = laterTasks.filter((t) => t.status === "open");
+  if (open.length === 0 && laterOpen.length === 0) {
     return (
       <section className="em-card p-5">
         <EmptyState
-          heading="Nessun task nei prossimi 7 giorni"
+          heading="Nessun task in vista"
           text="Scrivi una scadenza nel quick-add: domani, ven, tra 3 giorni, 15/08."
         />
       </section>
@@ -239,6 +251,25 @@ function ViewProssimi({ ctx }: { ctx: ViewCtx }) {
           />
         </section>
       ))}
+
+      {laterOpen.length > 0 ? (
+        <section
+          aria-label="Più avanti"
+          className="em-card overflow-hidden px-2 pb-1 pt-2"
+        >
+          <p className="em-eyebrow px-2 pb-1">
+            Più avanti · {laterOpen.length}
+          </p>
+          <TaskList
+            tasks={laterOpen}
+            today={ctx.today}
+            actions={ctx.actions}
+            onOpenDetail={ctx.onOpenDetail}
+            onOpenSnooze={ctx.onOpenSnooze}
+            showDate
+          />
+        </section>
+      ) : null}
     </div>
   );
 }
