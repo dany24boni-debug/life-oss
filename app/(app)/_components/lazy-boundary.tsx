@@ -4,8 +4,9 @@
  * Il boundary di casa per i mount LAZY (run-13 P5c): un chunk on-demand
  * che non arriva (offline al primo uso, deploy a cavallo) NON deve
  * abbattere la shell intera su (app)/error.tsx — l'accessorio degrada,
- * il resto vive. Fallback di default: null (l'affordance sparisce,
- * riappare al prossimo mount quando la rete torna).
+ * il resto vive. Fallback di default: null. Nota onesta: React.lazy
+ * cachea l'esito della factory — un load fallito resta degradato fino
+ * al RELOAD della pagina, non si riprova da solo.
  */
 
 import { Component, type ReactNode } from "react";

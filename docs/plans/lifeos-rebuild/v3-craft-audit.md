@@ -181,7 +181,7 @@ Calcolato: #858b99 su #232730 = 4,38 (< 4,5 AA testo piccolo). Siti non-disabled
 | --- | --- | --- | --- |
 | J-01 | Hover della cella "done" nella griglia set | session-grid.tsx:379 | Le celle loggate meritano un hover proprio (shadow-lift)? Le ghost ce l'hanno. |
 | J-02 | Riga esame senza hover | esami-screen.tsx:251 | Hover sulla riga-bottone dentro card bordata: che forma (bg pieno? inset?)? |
-| J-03 | Radius micro fuori scala | settimana-screen.tsx:236,239 (4px) · month-heat.tsx:58 (5px) · kbd palette (4px) | Nasce un token micro-radius (~4px) o restano eccezioni documentate? |
+| J-03 | Radius micro fuori scala | settimana-screen.tsx:236,239 (4px) · month-heat.tsx:58 (5px) · kbd palette (4px) · kbd del rail ⌘K app-nav.tsx:147 (4px, copia byte-identica del dialetto kbd — sito aggiunto in run-13 P4b, filed dal reviewer P6 come LOW) | Nasce un token micro-radius (~4px) o restano eccezioni documentate? |
 | J-04 | Timer di /focus a text-5xl font body | focus-screen.tsx:86 | Adottare em-display (40px, Bricolage) o em-display-xl (64)? Cambia il volto del timer. |
 | J-05 | Dialetti di chip selezionabile | profile-section.tsx:222 vs spese-screen.tsx:278 | Ring attivo hairline-strong@120ms o ember@180ms? Un canone per tutti i chip. |
 | J-06 | Toast con Annulla: 5s bastano? | ui/toast.tsx:90 | Allungare il dwell dei toast azionabili (o role=alert + timer)? |
