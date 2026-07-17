@@ -1,4 +1,43 @@
-# Blueprint 17 — Checklist di attivazione delle notifiche push
+# Blueprint 17 — Checklist di attivazione (migrazioni · login gate · push)
+
+Aggiornata al run-13. Ogni passo è TUO: le sessioni non toccano mai il
+vivo. Ordine consigliato: §0 migrazioni → §0b login gate → push (§1-8).
+
+## 0. Stato migrazioni (run-13): applica 0032 e 0033, IN ORDINE
+
+Il runner è lo stesso di sempre:
+
+```bash
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0032_guided_day_fields.sql
+node --env-file=.env.local scripts/run-migration.mjs supabase/migrations/0033_gym_equipment_profile.sql
+```
+
+- **0032** (run-11): `lo_tasks.estimate_min` + `lo_meal_variants.training`.
+- **0033** (run-12): `lo_settings.gym_bar_kg` + `lo_settings.gym_plates`.
+- Entrambe idempotenti, nessuna ridichiarazione di `lo_push` (la 0029
+  resta finale a 28 tabelle). Range completo: **0001 → 0033** (col
+  doppio 0016 documentato in AGENTS.md).
+- **DOPO l'apply: aggiorna l'app su TUTTI i dispositivi collegati —
+  tuoi e di Daniele.** LWW è per-riga: un client VECCHIO che riscrive
+  una riga evoluta azzera i campi nuovi al push (`estimate_min`,
+  `training`, `gym_bar_kg`, `gym_plates`). La finestra deploy→apply è
+  invece sicura (`jsonb_populate_recordset` ignora le chiavi che non
+  sono ancora colonne).
+
+## 0b. Il gate del login (tre mosse, dashboard + Vercel)
+
+1. **Redirect URLs** (Supabase → Authentication → URL Configuration):
+   aggiungi l'URL di produzione Vercel (`https://<app>.vercel.app/**`)
+   accanto a `http://localhost:3000/**`.
+2. **`NEXT_PUBLIC_APP_URL`** su Vercel = l'URL di produzione (serve un
+   REDEPLOY: è inlined nel bundle al build).
+3. **Template OTP** (Supabase → Authentication → Email Templates →
+   Magic Link/OTP): il template deve stampare `{{ .Token }}` (il codice
+   a 6 cifre che /login/verify chiede), non solo il link.
+
+---
+
+# Push — checklist originale (run-09)
 
 Il CODICE è tutto nel repo dal run-09 (prompt 5): service worker,
 card di opt-in in Impostazioni, endpoint `/api/push/*`, Edge Function

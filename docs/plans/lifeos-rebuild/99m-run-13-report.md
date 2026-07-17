@@ -8,9 +8,66 @@ Questo report è fence-exempt e viene aggiornato a ogni prompt.
 
 ---
 
-## LISTA JUDGMENT (da compilare al P7 — le decisioni che spettano a Davide)
+## LA LISTA JUDGMENT — rispondi dal telefono, una riga ciascuna
 
-*(placeholder: consolidata al P7 dalle domande aperte di 99k, 99l e dai finding JUDGMENT dell'audit P1)*
+*Consolidata da 99k, 99l e dall'audit P1 (v3-craft-audit.md, J-01…J-41). Ogni voce è una decisione: un vocale basta. Ordine = il giro del device tour.*
+
+**Oggi / rituale / timeline**
+1. (J-11) Il rituale compare a qualunque ora finché non decidi: gate a fascia mattutina?
+2. (J-10) I marker della timeline doppiano i pannelli sotto (Palestra, Pasti): ritiro il PANNELLO, il MARKER, o restano entrambi?
+3. (J-12) "Più avanti" nel rollover = +8 giorni fissi: giorno giusto o serve un mini-picker?
+4. (J-13) Chips stima 15'/30'/1h/1h30: i tagli giusti? (La PROP diceva 15/30/1h/2h.)
+5. (J-32) Il brief di Oggi appare un attimo dopo il load (una riga di CLS): riservo lo spazio o va bene il pop?
+6. (J-24) I link-testata delle card di Oggi ("Modulo", "Calendario") sono ~20px di tocco: estendo l'hit-area invisibile o il target vero è la card?
+7. (J-20) Raffica di +330ml acqua = raffica di toast: coalescing in un toast solo con Annulla cumulativo?
+
+**Palestra**
+8. (J-14) Attrezzatura: bilanciere default 20kg passo ±2,5, tagli 25…0,5 — combacia col TUO rack?
+9. (J-15) Il PR al set celebra solo il PESO (reps/volume a fine seduta): basta?
+10. (J-01) Le celle già loggate della griglia non hanno hover proprio (le ghost sì): gliene do uno (lift d'ombra)?
+11. (J-22) I grip di riordino (task, abitudini) sono alti 44 ma larghi 32px: allargo OVUNQUE a 44 (ruba ~12px ai titoli)?
+
+**Statistiche / Focus / Corpo**
+12. (J-16) Correlazioni: soglie 5 giorni/gruppo e finestra 60g — tarale coi dati veri.
+13. (J-17) "Il tuo mese", delta peso = prima→ultima pesata (la media mobile ora è su /corpo): confermi?
+14. (J-04) Il timer di /focus è 48px in font testo: lo porto sulla scala display (40 o 64, faccia Bricolage)? Cambia il volto del timer.
+15. (J-27) "Peso 30 g" (stats) e chip "7g/30g/90g" (corpo): "g" lì significa giorni ma legge grammi — passo a "gg"?
+16. (J-30) Trend di /corpo con UNA sola pesata: chart "pronta" ma vuota — marker a cerchio o empty state?
+
+**Dieta**
+17. (J-18) /dieta wide solo sul tab Piano: il salto di larghezza cambiando tab stona? (Fix: superficie intera wide, una riga.)
+18. (J-21) "Fatto" del pasto (e i CTA di Sera/Focus) sono il size sm 36px: promuovo i CTA touch-primari a 44?
+19. (J-31) Le celle della WeekGrid desktop flashano "0 kcal" mentre i pasti caricano: gate per-cella (più skeleton) o numero soppresso?
+20. Copia-giorno nella WeekGrid desktop: vuoi UNA affordance (menu di colonna)? Se sì la specifico e si fa.
+
+**Calendario / Task / Settimana**
+21. (J-26) Il submit del quick-add eventi non collassa a icona su mobile (il gemello task sì): allineo?
+22. (J-25) Chips Priorità/Ripeti a 36px accanto ai weekday a 44 nella stessa scheda: allineo a 44?
+23. (J-23) I chip del parser (quick-add) si dismissano a 32px: estendo l'hit (rischio overlap con l'input sopra)?
+24. (J-03) Radius micro fuori scala (barre storico 4px, heatmap 5px, kbd 4px): nasce un token micro-radius o restano eccezioni?
+
+**Esami / Spese**
+25. (J-02) La riga esame non ha hover (le righe spese sì): che forma gli do (bg pieno, inset)?
+26. (J-28) "Sotto pace" (badge pacing, lib legacy): rinomino "Sotto ritmo"?
+27. PROP-esami-03 (CTA sugli scaduti): la spec presume un campo VOTO che non esiste — il voto entra nel modello (schema) o il CTA diventa solo-data?
+
+**Sistema / tema / a11y (toccano token globali)**
+28. (J-07) `--em-text-3` è AA-marginale (4,38 su surface-2 dark; 4,15 su calce light — tab inattive): scurisco il token light e/o alzo il dark?
+29. (J-08) Il bottone destructive è bianco-su-segnale a 3,9:1: scurisco il rosso (nuovo token) o inchiostro scuro come il primary?
+30. (J-38) I badge ember-text-su-tinta in light sono 4,26:1: alleggerisco la tinta (14%→10%)?
+31. (J-40) I bordi di checkbox/radio/input sono ~1,6:1 (WCAG non-text chiede 3): rinforzo hairline-strong o nuovo token bordo-controllo?
+32. (J-39) I giorni fuori-mese del calendario sono cliccabili a ~2,2:1: tolgo l'opacity-60 (gerarchia più piatta) o resta l'idioma?
+33. (J-05) Due dialetti di chip selezionato (ring hairline@120ms vs ember@180ms): quale vince?
+34. (J-06) I toast con Annulla durano 5s: allungo il dwell degli azionabili?
+35. (J-09) La heatmap mensile è solo-colore per gli screen reader: aggiungo un riassunto testuale?
+36. (J-41) La BottomSheet non ha un bottone Chiudi visibile (solo drag/Esc/overlay): lo aggiungo nell'header come il Modal?
+37. (J-19) La larghezza wide 88rem sul TUO 1440p: respira o dispersiva?
+
+**Motion (il layer c'è, decidi le estensioni)**
+38. (J-33) Le uscite animate ora coprono sheet/modal/toast: le estendo ai POPOVER (select, picker, menu, palette)?
+39. (J-34) Restano a scatto: swap dei tab, theme switch, skeleton→contenuto, cambio mese: quali meritano un crossfade? (Rischio parata.)
+40. (J-35) Lo stack dei toast si ricompatta a scatto quando uno muore: animazione di layout (macchineria FLIP) o pazienza?
+41. (J-36 + em-pressable) I tre loop hardcoded (spinner 800ms, indeterminate 1.4s, shimmer 1.6s): token o costanti documentate? E `.em-pressable` (press-scale sui chip, spedita senza consumer): la applico?
 
 ---
 
@@ -209,3 +266,54 @@ Le clearance del reviewer sono state spot-verificate da chi scrive (3/3: gate de
 `.em-pressable` è spedita con ZERO consumer: la utility è il deliverable del mandato P2 ("press feedback on tappable rows/chips"); applicarla d'ufficio senza feedback dal device sarebbe stato il "parade risk" — resta disponibile, documentata, ~90 B di CSS. Se al device tour il press-feedback piace, l'applicazione è una classe per sito (voce in JUDGMENT list).
 
 **Commit:** `run-13/P6: adversarial review — zero violations, regression pass green`
+
+---
+
+## P7 · Docs + chiusura del run
+
+**Checkpoint finale a HEAD: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · **test 1043/1043, 83 file** ✓ · build fresca ✓ · smoke di produzione **16/16 probe 200** (porta chiusa per PID). Albero pulito, un commit per prompt (P3: sei, uno per gruppo; P4/P5: uno per item).
+
+### I docs consolidati
+
+- **`AGENTS.md`**: le cinque leggi v3 in voce di casa — residenza dei chunk (con la lista home-modules aggiornata a `corpo/logic` e i precedenti pr/recap-logic/trend), React.lazy + `.catch` + ever-mounted, il motion layer (token, gate property-based, `.em-hit`, accent-as-text), i token di larghezza, "committato ≠ mergiato".
+- **`17-activation-checklist.md`**: §0 migrazioni 0032→0033 IN ORDINE col runner + l'avviso AGGIORNA-TUTTI-I-DEVICE (LWW per-riga); §0b il login gate in tre mosse (Redirect URLs, `NEXT_PUBLIC_APP_URL` + redeploy, template OTP con `{{ .Token }}`); push invariato.
+- **`98-v3-cycle-summary.md`** (nuovo): il ciclo 10→13 raccontato coi numeri (862→1043 test), le leggi, e il backlog COMPLETO triage-ready — 41 JUDGMENT + 18 PROP senza schema + 10 PROP con schema + i residui tecnici.
+- **Questo report**: la lista JUDGMENT in TESTA, 41 decisioni a una riga in ordine di device tour.
+
+### La tabella dei chunk (baseline P0 → finale, build fresca a HEAD)
+
+| Chunk | Baseline | Finale | Δ | Nota |
+| --- | --- | --- | --- | --- |
+| **Oggi** `(app)/page` | 59.729 (18.687 gz) | **59.461 (18.601 gz)** | **−268** | **Tetto 60.000 MAI sfondato a fine prompt**; due incidenti intercettati dagli A/B (P4a +219 da corpo/logic → trend.ts; il ring TileLink rimosso). La casa ha PERSO peso facendo polish. |
+| Layout (app) | 30.434 (9.434 gz) | **31.211 (9.601 gz)** | **+777** | Budget ≤ +1.000 ✓ (bottone ⌘K + bus + catch-hardening). |
+| /gym | 103.393 (25.782 gz) | **93.674 (23.761 gz)** | **−9.719** | Split lazy A/B: equipment 3.851 + exercise-detail 8.492 in chunk on-demand. |
+| /stats | 25.096 (8.683 gz) | 25.141 (8.688 gz) | +45 | Fix P3 (frecce, useGrouping, token). |
+| /dieta | 58.503 (13.223 gz) | 59.027 (13.322 gz) | +524 | Gate skeleton header + fix P3 (min-h, plurali, casing). |
+| /calendar | 10.618 (4.323 gz) | 10.625 (4.331 gz) | +7 | Token -text + skeleton sheet (il grosso vive nei commons). |
+| Corpo palette (lazy) | 15.274 | 15.294 | +20 | Cap Recenti 40→64. |
+
+### Test (baseline → finale)
+
+1039/83 (P0) → 1039 (P1-P3: zero logica nuova, il polish è classi/markup/ARIA) → **1043/83** (P4a: trailingAvg7 ×3 + avgPath ×1). Golden intoccati.
+
+### Flags ui/ e token (il perimetro FLAGGED completo del run)
+
+`ui/ember.css` (ease-in, r-full, 4 keyframes -out, .em-hit, .em-pressable) · `ui/bottom-sheet.tsx` / `ui/modal.tsx` / `ui/toast.tsx` (macchine di chiusura; toast error→role=alert) · `ui/field.tsx` (aria-required) · `ui/command-palette.tsx` (aria-autocomplete) · `ui/calendar.tsx` (role=row; roving WeekStrip) · `ui/time-picker.tsx` / `ui/date-picker.tsx` (clear hoistato; roving colonne) · `ui/tabs.tsx` (prop label) · `ui/button.tsx` (opacity-0 in loading) · `ui/internal.tsx` (scroll-lock module-level). Tutto additivo, API invariate, showcase /dev intatto.
+
+### Delta consolidati del run (il dettaglio è al prompt di ciascuno)
+
+1. **P1**: la prima ondata di agenti audit ha FABBRICATO finding → protocollo quote-verbatim + verifica personale; due batch onesti tenuti, il resto rilanciato. Lezione a verbale in 98-summary.
+2. **P2**: zero durate nuove (ember.css ne aveva già quattro — il brief ne presupponeva due); niente utility di mount (nessuna applicazione SAFE esiste, J-34); eviction del 4° toast senza exit (raro, accettato); popover enter-only (J-33).
+3. **P3**: WeekdayChips con `.em-hit` invece della taglia diretta (7+1 chip in riga: a 44 visivi andrebbero a capo); l'input h-8 di habit-card senza `.em-hit` (pseudo-elementi non rendono sugli input); week-board:292 NON toccato (sta su surface: 4,83 passa — l'agente presumeva surface-2).
+4. **P4**: PROP-esami-03 fuori run (presume un campo voto mai esistito → prima la decisione di modello); copia-giorno desktop senza spec → JUDGMENT #20.
+5. **P5**: il boundary di classe condiviso costava +378 B su layout E home (modulo piccolo duplicato) e sfondava il budget layout di 123 B → `.catch` sulle factory per palette/rituale (~30 B), classe solo sui siti gym; console del browser non verificabile senza browser (limite dichiarato, statico pulito).
+6. **P6**: zero violazioni; `.em-pressable` senza consumer per scelta (J-41).
+
+### GATE DI DAVIDE (al ritorno dalla palestra)
+
+1. Verifica in chat → **merge**: `git merge --no-ff --no-edit feat/run-13` (P0: branch da `main` con run-12 dentro — questo merge porta solo run-13), push.
+2. Runner: **0032 poi 0033, in ordine** (checklist §0). Poi **aggiorna l'app su TUTTI i dispositivi** — tuoi e di Daniele (LWW per-riga).
+3. Chiudi il login gate (checklist §0b): Redirect URLs + `NEXT_PUBLIC_APP_URL` + template OTP.
+4. **IL DEVICE TOUR** — run 10-13 insieme, con la lista JUDGMENT qui sopra in mano: 41 voci, un vocale ciascuna. I fix che ne nascono sono Sonnet-sized, post-finestra.
+
+**Run 13 completo.** L'app che Davide ritrova: ogni overlay entra ED ESCE animato, ogni tap-target primario è a 44px senza che un pixel si sia mosso dove il disegno era compatto, i pill tornano pill (il token che mancava), ogni accento-testo regge l'AA in entrambi i temi, gli screen reader sentono lo stato "saltato" e riordinano gli esercizi con le frecce, cinque plurali e un genere non stonano più, /gym pesa 10 kB in meno con l'editor attrezzatura e la scheda esercizio caricati al gesto, /corpo ha la media mobile quieta, il rail ha il suo ⌘K, e un chunk che non arriva DEGRADA invece di abbattere la shell. Zero migrazioni, zero bump, zero dipendenze, zero decisioni di gusto rubate al device: sono tutte in 41 righe in testa a questo report — e la home, dopo tutto questo, pesa 268 byte MENO di com'era. `main` mai toccata.
