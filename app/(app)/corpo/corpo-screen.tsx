@@ -269,6 +269,18 @@ function TrendCard({ today }: { today: string }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
+              {/* PROP-corpo-01: la media mobile 7g, quieta sopra i grezzi. */}
+              {chart.avgPath !== null ? (
+                <polyline
+                  points={chart.avgPath}
+                  fill="none"
+                  stroke="var(--em-text-2)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.8"
+                />
+              ) : null}
             </svg>
           ) : null}
         </ChartFrame>

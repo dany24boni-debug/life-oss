@@ -5,6 +5,7 @@ import {
   formatBodyDelta,
   formatBodyKg,
   stepBodyWeight,
+  trailingAvg7,
 } from "./logic";
 
 function entry(date: string, weight_kg: number): BodyEntry {
@@ -62,5 +63,54 @@ describe("buildWeightChart", () => {
     );
     expect(flat!.path).toBe("3,20 97,20");
     expect(buildWeightChart([], 100, 40)).toBeNull();
+  });
+});
+
+describe("trailingAvg7 (PROP-corpo-01)", () => {
+  it("giorni consecutivi: media cumulativa della finestra", () => {
+    const avgs = trailingAvg7([
+      entry("2026-07-01", 80),
+      entry("2026-07-02", 82),
+      entry("2026-07-03", 84),
+    ]);
+    expect(avgs).toEqual([80, 81, 82]);
+  });
+
+  it("la finestra è di 7 giorni di CALENDARIO: l'ottavo giorno esce", () => {
+    const avgs = trailingAvg7([
+      entry("2026-07-01", 80), // il 2026-07-08 dista 7 giorni: fuori
+      entry("2026-07-07", 86), // dista 1: dentro
+      entry("2026-07-08", 88),
+    ]);
+    expect(avgs[0]).toBe(80);
+    expect(avgs[1]).toBe(83); // (80+86)/2
+    expect(avgs[2]).toBe(87); // (86+88)/2 — l'01 è fuori finestra
+  });
+
+  it("pesate rade (gap > 6 giorni): la media è il punto grezzo", () => {
+    const avgs = trailingAvg7([
+      entry("2026-07-01", 80),
+      entry("2026-07-20", 90),
+    ]);
+    expect(avgs).toEqual([80, 90]);
+  });
+
+  it("buildWeightChart: avgPath condivide la scala e resta nel range", () => {
+    const chart = buildWeightChart(
+      [
+        entry("2026-07-01", 83),
+        entry("2026-07-03", 82),
+        entry("2026-07-05", 82.5),
+      ],
+      100,
+      40,
+    );
+    expect(chart!.avgPath).not.toBeNull();
+    expect(chart!.avgPath!.split(" ")).toHaveLength(3);
+    // Primo punto: finestra = solo sé stesso → coincide col grezzo.
+    expect(chart!.avgPath!.split(" ")[0]).toBe(chart!.path.split(" ")[0]);
+    // Un solo punto: nessun segmento → null.
+    const single = buildWeightChart([entry("2026-07-01", 82)], 100, 40);
+    expect(single!.avgPath).toBeNull();
   });
 });
