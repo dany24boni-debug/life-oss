@@ -169,3 +169,59 @@ Riserve dichiarate (entrano SOLO se un titolare si rivela ambiguo alla lettura d
 8. **PROP-imp-01** — Impostazioni non "poppa" più: skeleton su Profilo, Giorni protetti e Push durante il caricamento (la riga Sync aveva già il fallback onesto).
 
 **Budget Oggi (item 7 tocca la home):** chunk `page-*.js` = **47.845 B raw (14.891 gzip)** — SOTTO il baseline 53.327 B: il P2 ha tolto dal grafo della home il percorso di creazione-sessione del tile (appRepos/useRouter via bottone), e con i TileLink il bilancio netto del run sulla home è **−5,5 kB raw**. Misura col metodo 99h/99i, stessa build dei test.
+
+---
+
+## P5 · Chiusura del run
+
+**Checkpoint finale a HEAD: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · **964/964, 76 file** ✓. **Smoke di produzione da ospite:** tutte le 14 superfici **200** + il deep link `/gym?scheda=x` **200**. Albero pulito, un commit per prompt (P4: uno per item).
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ ecc92b7) | 75 | **952** | — |
+| P1 (v3-proposals, solo docs) | 75 | 952 | — |
+| P2 (IA scheda-centrica) | 76 | **963** | +11 (card-history) |
+| P3 (width pass, solo classi/token) | 76 | 963 | — |
+| P4 (8 quick win) | 76 | **964** | +1 (laterRange) |
+
+### Budget e misure
+
+- **Oggi**: 53.327 B → **47.845 B raw** (16.056 → 14.891 gzip) — **−5,5 kB**, budget rispettato in negativo (motivazione al P4).
+- **/gym**: 86.172 → 96.163 B raw (+10 kB, la vista scheda del P2; nessun budget formale, registrato).
+- Golden test (`data/ids.test.ts`, importer): **mai toccati, verdi** — il run non ha sfiorato id derivati né schema (zero migrazioni, zero Dexie bump, zero dipendenze: `package.json` byte-identico).
+
+### v3-proposals.md — statistiche per il triage
+
+44 PROP (oggi 4 · task 5 · calendario 5 · palestra 6 · statistiche 4 · abitudini 5 · settimana 2 · focus 3 · dieta 5 · esami 3 · spese 3 · sera 2 · corpo 2 · impostazioni 2) + 8 CROSS + 12 WOW; **19 H-value**; flag: 10 `[schema]`, 0 `[primitive]`, 15 `[cross]`, 9 `[home]`. §4 propone 3 set per run-11 (A "Giornata guidata" ~6 prompt · B "Palestra pro + numeri" ~5 · C "I moduli si parlano" ~5-6), ognuno con al più una migrazione.
+
+**Quick win: 8 implementati, 0 saltati** (nessuna riserva usata): hab-01/oggi-03, task-02, spese-01, esami-01, gym-02, task-01, oggi-01, imp-01 — dettagli e delta al P4. Le riserve (focus-03 spacebar, stats-01 delta, diet-01 numero rimanente) restano PROP aperte per run-11.
+
+### Delta vs brief (riepilogo completo)
+
+1. **P2 — avvio allenamento 1→2 tap** ("Apri: Torso A" → "Logga oggi"): costo dichiarato della rotazione voluta; il CTA del tile cambia copy per onestà (il bersaglio è la card).
+2. **P2 — test a livello logico** (niente framework di render-testing nel repo, convenzione run-07): i cinque punti di acceptance coperti da pure functions testate + dev-check sui chunk serviti.
+3. **P3 — Dieta/Calendario/Spese/Esami NON allargate**: l'audit mostra contenuto non tabellare oggi (chip-nav, celle intrinseche, liste); il criterio del brief era "widen where tabular/board-like" — larghezza e layout arrivano insieme in run-11 (PROP-diet-05, PROP-cal-02), il token è pronto.
+4. **P4 — coda "prossima:" dei ricorrenti solo nelle liste task** (il check agenda non ha il Task intero; fence minima).
+5. **P4 — "Più avanti" come lista con data per riga** invece dei gruppi-mese della PROP: pattern `showDate` esistente, più onesto per task sparsi.
+
+### ui/ e token FLAGGED (per la review di Davide)
+
+- **Nessun primitive nuovo in `ui/`** (la griglia storica riusa il pattern sticky-column inline di progress-table).
+- **`ui/ember.css`**: token nuovi **`--em-page-max` (48rem)** e **`--em-page-wide` (88rem)** + recipe **`.em-main`** con `:has([data-page-width="wide"])` (P3). Fallback dichiarato: browser senza `:has` restano alla larghezza di lettura.
+
+### Domande aperte per il triage chat
+
+1. **"Apri: Torso A" vs 1-tap start**: se il tap in più sul flusso quotidiano pesa, l'alternativa è il deep link che apre la card CON la griglia già attiva quando esiste una sessione in corso (oggi la scelta è uniforme: sempre la card). Giudizio sul device.
+2. **Larghezza wide a 88rem**: verificare a occhio su schermo grande (1440/monitor esterno) se Settimana respira giusto o se serve un token intermedio.
+3. **Toast sul quick-log acqua**: 3 tap rapidi = 3 toast in coda (auto-dismiss 5s, pattern task). Se infastidisce, la variante è un toast coalescente — decidere dopo l'uso.
+4. **Triage run-11**: scegliere il set (§4 di v3-proposals) — la mia raccomandazione è A ("Giornata guidata"), è il salto di prodotto più visibile dopo questo run.
+
+### GATE DI DAVIDE (la sessione non tocca mai il vivo)
+
+1. Review del diff di `feat/run-10` (12 commit), poi `git merge --no-ff --no-edit feat/run-10`.
+2. Smoke sul device: la rotazione palestra (card → griglia storica → Logga oggi → colonna di oggi), la Settimana su desktop largo, gli 8 quick win (undo su acqua/agenda/spese/capitoli, "Ultima volta" nel set editor, "Più avanti" nei task, tile tappabili, skeleton Impostazioni).
+3. Triage di `v3-proposals.md` in chat → brief del run-11.
+
+**Run 10 completo.** La palestra ora si apre come l'Excel — le card delle schede con la loro storia per colonna, il log che parte da dentro la scheda; il desktop ha smesso di essere una strip da telefono dove i dati sono tabelle; quattordici superfici auditate con i tap contati sono diventate 44 proposte triage-abili; e otto tagli piccoli ma quotidiani (gli undo che mancavano, la zona morta dei task, i tile muti) sono già chiusi. Quattro check verdi a ogni checkpoint; ogni commit su verde; `main` mai toccata.
