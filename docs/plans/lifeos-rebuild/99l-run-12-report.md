@@ -117,3 +117,54 @@ Prima stesura: `weightPrCheck`/`weightPrSetIds` dentro `gym/logic.ts` → **Oggi
 `gym/plate-math.ts`(+test) · `gym/pr.ts`(+test) · `gym/equipment-editor.tsx` (nuovi) · `gym/session-grid.tsx` · `gym/scheda-view.tsx` (anchored). `gym/logic.ts` toccato e RIPRISTINATO byte-identico (il trasloco in pr.ts).
 
 **Commit:** `run-12/P2: palestra pro`
+
+---
+
+## P3 · I numeri — stats elevation + "Il tuo mese"
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1031/1031, 83 file** (+16: 9 correlazioni, 3 recap-logic, 3 selettori stats, 1 consumedByDay). **Smoke produzione:** `/stats` **200**, `/` **200**; nel chunk stats: "Il tuo mese" ✓ "I moduli si parlano" ✓ "Aderenza della settimana" ✓ "vs settimana scorsa" ✓ "Ancora pochi dati" ✓.
+
+### I selettori read-only (la fence li sancisce)
+
+- **StatsRepo** (+3, `data/local/stats.ts`, composti sulle tabelle come da convenzione del file): `habitCompletionByDay(from,to,tz)` (previste = nate entro il giorno, non ancora archiviate allora, nello schedule; completate = semantica di activityDays; **semplificazione dichiarata**: il target acqua usa il peso più recente, non quello storico) · `trainedDays` (giorni con sessione CONCLUSA) · `gymPrCountInRange` (il **gemello dichiarato** di `gym/pr.ts` ricalcolato sulle tabelle — il precedente è `gymVolumeInRange` che duplica il volume di logic.ts; cronologia per esercizio: giorno sessione → done_at → id).
+- **DietRepo** (+1): `consumedByDay(from,to)` = il loop di `dayDiet`+`dayExtras` — le STESSE regole di composizione, zero drift; solo giorni con un pasto mangiato o un extra.
+- **Hooks** (+4 wrapper): `useHabitCompletionByDay` · `useTrainedDays` · `useGymPrCount` · `useDietConsumedByDay`.
+
+### a · Correlazioni native (PROP-stats-03/CROSS-06 + il candidato dieta×peso del brief)
+
+`correlations.ts` (pure, +9 test): **confronti di MEDIE tra due gruppi di giorni** — mai p-value theater. Finestra: 60 giorni CONCLUSI (oggi escluso — un giorno a metà falserebbe le medie). Soglia onesta MIN_BUCKET=5 per gruppo (3 settimane per la carta settimanale); sotto → la carta dice "Ancora pochi dati: servono…", col requisito esplicito. Le quattro carte (`correlations-panel.tsx`, frame "I moduli si parlano"):
+1. **Allenamento × Abitudini** — % completamento nei giorni allenati vs no ("Nei giorni di allenamento completi il 18% di abitudini in più — su 42 giorni"); sotto 1 punto: frase onesta di parità.
+2. **Focus × Task** — media task chiusi nei giorni con ≥1 focus vs senza (i giorni a zero task contano come zero: trascinano le medie, onestamente).
+3. **Energia di Sera × Task** — serate 4–5 vs resto, unità "serate".
+4. **Dieta × Peso** — per SETTIMANE ISO qualificate (≥4 giorni loggati e ≥2 pesate): delta peso medio nelle settimane aderenti (±10% kcal per ≥70% dei giorni) vs le altre. Target = quello CORRENTE dal profilo (dichiarato: lo storico non si ricostruisce).
+Il legacy /insights resta CONGELATO: zero file toccati lì.
+
+### b · DeltaChip + la dieta visibile
+
+- **PROP-stats-01**: la prop `delta` di StatCard (il DeltaChip che "nessuno usava") è finalmente cablata — due StatCard nuove nella griglia alta di /stats: **"Task · settimana"** e **"Volume · settimana"** con chip `+13%`/`-25%` vs settimana scorsa (`deltaPct` pura: NIENTE chip quando il confronto è a zero — mai divisioni inventate). **Delta dichiarato:** niente export di `DeltaChip` dal barrel ui/ — la prima stesura lo esportava, poi REVERT: stat-card.tsx vive nel grafo della home e un export nuovo = byte sul chunk congelato; la prop di StatCard è l'API che la PROP stessa indica ("StatCard … con DeltaChip"). ui/ resta INTOCCATO.
+- **PROP-stats-02** (`diet-panel.tsx`, frame "Dieta"): giorni nel **±10% kcal** sui loggati della settimana corrente · **hit-rate proteine** (giorni ≥ target) · **trend peso 30 giorni** accanto (prima→ultima pesata). Target dal profilo+ultima pesata — le stesse derivazioni di /dieta e Sera; senza profilo il pannello lo dice invece di inventare.
+
+### c · "Il tuo mese" (WOW-03)
+
+`month-recap.tsx`: sezione in coda a /stats (lg: piena larghezza) — **mese navigabile** (← →, avanti disabilitato sul corrente; `monthShift` = aritmetica pura anno×12+mese, mai Date) con l'etichetta it-IT (`monthLabel`). Sei StatCard: **Palestra** (sessioni · volume · PR del mese, dal selettore nuovo) · **Abitudini** (% e fatte/previste) · **Focus** (formatMin) · **Task** (chiusi su totali) · **Peso** (prima→ultima pesata del mese, con segno; "—" sotto 2 pesate) · **Dieta** (giorni ±10% sui loggati; senza profilo: giorni loggati, dichiarando il perché). Mese vuoto → "Nessun dato in questo mese." Deterministico e guest-first per costruzione (soli selettori locali).
+
+### Il secondo leak sventato (la regola cardinale, di nuovo)
+
+Prima stesura: `monthShift`/`monthLabel`/`deltaPct` dentro `stats/logic.ts` → **Oggi 60.168 (+439)**: `today-tiles.tsx` importa `stats/logic` (weekBounds/fillDays/completionPercent per i tile) e gli export nuovi viaggiano col modulo (stessa meccanica del P2). Rimedio: **`stats/recap-logic.ts`** (modulo separato, docstring che spiega il perché), consumer solo /stats. Esito: **Oggi 59.729, hash byte-identico** ✓. Ora è pattern a verbale: *ogni export nuovo va in un modulo che la home non importa, e la lista dei moduli-home noti include `gym/logic`, `gym/card-history`, `stats/logic`.*
+
+### Budget
+
+- **Oggi: 59.729 B raw, hash `21696031733f0d65` — BYTE-IDENTICO.**
+- **/stats: 10.894 → 21.921 B raw (4.180 → 7.517 gz)** = +11.027 raw — l'intera elevazione (pannello dieta, 4 correlazioni, recap mensile, 2 StatCard con delta). Nessun budget formale, registrato.
+
+### Delta dichiarati
+
+1. PROP-corpo-01 (media mobile 7g sul trend di /corpo) è nel Set B di v3 §4 ma NON nominata dal brief run-12 (P0 delta #3) → **fuori run**, resta nel triage.
+2. La carta dieta×peso usa il target kcal CORRENTE per le settimane passate (ricostruire i target storici richiederebbe pesate-per-giorno che il modello non garantisce) — dichiarato nel docstring e qui.
+3. DeltaChip: niente export ui/ (sopra). Il chip vive dentro StatCard, dove già stava.
+
+### Fence
+
+`data/ports.ts` · `data/local/stats.ts` · `data/local/diet.ts` · `data/hooks.ts` (selettori read-only, sanciti dalla fence) + loro test · `stats/correlations.ts`(+test) · `stats/recap-logic.ts`(+test) · `stats/correlations-panel.tsx` · `stats/diet-panel.tsx` · `stats/month-recap.tsx` (nuovi) · `stats/stats-screen.tsx` · `stats/logic.ts` (netto: byte-identico al committed dopo il trasloco) · `stats/logic.test.ts` (import ripuliti).
+
+**Commit:** `run-12/P3: numeri + il tuo mese`

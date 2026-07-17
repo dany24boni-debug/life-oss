@@ -17,11 +17,16 @@ import {
   useSettings,
   useStreak,
 } from "@/data/hooks";
+import { shiftDay } from "@/data/streak";
 import { APP_TIME_ZONE } from "../_components/tasks/logic";
 import { useToday } from "../_components/tasks/screen-hooks";
 import { formatKg } from "../gym/logic";
 import { fillDays, monthBounds, weekBounds } from "./logic";
+import { deltaPct } from "./recap-logic";
+import { CorrelationsPanel } from "./correlations-panel";
+import { DietPanel } from "./diet-panel";
 import { MonthHeat } from "./month-heat";
+import { MonthRecap } from "./month-recap";
 import { WeekBars } from "./week-bars";
 
 export function StatsScreen() {
@@ -38,6 +43,14 @@ export function StatsScreen() {
   // Volume palestra della settimana (run-04 prompt 10): port reale.
   const gym = useGymVolume(week.from, week.to);
 
+  // Settimana scorsa (run-12, PROP-stats-01): il confronto dei chip.
+  const prevWeek = {
+    from: shiftDay(week.from, -7),
+    to: shiftDay(week.to, -7),
+  };
+  const prevWeekDays = useCompletionByDay(prevWeek.from, prevWeek.to);
+  const prevGym = useGymVolume(prevWeek.from, prevWeek.to);
+
   // Minuti di focus della settimana (run-08 prompt 5): registro vero.
   const focus = useFocusMinutesByDay(week.from, week.to);
   const focusToday =
@@ -47,6 +60,17 @@ export function StatsScreen() {
   const weekFilled =
     weekDays === undefined ? undefined : fillDays(weekDays, week.from, week.to);
   const weekHasTasks = (weekFilled ?? []).some((d) => d.total > 0);
+
+  const weekDone = (weekFilled ?? []).reduce((s, d) => s + d.done, 0);
+  const prevDone = (prevWeekDays ?? []).reduce((s, d) => s + d.done, 0);
+  const taskDelta =
+    weekDays === undefined || prevWeekDays === undefined
+      ? undefined
+      : deltaPct(weekDone, prevDone);
+  const volumeDelta =
+    gym === undefined || prevGym === undefined
+      ? undefined
+      : deltaPct(gym.totalVolumeKg, prevGym.totalVolumeKg);
 
   return (
     // Superficie "wide" (run-10 P3): da lg i riquadri vanno a due
@@ -96,6 +120,40 @@ export function StatsScreen() {
           value={streak?.best}
           unit={streak?.best === 1 ? "giorno" : "giorni"}
           hint="La catena più lunga di sempre."
+        />
+        {/* Run-12 (PROP-stats-01): DeltaChip finalmente usato — il
+            confronto onesto con la settimana scorsa, via prop di
+            StatCard; niente chip quando il confronto è a zero. */}
+        <StatCard
+          label="Task · settimana"
+          loading={weekDays === undefined}
+          value={weekDone}
+          unit={weekDone === 1 ? "chiuso" : "chiusi"}
+          delta={taskDelta}
+          hint={
+            taskDelta === undefined
+              ? "Nessun confronto: settimana scorsa a zero."
+              : "vs settimana scorsa"
+          }
+        />
+        <StatCard
+          label="Volume · settimana"
+          loading={gym === undefined}
+          value={
+            gym === undefined
+              ? undefined
+              : gym.sessions > 0
+                ? formatKg(gym.totalVolumeKg)
+                : "—"
+          }
+          delta={volumeDelta}
+          hint={
+            gym !== undefined && gym.sessions === 0
+              ? "Nessun allenamento."
+              : volumeDelta === undefined
+                ? "Nessun confronto: settimana scorsa a zero."
+                : "vs settimana scorsa"
+          }
         />
       </div>
 
@@ -203,6 +261,14 @@ export function StatsScreen() {
           </dl>
         ) : null}
       </ChartFrame>
+
+      {/* Run-12: la dieta diventa visibile alle statistiche
+          (PROP-stats-02) e i moduli si parlano (PROP-stats-03). */}
+      <DietPanel today={today} />
+      <CorrelationsPanel today={today} />
+
+      {/* Run-12 (WOW-03): il recap mensile, mesi passati navigabili. */}
+      <MonthRecap today={today} />
     </div>
   );
 }

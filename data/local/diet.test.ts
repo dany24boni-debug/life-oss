@@ -416,3 +416,27 @@ describe("LocalDietRepo — dayDiet", () => {
     expect(day.meals).toEqual([]);
   });
 });
+
+describe("LocalDietRepo — consumedByDay (run-12, /stats)", () => {
+  it("solo i giorni con pasti mangiati o extra; stessi totali della composizione", async () => {
+    const { meal, pasta } = await seedLunch();
+    // Lunedì: pranzo mangiato. Martedì: solo un extra. Mercoledì: nulla.
+    await must(repo.logMeal(meal.id, "2026-07-13", true));
+    await must(
+      repo.addExtra({ date: "2026-07-14", food_id: pasta.id, qty: 100 }),
+    );
+    // Lunedì successivo: pasto previsto ma NON mangiato → fuori.
+    await must(repo.logMeal(meal.id, "2026-07-20", false));
+
+    const days = await repo.consumedByDay("2026-07-13", "2026-07-20");
+    expect(days.map((d) => d.date)).toEqual(["2026-07-13", "2026-07-14"]);
+    // Pasta 80 g (353 kcal/100) = 282 + pollo 150 g (110) = 165 → 447;
+    // proteine 13,5·0,8 = 10,8 g (108 dg) + 23·1,5 = 34,5 g (345 dg).
+    expect(days[0]).toEqual({
+      date: "2026-07-13",
+      kcal: 447,
+      protein_dg: 453,
+    });
+    expect(days[1].kcal).toBe(353);
+  });
+});
