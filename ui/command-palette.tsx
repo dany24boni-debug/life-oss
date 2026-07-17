@@ -205,8 +205,17 @@ function PaletteBody({
               />
             ) : (
               grouped.map(([group, groupItems]) => (
-                <div key={group} className="mb-1">
-                  <p className="em-eyebrow px-2 pb-1 pt-2">{group}</p>
+                // role="group" + label: children of a listbox must be
+                // options or labelled groups (run-12 a11y pass).
+                <div
+                  key={group}
+                  role="group"
+                  aria-label={group}
+                  className="mb-1"
+                >
+                  <p aria-hidden="true" className="em-eyebrow px-2 pb-1 pt-2">
+                    {group}
+                  </p>
                   {groupItems.map((it) => {
                     const index = filtered.indexOf(it);
                     const isActive = index === activeIndex;

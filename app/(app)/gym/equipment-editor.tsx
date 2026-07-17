@@ -82,10 +82,15 @@ export function EquipmentEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="em-body-sm text-[var(--em-text-3)]">
-        Bilanciere e dischi che possiedi: il calcolatore mostra i dischi
-        per lato a ogni peso. Sincronizzato su tutti i dispositivi.
-      </p>
+      <div>
+        <p className="em-eyebrow text-[var(--em-ember-text)]">
+          Bilanciere e dischi
+        </p>
+        <p className="em-body-sm mt-1 text-[var(--em-text-3)]">
+          Il calcolatore mostra i dischi per lato a ogni peso, dai tagli
+          che possiedi. Sincronizzato su tutti i dispositivi.
+        </p>
+      </div>
 
       <div className="flex items-center justify-between gap-3">
         <span className="em-eyebrow">Bilanciere</span>

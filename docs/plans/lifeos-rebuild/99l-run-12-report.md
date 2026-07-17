@@ -243,3 +243,28 @@ Sotto le barre dell'header del giorno, la riga che la derivazione conosceva da s
 ### Budget a fine P5
 
 **Oggi: 59.729** ✓ (verificato dopo OGNI sub-item) · /dieta 52.271 → **58.503** (+6.232: griglia + riga) · /calendar 10.425 → **10.618** (+193).
+
+---
+
+## P6 · Polish + a11y delle superfici nuove
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file**. **Smoke produzione (porta chiusa per PID):** le 8 rotte del giro tutte **200** (/, /gym, /stats, /dieta, /calendar, /tasks, /sera, /settimana).
+
+1. **Il passaggio a11y dedicato alla palette** (la superficie più rischiosa del ciclo): i GRUPPI dentro il listbox erano `div` nudi — ora `role="group"` + `aria-label` col nome del gruppo e l'eyebrow `aria-hidden` (i figli di un listbox devono essere option o gruppi etichettati). Verificato il resto del contratto: focus trap sull'input ✓ (`useFocusTrap`), `combobox` + `aria-controls` + `aria-activedescendant` ✓, opzioni con id stabili e `aria-selected` ✓, Esc/frecce/Invio ✓, risultato vuoto = EmptyState onesto ✓. Da tastiera la palette si apre, naviga, committa e chiude senza mouse per costruzione.
+2. **Editor attrezzatura**: intestazione propria ("Bilanciere e dischi", eyebrow ember) — lo swap dentro lo sheet non lascia più il solo titolo della serie a raccontare il contesto.
+3. **Audit skeleton/empty/undo delle superfici nuove, esito**: micro-editor set → skeleton già in P2 (attesa storia) ✓ · plate line: nascosta finché settings carica (zero flicker) ✓ · equipment "Salva" con Annulla ✓ · palette "Logga acqua" con Annulla ✓ · StatCard di /stats e "Il tuo mese" → skeleton via prop `loading` ✓ · ChartFrame dieta/correlazioni → stati loading/empty/ready col perché ✓ · nav mese ← → con aria-label e disabled sul corrente ✓ · griglia dieta lg → skeleton dedicato + celle-bottone con testo visibile ✓ · calendario due pannelli → nessun elemento nuovo interattivo. Transizioni: ogni elemento nuovo usa i token di casa (`--em-dur-tap`/`--em-dur-control`) — audit a vista sul diff, nessuna fuori scala.
+4. **Micro-pulizie**: nessun'altra dentro le fence — il run non ha lasciato TODO.
+
+### La tabella dei chunk (before→after del run, build fresca a fine P6)
+
+| Chunk | Baseline P0 | Finale | Δ | Note |
+| --- | --- | --- | --- | --- |
+| **Oggi** `page-*` | 59.729 (18.689 gz) | **59.729 raw (18.687 gz)** | **0 raw** | **CONGELAMENTO PROVATO**: raw identico; 37 moduli, stesso set della baseline (hash diverso = soli id commons rinumerati, diagnosi a verbale P4). |
+| **Layout (app)** | 38.370 (11.989 gz) | **30.436 (9.433 gz)** | **−7.934** | Budget ≤ +2.500: rispettato con 10,4 kB di margine — le sorgenti palette sono uscite dal layout. |
+| Corpo palette (lazy) | — | **15.275 (6.098 gz)** | nuovo | Chunk dedicato, caricato alla prima ⌘K. |
+| /gym | 96.527 (23.927 gz) | **103.393 (25.736 gz)** | +6.866 | Plate calculator + editor attrezzatura + momento PR. |
+| /stats | 10.894 (4.180 gz) | **25.096 (8.683 gz)** | +14.202 | L'elevazione P3 (+11.027 misurati al P3) + ~3,2 kB di rimescolo commons post-P4 (moduli ui prima condivisi via layout, ora addebitati alla route — annotato per onestà). |
+| /dieta | 52.271 (11.503 gz) | **58.503 (13.223 gz)** | +6.232 | Griglia settimanale + riga "Restano". |
+| /calendar | 10.425 (4.270 gz) | **10.618 (4.322 gz)** | +193 | Due pannelli (solo classi + wrapper). |
+
+**Commit:** `run-12/P6: polish + a11y`
