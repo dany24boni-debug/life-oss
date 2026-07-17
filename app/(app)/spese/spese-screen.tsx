@@ -61,6 +61,7 @@ export function SpeseScreen({ authed }: { authed: boolean }) {
             size="sm"
             aria-label="Mese precedente"
             onClick={() => setMonth((m) => shiftMonth(m, -1))}
+            className="min-h-11 min-w-11"
           >
             ‹
           </Button>
@@ -73,6 +74,7 @@ export function SpeseScreen({ authed }: { authed: boolean }) {
             size="sm"
             aria-label="Mese successivo"
             onClick={() => setMonth((m) => shiftMonth(m, 1))}
+            className="min-h-11 min-w-11"
           >
             ›
           </Button>
@@ -104,7 +106,7 @@ export function SpeseScreen({ authed }: { authed: boolean }) {
                   </span>
                 </div>
                 <div
-                  className="mt-1 h-1.5 w-full overflow-hidden rounded-[var(--em-r-full)] bg-[var(--em-surface-2)]"
+                  className="mt-1 h-1.5 w-full overflow-hidden rounded-[var(--em-r-full)] bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)]"
                   aria-hidden="true"
                 >
                   <div

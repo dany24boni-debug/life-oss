@@ -41,7 +41,9 @@ export function SpeseImportButton({ compact }: { compact?: boolean }) {
         message:
           summary.expenses === 0
             ? "Già tutto importato: nessuna spesa nuova."
-            : `Importate ${summary.expenses} spese dalla vecchia pagina.`,
+            : summary.expenses === 1
+              ? "Importata 1 spesa dalla vecchia pagina."
+              : `Importate ${summary.expenses} spese dalla vecchia pagina.`,
         tone: summary.expenses === 0 ? "neutral" : "success",
         durationMs: 7000,
       });
