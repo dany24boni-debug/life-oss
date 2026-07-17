@@ -174,3 +174,16 @@ Delta: (1) il marker dieta è "Pasti · N di M" (stato del giorno) — la "varia
 **Nota di processo (il digest fantasma):** il primo smoke di /sera mostrava un error-digest SSR con fallback allo skeleton — non era il codice: era la build rigenerata SOTTO un `next start` sopravvissuto (manifest disallineati al volo). Con la sequenza onesta (kill per PID → build → start → curl) l'SSR è pulito e stabile su due probe consecutivi. Gli smoke del run da qui in poi usano lo script `probe` con questa sequenza.
 
 **Commit:** `run-11/P4: evening shutdown + sera recap`
+
+---
+
+## P5 · I moduli si parlano — fence dichiarate PRIMA di editare
+
+| Item | Fence |
+| --- | --- |
+| a · Settimana→Palestra (CROSS-01 fase 1) | `settimana/logic.ts`(+test: euristica pura) · `settimana/week-board.tsx` (prop opzionale su WeekBoard/SlotRow) · `settimana/settimana-screen.tsx` (resolver dai giorni-scheda) |
+| b · Dieta×allenamento (CROSS-02) | `dieta/logic.ts`(+test: `isTrainingDay` pura) · `dieta/oggi-tab.tsx` (chip giorno-allenamento + proposta variante, un tap, undo) · l'editor varianti nel builder Piano (toggle "allenamento") · eventuale selettore read-only |
+| c · Brief più intelligente (CROSS-03) | `data/brief.ts`(+`data/brief.test.ts`) · `_components/today-brief.tsx` (fonti nuove: stamp rituale, variante del giorno, arretrati) |
+| d · Esami su Oggi (PROP-oggi-04/CROSS-08) | `_components/today-tiles.tsx` (tile condizionale "Esami" ≤14 giorni, riuso `computePacing`) — S-effort come da conferma PROP |
+
+Misura del chunk Oggi dopo c e d (regola del brief).

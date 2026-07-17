@@ -140,3 +140,29 @@ export function nextStateOnLong(
 ): "skipped" | null {
   return state === "skipped" ? null : "skipped";
 }
+
+/* ── Lo slot "Palestra" conosce la scheda (run-11 P5a, CROSS-01) ─────── */
+
+/** Fase 1, euristica sul titolo: niente schema, niente magia. */
+export const GYM_SLOT_RE = /\b(palestra|gym|allenamento|workout)\b/i;
+
+/**
+ * Il giorno-scheda da mostrare accanto a uno slot palestra: quello col
+ * weekday impostato uguale al giorno dello slot, altrimenti il
+ * suggerito della rotazione (next-up). Titolo non-palestra o nessun
+ * giorno: null — lo slot resta uno slot.
+ */
+export function gymDayForSlot(
+  title: string,
+  weekday: number,
+  days: ReadonlyArray<{ id: string; name: string; weekday: number | null }>,
+  nextUpId: string | null,
+): { id: string; name: string } | null {
+  if (!GYM_SLOT_RE.test(title)) return null;
+  const byWeekday = days.find((d) => d.weekday === weekday);
+  if (byWeekday !== undefined) {
+    return { id: byWeekday.id, name: byWeekday.name };
+  }
+  const next = days.find((d) => d.id === nextUpId);
+  return next !== undefined ? { id: next.id, name: next.name } : null;
+}
