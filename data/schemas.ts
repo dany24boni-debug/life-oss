@@ -1193,6 +1193,29 @@ export type Sex = z.infer<typeof SexSchema>;
 export const ActivityLevelSchema = z.number().int().min(1).max(5);
 
 /**
+ * Un taglio di disco posseduto (run-12, PROP-gym-03): peso del singolo
+ * disco e quanti in TOTALE — il calcolatore usa le coppie, floor(n/2)
+ * per lato.
+ */
+export const GymPlateSchema = z.object({
+  kg: z.number().positive().max(100),
+  n: z.number().int().min(1).max(40),
+});
+export type GymPlate = z.infer<typeof GymPlateSchema>;
+
+/**
+ * Dischi posseduti: tagli UNICI per costruzione (il repo li ordina per
+ * kg decrescente alla scrittura — chi legge non deve difendersi).
+ */
+const GymPlatesSchema = z
+  .array(GymPlateSchema)
+  .max(24)
+  .refine(
+    (plates) => new Set(plates.map((p) => p.kg)).size === plates.length,
+    { message: "tagli di disco duplicati" },
+  );
+
+/**
  * Riga singola con id fisso "local". Il tema di default è "dark" (D5:
  * entrambi i temi esistono dai token, il dark resta il default).
  *
@@ -1205,6 +1228,10 @@ export const ActivityLevelSchema = z.number().int().min(1).max(5);
  * attività — servono SOLO alle stime derivate (acqua, calorie,
  * data/derived.ts). `.default(null)` sullo schema entità: le righe
  * scritte prima del run-07 passano il parse del sync senza scarti.
+ *
+ * Attrezzatura palestra (run-12, PROP-gym-03): bilanciere + dischi per il
+ * plate calculator. Sincronizzata (0033): i dischi sono della palestra,
+ * non del dispositivo. Stesso `.default(null)`.
  */
 export const SettingsSchema = z.object({
   id: z.literal("local"),
@@ -1215,6 +1242,8 @@ export const SettingsSchema = z.object({
   sex: SexSchema.nullable().default(null),
   birth_year: z.number().int().min(1900).max(2100).nullable().default(null),
   activity_level: ActivityLevelSchema.nullable().default(null),
+  gym_bar_kg: z.number().min(1).max(100).nullable().default(null),
+  gym_plates: GymPlatesSchema.nullable().default(null),
   ...audit,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -1228,6 +1257,8 @@ export const SettingsPatchSchema = z
     sex: SexSchema.nullable(),
     birth_year: z.number().int().min(1900).max(2100).nullable(),
     activity_level: ActivityLevelSchema.nullable(),
+    gym_bar_kg: z.number().min(1).max(100).nullable(),
+    gym_plates: GymPlatesSchema.nullable(),
   })
   .partial();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

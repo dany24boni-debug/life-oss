@@ -28,6 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sex: null,
   birth_year: null,
   activity_level: null,
+  gym_bar_kg: null,
+  gym_plates: null,
   created_at: EPOCH,
   updated_at: EPOCH,
   deleted_at: null,
@@ -70,6 +72,17 @@ export class LocalSettingsRepo implements SettingsRepo {
         }),
         ...(v.data.activity_level !== undefined && {
           activity_level: v.data.activity_level,
+        }),
+        ...(v.data.gym_bar_kg !== undefined && {
+          gym_bar_kg: v.data.gym_bar_kg,
+        }),
+        ...(v.data.gym_plates !== undefined && {
+          // Tagli ordinati per kg decrescente per costruzione (i
+          // duplicati li rifiuta lo schema): calcolatore e UI non devono
+          // ri-ordinare.
+          gym_plates: v.data.gym_plates
+            ? [...v.data.gym_plates].sort((a, b) => b.kg - a.kg)
+            : null,
         }),
         created_at: current.created_at === EPOCH ? now : current.created_at,
         updated_at: now,

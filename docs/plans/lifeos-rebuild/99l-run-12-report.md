@@ -45,3 +45,38 @@ Questo report è fence-exempt e viene aggiornato a ogni prompt.
 Pre-flight PASS.
 
 **Commit:** `run-12/P0: preflight + baseline`
+
+---
+
+## P1 · Schema decision (+0033)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1003/1003, 78 file** (+5: sopravvivenza/normalizzazione/domini attrezzatura).
+
+### L'enumerazione (cosa deve PERSISTERE perché il Set B esista)
+
+| Bisogno | Decisione | Schema? |
+| --- | --- | --- |
+| **Profilo bilanciere+dischi** (P2a, PROP-gym-03/WOW-01) | **Colonne nullable sulla riga profilo GIÀ sincronizzata** (`lo_settings`, il pattern 0025 di height_cm/sex): `gym_bar_kg numeric` + `gym_plates jsonb` (`[{kg, n}]`, n = dischi totali del taglio; il calcolatore usa floor(n/2) per lato). I dischi sono una proprietà della PALESTRA, non del telefono: si configurano dal desktop, si usano sotto al bilanciere dal telefono — e la domanda aperta 99k sullo stamp per-dispositivo ammonisce esattamente contro il localStorage per dati veri. | **SÌ — column-only, 0033** |
+| **"Il tuo mese"** (P3c, WOW-03) | Derivato al 100% dai selettori per-range esistenti (sessioni, volume, PR, abitudini, focus, task, peso, dieta). | NO |
+| **Correlazioni native** (P3a, PROP-stats-03) | Derivate; SOLO dati che il modello corrente persiste (legge di dominio del brief). | NO |
+| **PR al set** (P2b, PROP-gym-04/WOW-02) | Derivato: la storia dell'esercizio è già in mano al micro-editor (prefill run-07/10). | NO |
+| **Command palette** (P4, WOW-07) | Navigazione + azioni esistenti con undo; niente "recenti" persistiti (non nel brief → eventuale PROP futura). | NO |
+| **Layout desktop** (P5) | Solo CSS/layout. | NO |
+
+### Il percorso scelto: column-only su lo_settings, ZERO bump Dexie
+
+- **`supabase/migrations/0033_gym_equipment_profile.sql`** (SCRITTA, MAI applicata, idempotente, dopo 0032): due `add column if not exists` su `lo_settings` (`gym_bar_kg numeric` con check 1..100, `gym_plates jsonb` nudo — il contratto del contenuto è dello zod client, pattern protected_days), commenti di colonna, `notify pgrst`. **Niente ridichiarazione `lo_push`** (0029 resta finale a 28 tabelle — stessa motivazione documentata in 0032: SET dinamico da information_schema + `jsonb_populate_recordset` ignora le chiavi non-colonna, finestra deploy→apply sicura).
+- **DELTA dichiarato (Dexie): NESSUN v13.** Il cerimoniale del brief prevede "column-only = 0033 + Dexie v13 + survival test", ma per Settings vale il **precedente v7 documentato in `data/db.ts`**: "i campi profilo nuovi di Settings NON richiedono migrazione (il repo fonde i default alla lettura, lo schema li materializza al parse — pattern di protected_days)". `LocalSettingsRepo.get()` fa `{...DEFAULT_SETTINGS, ...row}` (righe vecchie tornano complete), il sync parse con `.default(null)` (righe vecchie pushano/pullano complete), `update()` riscrive la riga intera. Un upgrade v13 di solo-backfill sarebbe cerimonia morta per QUESTA tabella. La garanzia zero-perdita è provata comunque: **test di sopravvivenza nel repo** (riga scritta in forma pre-run-12 → get() completa coi null, update dei campi nuovi preserva ogni campo esistente). "At most one bump" del brief = zero bump usati.
+- **Zod** (`data/schemas.ts`): `GymPlateSchema {kg: positive ≤100, n: int 1..40}` esportato (il P2 lo consuma); `GymPlatesSchema` array ≤24 con refine tagli-unici (i duplicati si RIFIUTANO invece di fonderli: fondere sommando n potrebbe sfondare il dominio validato); `SettingsSchema.gym_bar_kg` 1..100 nullable `.default(null)`, `gym_plates` nullable `.default(null)` + stessi campi in `SettingsPatchSchema`.
+- **Repo** (`data/local/settings.ts`): `DEFAULT_SETTINGS` completa coi due null; `update()` patcha i campi nuovi e **ordina i dischi per kg decrescente alla scrittura** (il pattern protected_days: chi legge non deve difendersi); `gym_plates: null` azzera il profilo.
+- **Niente entità nuove, niente id derivati** → zero prefissi, zero golden nuovi (legge rispettata per assenza di caso).
+
+### Delta vs PROP dichiarato
+
+PROP-gym-03 diceva "profilo per-dispositivo, localStorage come il chime"; il brief P1 lo colloca invece sulla riga profilo sincronizzata ("natural home"). Il brief vince su scope e invarianti (regola dichiarata in testa al brief) — e il prodotto ci guadagna: profilo configurato una volta, disponibile su ogni device, guest-first comunque (la riga settings vive in Dexie anche da ospiti).
+
+### Fence
+
+`data/schemas.ts` · `data/local/settings.ts` · `supabase/migrations/0033_*` · `data/schemas.test.ts` · `data/local/settings.test.ts`. Nessun altro file toccato; `data/db.ts` NON toccato (nessun bump — v12 resta l'ultima versione).
+
+**Commit:** `run-12/P1: schema decision (+0033)`
