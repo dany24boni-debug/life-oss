@@ -207,3 +207,39 @@ La palette NON andava inventata: `ui/command-palette.tsx` (shell con ARIA combob
 `_components/palette/**` (nuovi: matcher, sources, palette-body + test) · `_components/comfort-host.tsx` (riscritto shell) · `ui/command-palette.tsx` (prop `rank`, FLAGGED). Montaggio nel layout: INVARIATO (`<ComfortHost />` com'era).
 
 **Commit:** `run-12/P4: command palette`
+
+---
+
+## P5 · I layout desktop rimandati (un commit per sub-item)
+
+**Checkpoint (a fine P5): VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file** (nessuna logica pura nuova: layout e composizione di derivazioni già golden). **Smoke produzione:** `/dieta` **200** · `/calendar` **200**; "Piano della settimana" e "Restano " nel chunk di /dieta.
+
+### a · Dieta — griglia settimanale a lg+ (PROP-diet-05)
+
+**Fence dichiarata:** `dieta/piano-tab.tsx` · `dieta/dieta-screen.tsx`.
+
+- **`WeekGrid`** nel builder: da lg i 7 giorni AFFIANCATI (colonne L→D) — per colonna: conteggio pasti, celle pasto compatte (nome + kcal base vive, tap = la stessa scheda pasto di sempre), somma kcal del giorno in coda (la ricorsione-di-hook di casa, resa compatta), "+" per aggiungere un pasto DI QUEL giorno. Il flusso mobile (chips giorno + lista + "Pasto di lunedì" + copia-giorno) è INTATTO dentro un wrapper `lg:hidden`; la griglia è `hidden lg:grid`. `addMeal` ora prende il giorno come parametro (la griglia aggiunge in qualunque colonna).
+- **`data-page-width="wide"` CONDIZIONALE sul tab Piano** (`dieta-screen.tsx`): il meccanismo run-10 è un `:has()` sul main — l'attributo si accende solo quando la larghezza viene SPESA (la griglia); Oggi e Alimenti restano alla misura di lettura. È la lettura fedele di "width and layout together"; delta dichiarato rispetto alla lettera "the surface flips" (superficie intera).
+- **Delta dichiarato:** il controllo "Copia giorno su…" resta nel flusso mobile (nella griglia, 7 controlli ripetuti sarebbero rumore; su desktop la copia si fa restringendo o dal telefono) — asimmetria annotata per il triage.
+
+*Commit `6b9a32f` — `run-12/P5: dieta weekly grid (PROP-diet-05)`. /dieta: 52.271 → 58.104 B.*
+
+### b · Calendario — due pannelli a lg+ (PROP-cal-02)
+
+**Fence dichiarata:** `calendar/calendar-screen.tsx`.
+
+Da lg la superficie è `grid-cols-2`: **mese + quick-add a sinistra, agenda del giorno a destra** (`lg:row-span-2` — il "peek" dei prodotti craft), import legacy + blocco Google sotto il mese; `data-page-width="wide"` sull'intera superficie (vista unica). Su mobile TRE wrapper flex identici alla pila di prima — ordine e spaziatura invariati; il wrapper import+Google esiste solo per autenticati (niente div vuoto = niente gap fantasma per gli ospiti). Le sheet (evento/task) restano fuori griglia (portali).
+
+*Commit `c2b67cb` — `run-12/P5: calendar two-panel desktop (PROP-cal-02)`. /calendar: 10.425 → 10.618 B.*
+
+### c · Dieta — "ne restano N" nell'header (PROP-diet-01)
+
+**Fence dichiarata:** `dieta/oggi-tab.tsx`.
+
+Sotto le barre dell'header del giorno, la riga che la derivazione conosceva da sempre e /dieta non mostrava: **"Restano 1.120 kcal · 52 g proteine"** — stessa pura (`remainingVsTarget`) e stessi formatter (`formatInt`, `formatGramsFromDg`) della riga di Sera (P4 run-11). Casi onesti: kcal sopra il target → "180 kcal oltre"; proteine raggiunte → "proteine a obiettivo"; senza obiettivi la riga non esiste (resta il suggerimento profilo di sempre).
+
+*Commit: `run-12/P5: dieta remaining line (PROP-diet-01)`. /dieta: 58.104 → 58.503 B.*
+
+### Budget a fine P5
+
+**Oggi: 59.729** ✓ (verificato dopo OGNI sub-item) · /dieta 52.271 → **58.503** (+6.232: griglia + riga) · /calendar 10.425 → **10.618** (+193).
