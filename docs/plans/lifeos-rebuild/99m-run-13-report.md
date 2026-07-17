@@ -53,3 +53,26 @@ Questo report è fence-exempt e viene aggiornato a ogni prompt.
 Pre-flight PASS.
 
 **Commit:** `run-13/P0: preflight + baseline`
+
+---
+
+## P1 · The Grand Audit
+
+**Fence rispettata:** solo `v3-craft-audit.md` + questo report; **zero file sorgente toccati** (tutto il lavoro è stato lettura/grep). **Checkpoint:** doc committato (nessun codice cambiato → niente build/test da rifare; la baseline P0 resta il verde di riferimento).
+
+### Il dispositivo (e l'incidente di processo che vale il verbale)
+
+Sette agenti paralleli come da brief (5 di superficie + contratto a11y + inventario motion). **La prima ondata (agenti Explore) ha FABBRICATO finding**: file inesistenti (`exam-sheet.tsx`, `impostazioni-screen.tsx`), righe citate che non contengono ciò che si afferma, difetti smentiti dal sorgente (chip "senza transizione" che ce l'hanno on-token, stepper "senza disabled" che ce l'ha ai bound). Su 10 finding spot-verificati del primo batch, **1 reale**. Protocollo adottato: (1) ogni batch si accetta solo dopo verifica grep/sed delle righe citate, fatta da chi scrive; (2) tutti gli audit rilanciati come agenti general-purpose con obbligo di **quote verbatim** per finding ("un finding senza quote è invalido"); (3) in parallelo, le dimensioni oggettivamente greppabili (font sub-12px, outline soppressi, durate hardcoded, colori crudi, onClick non focusabili, plurali template) le ho spazzate IO con grep deterministici, come rete di controllo. Esito: i batch general-purpose hanno retto la verifica (campioni 5/5 per batch); due batch della prima ondata (task/cal/sett e gym/stats/focus, più il motion) erano comunque onesti e sono stati tenuti DOPO verifica. **Lezione per i run futuri: gli audit si fanno con agenti che leggono i file per intero e citano verbatim; Explore serve a LOCALIZZARE, non a giudicare.**
+
+### I numeri dell'audit
+
+`v3-craft-audit.md`: **4 famiglie sistemiche** (F1 token `--em-r-full` inesistente → pill quadrati in 8 siti; F2 palette cruda come testo → parità light/AA in ~14 siti; F3 tap target sotto 44px → ~25 siti con due rimedi, taglia diretta o utility `.em-hit`; F4 pop-in senza skeleton → 6 siti) + **~30 finding puntuali SAFE** (tra cui 3 bug veri: "fatta · fatta" nel recap Sera, i Recenti della palette che scartano gli id delle schede gym, lo scroll-lock che resta bloccato su chiusura fuori ordine) + **41 voci JUDGMENT** (J-01…J-41, incluse le ereditate 99k/99l) che il P7 consolida nella lista per Davide. Copy oggettivamente sbagliata a verbale: 5 plurali rotti ("Importati 1 esami", "1 pasti copiati", "1 slot copiati", "Importate 1 spese", "Importate 1 righe"), il genere di "task" incoerente (Fatte/Fatti nello stesso file), tre "lun -> dom" ASCII, cinque etichette minuscole ("annulla"/"cambia"/"‹ ricerca").
+
+### Le scoperte strutturali (input diretto di P2)
+
+1. **Il gap motion è l'USCITA**: dentro `(app)`+`ui` la disciplina è quasi perfetta (175 transizioni on-token, zero `transition` nudi) ma ogni overlay smonta a scatto (sheet/modal/toast/popover) — enter animato, exit istantaneo.
+2. **ember.css ha GIÀ quattro durate** (tap/control/card/screen — il brief ne presupponeva due): P2 non aggiunge durate, aggiunge l'easing d'uscita mancante (`--em-ease-in`), i keyframes -out, la macchina di chiusura e le utility.
+3. **Due gate reduced-motion coesistono** (Ember scoped + globale legacy in globals.css): i portali ri-applicano `.em-scope`, nessuna animazione JS-driven sfugge; il gate Ember clampa per proprietà, quindi copre automaticamente ogni keyframe nuovo di P2.
+4. **em-dot--live**: 14 usi censiti, tutti "vivo/adesso" o conferma — niente da unificare, niente da ritirare.
+
+**Commit:** `run-13/P1: craft audit`
