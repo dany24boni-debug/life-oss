@@ -17,6 +17,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Modal } from "@/ui";
+import { onPaletteRequest } from "./palette-bus";
 import { requestQuickAdd } from "./quick-add-bus";
 import { bootTheme } from "./theme";
 
@@ -53,6 +54,10 @@ export function ComfortHost() {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Il bottone ⌘K sul rail (run-13 P4b) chiede l'apertura via bus — lo
+  // stato e il corpo lazy restano qui.
+  useEffect(() => onPaletteRequest(() => setPaletteOpen(true)), []);
 
   // Tema per-dispositivo: boot una volta (lo script inline del layout ha
   // già stampato l'attributo prima del paint; qui parte il listener).
