@@ -43,7 +43,7 @@ export function WhileAwayCard() {
           <button
             type="button"
             onClick={() => void dismiss(items.map((i) => i.reminder.id))}
-            className="em-body-sm text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+            className="em-body-sm inline-flex min-h-[var(--em-tap-min)] items-center text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
           >
             Segna tutti letti
           </button>
@@ -64,7 +64,7 @@ export function WhileAwayCard() {
             <button
               type="button"
               onClick={() => void dismiss([reminder.id])}
-              className="em-body-sm shrink-0 rounded-[var(--em-r-sm)] px-2.5 py-1.5 font-semibold text-[var(--em-ember-text)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[var(--em-ember-tint)]"
+              className="em-body-sm min-h-[var(--em-tap-min)] shrink-0 rounded-[var(--em-r-sm)] px-2.5 font-semibold text-[var(--em-ember-text)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[var(--em-ember-tint)]"
             >
               Ok
             </button>

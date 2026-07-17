@@ -199,7 +199,6 @@ export function InstallTodayCard() {
       <div className="mt-3 flex items-center gap-2">
         <Button
           type="button"
-          size="sm"
           onClick={() => {
             if (snap.canPrompt) void promptInstall();
             else setSheetOpen(true);
@@ -207,7 +206,7 @@ export function InstallTodayCard() {
         >
           Installa LifeOS
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={dismissForever}>
+        <Button type="button" variant="ghost" onClick={dismissForever}>
           Non ora
         </Button>
       </div>

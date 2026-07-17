@@ -86,7 +86,7 @@ export function SeraRecap({ today }: { today: IsoDay }) {
               ? gymCardHref(doneGym.program_day_id)
               : undefined
           }
-          done={doneGym !== undefined}
+          done={doneGym !== undefined && doneDay?.name !== undefined}
         />
       </dl>
       <DietLine today={today} />

@@ -383,7 +383,7 @@ function DriveBlock({
         Life-OS/Diario/):{" "}
         <Link
           href="/calendar"
-          className="underline decoration-[var(--em-hairline-strong)] underline-offset-4"
+          className="underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
         >
           collega Google dal Calendario
         </Link>{" "}
