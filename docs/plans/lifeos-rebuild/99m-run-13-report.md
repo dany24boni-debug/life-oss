@@ -191,3 +191,21 @@ Statico: **zero `console.log/warn/info` nei percorsi felici** di (app)/ui/lib/da
 `/offline` prerender ✓ (probe 200); `public/sw.js`: runtime caching con navigazioni network-first→cache→/offline, `/_next/static` cache-first (i chunk lazy nuovi vi rientrano dopo il primo fetch) e la **landmine del redirect presidiata** (`fresh.ok && !fresh.redirected`, riga 149). Le superfici nuove leggono da Dexie via gli stessi hook delle vecchie: offline-by-construction una volta servito il bundle.
 
 **Commit:** `run-13/P5: gym route split — equipment editor + exercise detail lazy (−10.8 kB, A/B)` + `run-13/P5: hardening — lazy failure degrades, not crashes`
+
+---
+
+## P6 · The Adversarial Review — occhi freschi sull'intero diff
+
+**Checkpoint di regressione: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · test **1043/1043, 83 file** ✓ · smoke di produzione **16/16 probe 200** (P5, riconfermato dallo stato del tree) · **15/15 stringhe-chiave dei run 10–12 presenti nei chunk serviti** ("Pianifica la giornata", "La tua giornata", "Prepara domani", "Per lato", "Imposta bilanciere", "record personale", "Attrezzatura salvata", "Il tuo mese", "I moduli si parlano", "Restano", "Apri scheda:", "Logga acqua", "Ultima volta", "Cerca e comandi", "Più vicino" — quest'ultima con caveat di metodo a verbale: i minificati escapano gli accenti (`Pi\xf9`), i dev-check futuri greppino il suffisso non accentato).
+
+### L'esito del reviewer indipendente (contesto fresco, diff `main..feat/run-13`, 70 file)
+
+**ZERO violazioni sopravvissute alla verifica**, su tutte le otto leggi: Ember fidelity (unico literal aggiunto: `rounded-[4px]` sul kbd del rail = idioma preesistente del kbd palette, citati entrambi) · reduced-motion (tutti i keyframes nuovi sotto il gate property-based; i fallback a 400ms sono state-ops, non moto) · no-IA/no-content (ogni cambio di copy del diff auditato uno-a-uno: solo errori oggettivi) · budget/residency (nessun export nuovo nei moduli-home; corpo/logic ne ha PERSI — la direzione giusta) · contratto a11y sui punti più rischiosi (querySelector della griglia attraversa i wrapper role=row ✓ · geometria del clear hoistato ricalcolata ✓ · roving con tab-stop garantito ✓ · trap rilasciate prima dell'exit ✓) · zero JUDGMENT decisi (verificati uno-a-uno: timer text-5xl, dialetti chip, month-heat 5px, theme snap, tabs swap, prima→ultima del mese, chart a un punto, hover riga esami, grip w-8 — tutti INTATTI) · macchine P2/P5 (toggle rapido open/close sano; interval del toast fermo su leaving; onDone idempotente; gate render-phase senza loop; cast dei .catch strutturalmente validi) · test integri (goldens intoccati; l'unico *.test.ts nel diff è corpo, +4 senza assertion rimosse).
+
+Le clearance del reviewer sono state spot-verificate da chi scrive (3/3: gate del toast a :101, data-day della griglia a :72/:184, censimento em-pressable).
+
+### L'osservazione registrata
+
+`.em-pressable` è spedita con ZERO consumer: la utility è il deliverable del mandato P2 ("press feedback on tappable rows/chips"); applicarla d'ufficio senza feedback dal device sarebbe stato il "parade risk" — resta disponibile, documentata, ~90 B di CSS. Se al device tour il press-feedback piace, l'applicazione è una classe per sito (voce in JUDGMENT list).
+
+**Commit:** `run-13/P6: adversarial review — zero violations, regression pass green`
