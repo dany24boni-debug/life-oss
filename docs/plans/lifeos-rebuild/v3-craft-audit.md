@@ -147,7 +147,7 @@ Convenzione dominante maschile ("Fatti" tab, "task completati", "1 task spostato
 `ui/date-picker.tsx:91-109` · `ui/time-picker.tsx:124-153`: `role="button"` annidato in `<button>` (HTML invalido, AT inaffidabile). Fix: hoist a sibling posizionato. (ui/ FLAGGED) `FIXED-IN-RUN-13 (P3)`
 
 ### CRAFT-a11y-06 · Badge text-3 su surface-2 a 4,38:1 in dark — `M`
-Calcolato: #858b99 su #232730 = 4,38 (< 4,5 AA testo piccolo). Siti non-disabled reali: `abitudini-screen.tsx:311` ("archiviata") · `today-timeline.tsx:358` · `week-board.tsx:292` · `agenda-list.tsx:82` · `session-grid.tsx:354,380`. Fix sanzionato dal brief ("contrast fixes via correct token choice"): text-2 su questi siti (6,87:1). `FIXED-IN-RUN-13 (P3)`
+Calcolato: #858b99 su #232730 = 4,38 (< 4,5 AA testo piccolo). Siti non-disabled reali: `abitudini-screen.tsx:311` ("archiviata") · `today-timeline.tsx:358` · `agenda-list.tsx:82` · `session-grid.tsx:354,380`. Fix sanzionato dal brief ("contrast fixes via correct token choice"): text-2 su questi siti (6,87:1). **Nota di verifica:** il sesto sito citato dall'agente (`week-board.tsx:292`, titolo dello slot fatto) sta su `--em-surface` (card), NON su surface-2 → 4,83:1, PASSA — non toccato. `FIXED-IN-RUN-13 (P3)` (5 siti)
 
 ### CRAFT-a11y-07 · Palette: input combobox senza aria-autocomplete — `L`
 `ui/command-palette.tsx:173-186`. Fix: `aria-autocomplete="list"`. (ui/ FLAGGED) `FIXED-IN-RUN-13 (P3)`

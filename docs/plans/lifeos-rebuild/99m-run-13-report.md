@@ -111,3 +111,27 @@ Pattern unico: `shown` + aggiustamento render-phase (mai setState sincrono negli
 `ui/ember.css` · `ui/bottom-sheet.tsx` · `ui/modal.tsx` · `ui/toast.tsx` + report. Test: nessuno nuovo (CSS + micro-stati; la suite intera resta verde — le macchine sono dietro le stesse prop `open/onClose`, API invariata).
 
 **Commit:** `run-13/P2: motion layer (FLAGGED)`
+
+---
+
+## P3 · The Consistency Pass — tutti i SAFE, sei commit
+
+**Checkpoint (fine pass): VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · test **1039/1039, 83 file** ✓ · build fresca ✓. **Budget Oggi: 59.729 → 59.689 (P3 gruppo 1: −40, il ring custom di TileLink rimosso pesava più dei min-h aggiunti) → 59.856 a fine pass (+127 netti vs baseline)** — SOTTO il tetto 60.000 di 144 B; la crescita è TUTTA className/markup del polish stesso (aria-pressed, handler tastiera del RowMenu, transizioni, min-h): giustificata dalla legge di budget. Layout: 30.434, invariato.
+
+### I sei commit (gruppi P1 + il gruppo ui)
+
+1. **oggi+sera+shell** (`e9f1ea5`): reminders "Ok"/"Segna tutti letti" a 44px · pwa-install Installa/Non ora a md · chip rollover+stima del rituale a 44px · TileLink senza ring custom (il globale monocromo è la legge) · "fatta · fatta" del recap Sera sanato · link "collega Google" con hover di casa · cap Recenti palette 40→64 (le schede gym ora ci ENTRANO) · icona strip abitudini ember→ember-text.
+2. **task+calendario+settimana** (`5e12366`): aria-pressed sul check task · genere di "task" unificato al maschile ("Fatti oggi", "Sposta tutti a oggi") · cestino sottotask a 44px · "×" dei tag con `.em-hit` + transizione · layer di reveal dello swipe con transition-opacity · "Elimina evento" col danger dei gemelli · sheet evento con skeleton (pattern task-detail) · banner/errori calendario su token -text · glifo "saltato" da text-[10px] a SVG · label 3-stati dello slot + "premi S" dichiarato (label + help) · "1 slot copiato" · "Annulla" capitalizzato.
+3. **palestra+statistiche+focus** (`382d4ae`): **tastiera sul riordino esercizi del day-editor** (entrambe le viste: frecce sul grip, label onesta — il contratto scritto in use-row-drag.ts era disatteso solo qui) · Δ della ProgressTable e chip recupero su token -text · colonna sticky su surface-2 · chip filtri/rating con transizione simmetrica e a 44px · "+ aggiungi qui", WeekdayChips (`.em-hit`), campanella chime a 44px · doppio pt-4 rimosso · skeleton sulla ProgressTable · "lun → dom" ×3 · useGrouping sui due KG_DELTA · chip preset focus a 44px.
+4. **dieta+abitudini+corpo** (`4b1c942`): "Applica" e "+" della WeekGrid a 44px · summary "Archiviati" a 44px con hover · GridMealCell transition-shadow (la proprietà giusta) · "1 pasto copiato" · minuscole capitalizzate (Annulla ×3, Cambia, ‹ Ricerca) · header obiettivi dieta con gate skeleton (niente hint smentito) · food-picker senza flash "libreria vuota" · chip +N/totale/− con hover e `.em-hit` · "Torna a oggi" a 44px · streak/"Fatta"/delta peso/IconCheck su token -text · StepBtn con hover e glifo in scala (via text-lg) · ternario delta collassato.
+5. **esami+spese+impostazioni** (`b8b6533`): STATUS_TEXT theme-adattivo per il badge pacing (il crudo resta a tinta/barra) · tracce barre su color-mix (visibili in light) · stepper ±1 a 44px (il docstring "44px" ora dice il vero) · sheet esame/spesa con skeleton · frecce mese a 44px · plurali import sanati (esame/spesa/righe ×3) · lastError su segnale-text · loading sui bottoni export/import/mantieni/svuota · "Rimuovi" a 44px · CTA ospite con active.
+6. **ui primitives (a11y contract, FLAGGED)** (`b7278b7`): `aria-required` cablato in Field · role="alert" sui toast error · aria-autocomplete sulla palette · griglia calendario con role="row" per settimana (`display:contents`, layout intatto) · clear "×" dei picker HOISTATO a sibling (interattivo dentro <button> = albero invalido; spacer = pixel identici) · contratto tastiera dei listbox (WeekStrip + colonne TimePicker: roving tabindex + frecce + Home/End, fallback primo-item) · prop `label` su Tabs + i 4 call site nominati · Button in loading con opacity-0 (il nome accessibile resta) · scroll-lock con cattura dell'overflow originale a livello modulo (il bug della chiusura fuori ordine) · RowMenu con frecce ↑/↓ e focus-return al trigger · text-3→text-2 sui 5 badge su surface-2 (il sesto sito citato stava su surface e PASSA — verifica a verbale nell'audit doc).
+
+### Delta dichiarati del P3
+
+1. **WeekdayChips del day-editor: rimedio (b) `.em-hit` invece di (a) taglia diretta** — 7+1 chip in una riga flex: a 44px visivi andrebbero a capo su mobile; l'hit-area invisibile dà gli stessi 44px senza toccare il layout. Stessa cosa per i chip +N/totale/finestre-trend (il "small pill" è disegno).
+2. **L'input quantità di habit-card (h-8) NON ha `.em-hit`**: gli pseudo-elementi non rendono sugli elementi replaced (`<input>`) — il target vero è il focus, e ci si arriva dal bottone "totale…" (che l'hit ce l'ha). Dichiarato.
+3. **week-board:292 non toccato** (contrasto): il sito sta su surface, non surface-2 — 4,83:1 passa. La verifica è annotata nell'audit doc.
+4. I tag `FIXED-IN-RUN-13` nell'audit doc sono stati scritti in stesura P1 come piano di lavoro; a fine P3 OGNI tag è stato onorato (riscontro voce-per-voce; l'unica eccezione parziale è il punto 2 qui sopra, annotata sul finding).
+
+**Commits:** `run-13/P3: consistency — <gruppo>` ×6
