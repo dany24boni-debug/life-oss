@@ -31,12 +31,8 @@ import {
 import type { BodyEntry } from "@/data/schemas";
 import { addDays, formatDayShort } from "@/ui/calendar-core";
 import { useIsDesktop, useToday } from "../_components/tasks/screen-hooks";
-import {
-  buildWeightChart,
-  formatBodyDelta,
-  formatBodyKg,
-  stepBodyWeight,
-} from "./logic";
+import { formatBodyDelta, formatBodyKg, stepBodyWeight } from "./logic";
+import { buildWeightChart } from "./trend";
 
 export function CorpoScreen() {
   const today = useToday();

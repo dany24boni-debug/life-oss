@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BodyEntry } from "@/data/schemas";
-import {
-  buildWeightChart,
-  formatBodyDelta,
-  formatBodyKg,
-  stepBodyWeight,
-  trailingAvg7,
-} from "./logic";
+import { formatBodyDelta, formatBodyKg, stepBodyWeight } from "./logic";
+import { buildWeightChart, trailingAvg7 } from "./trend";
 
 function entry(date: string, weight_kg: number): BodyEntry {
   return {
