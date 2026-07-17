@@ -187,7 +187,7 @@ function StepBtn({
       type="button"
       aria-label={ariaLabel}
       onClick={onClick}
-      className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] text-lg font-semibold text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)]"
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] font-semibold text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)]"
     >
       {children}
     </button>
@@ -216,7 +216,7 @@ function TrendCard({ today }: { today: string }) {
               aria-pressed={windowDays === w}
               onClick={() => setWindowDays(w)}
               className={cx(
-                "em-body-sm em-num h-8 rounded-full px-2.5 font-medium transition-colors duration-[var(--em-dur-tap)]",
+                "em-hit em-body-sm em-num h-8 rounded-full px-2.5 font-medium transition-colors duration-[var(--em-dur-tap)]",
                 windowDays === w
                   ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
                   : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
@@ -331,10 +331,8 @@ function HistoryCard({
                           className={cx(
                             "em-body-sm em-num shrink-0",
                             delta < 0
-                              ? "text-[var(--em-salvia)]"
-                              : delta > 0
-                                ? "text-[var(--em-text-3)]"
-                                : "text-[var(--em-text-3)]",
+                              ? "text-[var(--em-salvia-text)]"
+                              : "text-[var(--em-text-3)]",
                           )}
                         >
                           {formatBodyDelta(delta)}

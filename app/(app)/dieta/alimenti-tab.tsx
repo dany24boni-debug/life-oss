@@ -108,7 +108,7 @@ export function AlimentiTab() {
 
           {archived.length > 0 ? (
             <details>
-              <summary className="em-body-sm cursor-pointer text-[var(--em-text-3)]">
+              <summary className="em-body-sm flex min-h-11 cursor-pointer items-center text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]">
                 Archiviati ({archived.length})
               </summary>
               <ul className="mt-1 flex flex-col">

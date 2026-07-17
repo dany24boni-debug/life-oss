@@ -123,7 +123,7 @@ export function HabitCard({
               className={cx(
                 "em-body-sm em-num flex shrink-0 items-center gap-0.5",
                 streak.todayCounts
-                  ? "text-[var(--em-ember)]"
+                  ? "text-[var(--em-ember-text)]"
                   : "text-[var(--em-text-3)]",
               )}
               title={`Streak: ${streak.current} (migliore ${streak.best})`}
@@ -136,7 +136,7 @@ export function HabitCard({
         <p
           className={cx(
             "em-body-sm em-num mt-0.5",
-            done ? "text-[var(--em-salvia)]" : "text-[var(--em-text-3)]",
+            done ? "text-[var(--em-salvia-text)]" : "text-[var(--em-text-3)]",
           )}
         >
           {habit.kind === "boolean"
@@ -152,7 +152,7 @@ export function HabitCard({
                 key={step}
                 type="button"
                 onClick={() => void increment(step, { withUndo: true })}
-                className="em-body-sm em-num h-8 rounded-full bg-[var(--em-surface-2)] px-2.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)]"
+                className="em-hit em-body-sm em-num h-8 rounded-full bg-[var(--em-surface-2)] px-2.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)]"
               >
                 +{formatHabitValue(step)}
               </button>
@@ -169,7 +169,7 @@ export function HabitCard({
             aria-label={`${habit.name}: meno uno`}
             onClick={() => void increment(-1)}
             disabled={value <= 0}
-            className="pointer-events-auto grid h-11 w-11 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] text-lg font-semibold text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)] disabled:opacity-40"
+            className="pointer-events-auto grid h-11 w-11 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] font-semibold text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)] disabled:opacity-40"
           >
             −
           </button>
@@ -250,7 +250,7 @@ function TotalEdit({
           setDraft(value === 0 ? "" : String(value).replace(".", ","));
           setEditing(true);
         }}
-        className="em-body-sm h-8 rounded-full px-2 text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+        className="em-hit em-body-sm h-8 rounded-full px-2 text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
       >
         totale…
       </button>

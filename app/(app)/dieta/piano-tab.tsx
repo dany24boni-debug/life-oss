@@ -227,7 +227,9 @@ function PlanEditor({ plan, onBack }: { plan: DietPlan; onBack: () => void }) {
     toast.show({
       message:
         r.data.length > 0
-          ? `${r.data.length} pasti copiati su ${WEEKDAYS_IT[target - 1]}.`
+          ? r.data.length === 1
+            ? `1 pasto copiato su ${WEEKDAYS_IT[target - 1]}.`
+            : `${r.data.length} pasti copiati su ${WEEKDAYS_IT[target - 1]}.`
           : "Niente da copiare.",
       tone: r.data.length > 0 ? "success" : undefined,
     });
@@ -427,7 +429,7 @@ function WeekGrid({
               type="button"
               onClick={() => onAddMeal(day)}
               aria-label={`Aggiungi un pasto di ${WEEKDAY_FULL[i]}`}
-              className="em-body grid h-9 place-items-center rounded-[var(--em-r-sm)] font-semibold text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)] hover:text-[var(--em-text)]"
+              className="em-body grid h-11 place-items-center rounded-[var(--em-r-sm)] font-semibold text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)] hover:text-[var(--em-text)]"
             >
               +
             </button>
@@ -458,7 +460,7 @@ function GridMealCell({
       <button
         type="button"
         onClick={onOpen}
-        className="w-full rounded-[var(--em-r-sm)] bg-[var(--em-surface)] px-2 py-1.5 text-left shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+        className="w-full rounded-[var(--em-r-sm)] bg-[var(--em-surface)] px-2 py-1.5 text-left shadow-[0_0_0_1px_var(--em-hairline)] transition-shadow duration-[var(--em-dur-tap)] hover:shadow-[0_0_0_1px_var(--em-hairline-strong)]"
       >
         <span className="em-body-sm block truncate font-medium text-[var(--em-text)]">
           {meal.name}
@@ -659,7 +661,7 @@ function CopyDayControl({
         );
       })}
       <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-        annulla
+        Annulla
       </Button>
     </span>
   );
@@ -1038,7 +1040,7 @@ function MealSheetBody({
               size="sm"
               onClick={() => setCopyOpen(false)}
             >
-              annulla
+              Annulla
             </Button>
           </span>
         ) : (
