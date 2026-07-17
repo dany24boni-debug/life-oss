@@ -22,7 +22,7 @@
  * solo agli autenticati.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Button,
@@ -55,7 +55,16 @@ import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
 import { WeightQuickEntry } from "../corpo/corpo-screen";
 import { useToday } from "../_components/tasks/screen-hooks";
-import { ExerciseDetailSheet } from "./exercise-detail";
+// Split run-13 P5a: la scheda esercizio (grafico + ProgressTable + form)
+// si carica alla PRIMA apertura — React.lazy, mai next/dynamic nel
+// gruppo (app) (legge run-12 P4). Una volta caricata resta montata:
+// le aperture successive sono istantanee e le animazioni di uscita
+// (P2) sopravvivono alla chiusura.
+const LazyExerciseDetailSheet = lazy(() =>
+  import("./exercise-detail").then((m) => ({
+    default: m.ExerciseDetailSheet,
+  })),
+);
 import { groupLabel } from "./exercise-picker";
 import { GymImportButton } from "./import-button";
 import {
@@ -110,6 +119,11 @@ export function GymScreen({ authed }: { authed: boolean }) {
   const [finish, setFinish] = useState<FinishSummary | null>(null);
   const [detailExercise, setDetailExercise] = useState<GymExercise | null>(null);
   const [createExercise, setCreateExercise] = useState(false);
+  // Gate del lazy-mount (P5a): monta al primo bisogno, poi resta.
+  const [detailMounted, setDetailMounted] = useState(false);
+  if ((detailExercise !== null || createExercise) && !detailMounted) {
+    setDetailMounted(true);
+  }
   const [historySessionId, setHistorySessionId] = useState<string | null>(null);
 
   // Navigazione della tab Scheda, DERIVATA: il deep link (?scheda=) vale
@@ -311,14 +325,18 @@ export function GymScreen({ authed }: { authed: boolean }) {
         )}
       </Tabs>
 
-      <ExerciseDetailSheet
-        exercise={detailExercise}
-        createOpen={createExercise}
-        onClose={() => {
-          setDetailExercise(null);
-          setCreateExercise(false);
-        }}
-      />
+      {detailMounted ? (
+        <Suspense fallback={null}>
+          <LazyExerciseDetailSheet
+            exercise={detailExercise}
+            createOpen={createExercise}
+            onClose={() => {
+              setDetailExercise(null);
+              setCreateExercise(false);
+            }}
+          />
+        </Suspense>
+      ) : null}
       <HistorySessionSheet
         sessionId={historySessionId}
         onClose={() => setHistorySessionId(null)}

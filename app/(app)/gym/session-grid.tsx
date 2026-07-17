@@ -16,6 +16,8 @@
  */
 
 import {
+  Suspense,
+  lazy,
   useEffect,
   useMemo,
   useRef,
@@ -43,7 +45,6 @@ import {
 } from "@/data/hooks";
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
-import { EquipmentEditor } from "./equipment-editor";
 import { ExercisePicker } from "./exercise-picker";
 import { nowInstant, stepReps, stepWeight } from "./logic";
 import {
@@ -70,6 +71,13 @@ import {
   type GridRow,
   type Verdict,
 } from "./progression";
+
+// Split run-13 P5a: l'editor attrezzatura si carica alla PRIMA apertura
+// (React.lazy — mai next/dynamic nel gruppo (app), la legge run-12 P4).
+// Gesto raro e settings-like: i suoi byte non pagano il route chunk.
+const LazyEquipmentEditor = lazy(() =>
+  import("./equipment-editor").then((m) => ({ default: m.EquipmentEditor })),
+);
 
 /**
  * Impostazione per-dispositivo del chime (default SPENTO), fuori da
@@ -807,10 +815,19 @@ function SetEditorForm({
   // form sopravvivono alla deviazione. Dopo tutti gli hook, per contratto.
   if (equipOpen && settings !== undefined) {
     return (
-      <EquipmentEditor
-        settings={settings}
-        onDone={() => setEquipOpen(false)}
-      />
+      <Suspense
+        fallback={
+          <div aria-busy="true" className="flex flex-col gap-3">
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        }
+      >
+        <LazyEquipmentEditor
+          settings={settings}
+          onDone={() => setEquipOpen(false)}
+        />
+      </Suspense>
     );
   }
 
