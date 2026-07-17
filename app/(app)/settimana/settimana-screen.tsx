@@ -42,7 +42,7 @@ const TAB_ITEMS = [
 export function SettimanaScreen() {
   const [tab, setTab] = useState("board");
   return (
-    <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
+    <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} label="Sezioni della settimana">
       {(active) =>
         active === "board" ? (
           <BoardTab onGoToPlans={() => setTab("piani")} />

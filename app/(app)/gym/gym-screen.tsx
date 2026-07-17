@@ -285,6 +285,7 @@ export function GymScreen({ authed }: { authed: boolean }) {
         ]}
         value={tab}
         onChange={setTab}
+        label="Sezioni della palestra"
       >
         {(activeTab) => (
           <div>

@@ -108,17 +108,21 @@ export function useOnClickOutside(
   }, [active]);
 }
 
-/** Body scroll lock while an overlay is open (stacking-safe). */
+/** Body scroll lock while an overlay is open (stacking-safe).
+ * L'overflow ORIGINALE si cattura sulla transizione 0→1 a livello modulo:
+ * catturarlo per-hook ripristinava "hidden" se gli overlay chiudevano
+ * fuori ordine (A poi B aperti, A smonta per primo → pagina bloccata). */
 let lockCount = 0;
+let originalOverflow = "";
 export function useLockBodyScroll(active: boolean) {
   useEffect(() => {
     if (!active) return;
+    if (lockCount === 0) originalOverflow = document.body.style.overflow;
     lockCount += 1;
-    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       lockCount -= 1;
-      if (lockCount === 0) document.body.style.overflow = prev;
+      if (lockCount === 0) document.body.style.overflow = originalOverflow;
     };
   }, [active]);
 }

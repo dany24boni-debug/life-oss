@@ -171,6 +171,7 @@ function PaletteBody({
             <input
               type="text"
               role="combobox"
+              aria-autocomplete="list"
               aria-expanded="true"
               aria-controls={listboxId}
               aria-activedescendant={

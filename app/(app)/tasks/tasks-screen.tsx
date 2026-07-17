@@ -101,7 +101,7 @@ function Screen() {
         focusToken={focusToken}
       />
 
-      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
+      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} label="Viste dei task">
         {(active) =>
           active === "oggi" ? (
             <ViewOggi ctx={ctx} />

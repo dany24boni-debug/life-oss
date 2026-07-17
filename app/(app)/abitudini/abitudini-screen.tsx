@@ -308,7 +308,7 @@ function ManageCard({
                   {habit.name}
                 </span>
                 {habit.archived_at !== null ? (
-                  <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-3)]">
+                  <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-2)]">
                     archiviata
                   </span>
                 ) : null}

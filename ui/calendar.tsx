@@ -166,8 +166,12 @@ export function Calendar({
         onTouchEnd={onTouchEnd}
         className="grid grid-cols-7 gap-y-0.5"
       >
-        {weeks.flat().map((day) => {
-          const inMonth = isSameMonth(day, viewMonth);
+        {/* role=row per settimana (pattern APG grid→row→gridcell);
+            display:contents = wrapper trasparente al layout grid. */}
+        {weeks.map((week, wi) => (
+          <div key={wi} role="row" className="contents">
+            {week.map((day) => {
+              const inMonth = isSameMonth(day, viewMonth);
           const disabled = isDisabled(day);
           const isSelected = day === selected;
           const isToday = day === today;
@@ -217,7 +221,9 @@ export function Calendar({
               ) : null}
             </button>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -276,11 +282,31 @@ export function WeekStrip({
   );
   const days = weekOf(selected);
 
+  // Contratto tastiera del listbox (run-13): un solo tab-stop (roving
+  // tabindex sul selezionato) + frecce ←/→ e Home/End che spostano
+  // selezione E focus — il riferimento interno è il roving di Tabs.
+  function onStripKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const idx = days.indexOf(selected);
+    let next: DayString | undefined;
+    if (e.key === "ArrowRight") next = days[Math.min(idx + 1, days.length - 1)];
+    if (e.key === "ArrowLeft") next = days[Math.max(idx - 1, 0)];
+    if (e.key === "Home") next = days[0];
+    if (e.key === "End") next = days[days.length - 1];
+    if (next !== undefined && next !== selected) {
+      e.preventDefault();
+      setSelected(next);
+      e.currentTarget
+        .querySelector<HTMLElement>(`[data-day="${next}"]`)
+        ?.focus();
+    }
+  }
+
   return (
     <div
       className={cx("flex justify-between gap-1", className)}
       role="listbox"
       aria-label="Settimana"
+      onKeyDown={onStripKeyDown}
     >
       {days.map((day) => {
         const isSelected = day === selected;
@@ -291,6 +317,8 @@ export function WeekStrip({
             key={day}
             type="button"
             role="option"
+            data-day={day}
+            tabIndex={isSelected ? 0 : -1}
             aria-selected={isSelected}
             onClick={() => setSelected(day)}
             className={cx(

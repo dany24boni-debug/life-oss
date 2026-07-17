@@ -362,6 +362,7 @@ function RowMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -369,7 +370,11 @@ function RowMenu({
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      // Esc: chiudi E restituisci il focus al trigger (contratto menu).
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
     document.addEventListener("pointerdown", onDocPointerDown);
     document.addEventListener("keydown", onKey);
@@ -397,6 +402,7 @@ function RowMenu({
   return (
     <span ref={rootRef} data-no-swipe className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={`Altre azioni: ${task.title}`}
         aria-haspopup="menu"
@@ -411,6 +417,25 @@ function RowMenu({
           ref={menuRef}
           role="menu"
           aria-label="Azioni task"
+          onKeyDown={(e) => {
+            // Frecce ↑/↓ ciclano tra i menuitem (contratto role=menu).
+            if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+            e.preventDefault();
+            const btns = Array.from(
+              menuRef.current?.querySelectorAll<HTMLButtonElement>(
+                '[role="menuitem"]',
+              ) ?? [],
+            );
+            if (btns.length === 0) return;
+            const idx = btns.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
+            const next =
+              e.key === "ArrowDown"
+                ? btns[(idx + 1) % btns.length]
+                : btns[(idx - 1 + btns.length) % btns.length];
+            next?.focus();
+          }}
           className="absolute right-0 top-full z-50 mt-1 w-48 rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] p-1 shadow-[var(--em-e3)] animate-[em-pop-in_var(--em-dur-control)_var(--em-ease-out)]"
         >
           {items.map((item) => (
@@ -420,6 +445,7 @@ function RowMenu({
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                triggerRef.current?.focus();
                 item.run();
               }}
               className={cx(

@@ -27,7 +27,7 @@ export function DietaScreen() {
     // PROP-diet-05): la larghezza si concede dove la griglia la spende;
     // Oggi e Alimenti restano alla misura di lettura di sempre.
     <div data-page-width={tab === "piano" ? "wide" : undefined}>
-      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
+      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} label="Sezioni della dieta">
         {(active) =>
           active === "oggi" ? (
             <OggiTab onGoToPiano={() => setTab("piano")} />

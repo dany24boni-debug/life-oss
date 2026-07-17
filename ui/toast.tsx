@@ -125,7 +125,7 @@ function ToastCard({
   return (
     <div
       ref={cardRef}
-      role="status"
+      role={item.tone === "error" ? "alert" : "status"}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}

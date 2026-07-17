@@ -15,6 +15,7 @@ export function Tabs({
   defaultValue,
   onChange,
   className,
+  label,
   children,
 }: {
   items: TabItem[];
@@ -22,6 +23,8 @@ export function Tabs({
   defaultValue?: string;
   onChange?: (value: string) => void;
   className?: string;
+  /** Accessible name for the tablist (APG: tablists are labelled). */
+  label?: string;
   /** Render-prop for the active panel content. */
   children?: (active: string) => React.ReactNode;
 }) {
@@ -57,6 +60,7 @@ export function Tabs({
       <div
         ref={listRef}
         role="tablist"
+        aria-label={label}
         onKeyDown={onKeyDown}
         className="flex gap-1 overflow-x-auto border-b border-[var(--em-hairline)]"
       >

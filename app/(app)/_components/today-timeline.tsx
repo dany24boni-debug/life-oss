@@ -355,7 +355,7 @@ function MarkerRow({
           </span>
         ) : null}
         {chip !== null && chip !== undefined ? (
-          <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)]">
+          <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)]">
             {chip}
           </span>
         ) : null}
