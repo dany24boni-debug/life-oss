@@ -135,3 +135,28 @@ Pattern unico: `shown` + aggiustamento render-phase (mai setState sincrono negli
 4. I tag `FIXED-IN-RUN-13` nell'audit doc sono stati scritti in stesura P1 come piano di lavoro; a fine P3 OGNI tag è stato onorato (riscontro voce-per-voce; l'unica eccezione parziale è il punto 2 qui sopra, annotata sul finding).
 
 **Commits:** `run-13/P3: consistency — <gruppo>` ×6
+
+---
+
+## P4 · Safe specced, device-independent — 2 fatti, 2 skip motivati
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · test corpo 8/8 (+4 nuovi) · build fresca ✓.
+
+### a · PROP-corpo-01 — media mobile 7 giorni ✓ (`d77a063` + `6e0ca2c`)
+
+- **`trailingAvg7`** pura (+4 test): media TRAILING su 7 giorni di CALENDARIO — per ogni pesata, la media della finestra [giorno−6, giorno]; pesate rade → la media È il punto grezzo (onesto, mai inventare). `buildWeightChart` guadagna `avgPath` sulla STESSA scala (la media resta nel range min-max per costruzione; un solo punto → null). Nel grafico: seconda polyline QUIETA (text-2, strokeWidth 1.5, opacity .8) sopra i grezzi ember — la lettera della PROP. "Il tuo mese" resta prima→ultima (triage: non toccato).
+- **L'incidente di budget che vale il report (il QUARTO caso della legge di residenza).** Prima stesura: la matematica in `corpo/logic.ts` → **Oggi 60.075 (+219, TETTO SFONDATO)** — today-tiles importa i formatter del tile Peso da corpo/logic, e webpack non tree-shaka: `trailingAvg7` è salita sulla home. Diagnosi con A/B onesto (`git stash -u` + build fresca): il colpevole era P4a, non P4b. Rimedio: **`corpo/trend.ts`** (WeightChart+trailingAvg7+buildWeightChart), consumer solo corpo-screen — e la scoperta: **buildWeightChart viaggiava sul chunk della home DA RUN-07**. Esito: **Oggi 59.429, 300 B SOTTO la baseline** — il fix ha ripagato un debito preesistente. La lista dei moduli-home noti si allunga: `corpo/logic`.
+
+### b · Affordance ⌘K sul rail ✓ (`3568496`, triage 99l#7)
+
+Bottone quieto in fondo al rail desktop, sopra Impostazioni: "Cerca e comandi · ⌘K" (ghost row di casa, min-h-11). Meccanica: **`palette-bus.ts`** (il disegno di quick-add-bus, senza `pending`: rail e host vivono nello stesso layout) — `requestPalette()` dal rail, listener in ComfortHost → `setPaletteOpen(true)`. **Stesso corpo lazy** (React.lazy alla prima apertura), **zero mount touch** (il rail È `hidden md:flex`). Budget layout: 30.434 → **31.179 (+745)** — dentro il ≤ +1.000 del brief.
+
+### c · PROP-esami-03 — SKIP con riga
+
+La PROP dice "CTA 'com'è andata?' → **voto** o nuova data, dalla scheda esistente" — ma la scheda esistente ha SOLO la data: il campo voto **non è mai esistito nel modello** (lo dice il docstring stesso di exam-detail.tsx:203). Implementarla per intero = colonna nuova = `[schema]`, vietato in run-13; implementarne metà (CTA→solo data) = decisione di prodotto non specificata. **Fuori run**, resta PROP aperta col chiarimento a verbale: prima serve decidere se il voto entra nel modello.
+
+### d · "Copia giorno" nella griglia desktop di /dieta — SKIP con riga
+
+Nessuna spec single-affordance esiste (v3-proposals non la contempla; 99l P5a la annota solo come asimmetria per il triage). Sette controlli ripetuti = rumore per legge del brief. **Fuori run**, JUDGMENT list.
+
+**Cap rispettato:** niente altro promosso dal backlog PROP.
