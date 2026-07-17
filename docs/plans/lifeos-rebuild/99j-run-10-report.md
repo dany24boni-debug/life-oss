@@ -154,3 +154,18 @@ Criteri del brief rispettati: tutti S, zero `[schema]`, zero `[primitive]`, zero
 | 8 | PROP-imp-01 — skeleton su Impostazioni | `app/(app)/impostazioni/{profile-section,protected-days,push-section}.tsx` |
 
 Riserve dichiarate (entrano SOLO se un titolare si rivela ambiguo alla lettura del codice): PROP-focus-03 spacebar · PROP-stats-01 delta · PROP-diet-01 numero rimanente. Checkpoint completo a fine batch (per-item: lint+typecheck mirati).
+
+### Esito del batch — 8/8 implementati, nessuna riserva usata
+
+**Checkpoint di fine batch: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **964/964, 76 file** (+1: `laterRange` in `_components/tasks/logic.test.ts`). Un commit per item (`run-10/P4: <PROP-id> …`), ogni PROP marcata **DONE-IN-RUN-10** in v3-proposals.md.
+
+1. **PROP-hab-01/oggi-03** — undo sui log abitudini, board + strip Oggi: il gesto che AGGIUNGE (spunta boolean, +1, +chip quantità) porta il toast "… · Annulla" che riporta il TOTALE del giorno al valore di prima (`logDay` assoluto); il "−" di correzione e lo s-fare boolean restano muti — il calco esatto del pattern "Fatto" dieta (run-09).
+2. **PROP-task-02** — il check inline in agenda ora completa col toast "Fatto: {titolo} · Annulla" (uncomplete — che ritira anche lo spawn dei ricorrenti, garanzia repo run-09). Delta dichiarato: la coda "prossima: …" resta solo nelle liste task (il check agenda non ha il Task intero e la fence non includeva altro).
+3. **PROP-spese-01** — "Spesa di 12,50 € aggiunta." guadagna l'Annulla (softDelete della riga creata); durata da 3 s → standard 5 s perché l'undo abbia il suo tempo.
+4. **PROP-esami-01** — "Capitolo fatto" parla e si annulla: "Capitolo 6 di 12: fatto · Annulla" (ripristino del conteggio precedente). Prima un +1 sbagliato si correggeva solo dalla scheda.
+5. **PROP-gym-02** — il ghost Hevy-style è VISIBILE: nel micro-editor serie la riga "Ultima volta: 62,5 × 9 @RIR1" sopra gli stepper (la storia era già caricata per il prefill — ora si vede il numero da battere).
+6. **PROP-task-01** — zona morta +8g chiusa: in Prossimi, sotto i gruppi dei 7 giorni, la sezione "Più avanti · N" (finestra +8..+365, `laterRange` pura + test di contiguità) come lista con data per riga (il pattern `showDate` del blocco In ritardo — più onesto dei gruppi-mese per task sparsi). Empty state aggiornato ("Nessun task in vista").
+7. **PROP-oggi-01** — TUTTI i tile di Oggi sono Link al loro modulo con la cornice `TileLink` unica (focus-ring del pattern Pasti): Task→/tasks, Streak/Settimana→/stats, Palestra→/gym, Peso→/corpo, Piano→/settimana, Pasti→/dieta.
+8. **PROP-imp-01** — Impostazioni non "poppa" più: skeleton su Profilo, Giorni protetti e Push durante il caricamento (la riga Sync aveva già il fallback onesto).
+
+**Budget Oggi (item 7 tocca la home):** chunk `page-*.js` = **47.845 B raw (14.891 gzip)** — SOTTO il baseline 53.327 B: il P2 ha tolto dal grafo della home il percorso di creazione-sessione del tile (appRepos/useRouter via bottone), e con i TileLink il bilancio netto del run sulla home è **−5,5 kB raw**. Misura col metodo 99h/99i, stessa build dei test.
