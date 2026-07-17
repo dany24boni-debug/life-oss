@@ -32,9 +32,12 @@ import {
 import { calorieTargetKcal, proteinTargetG } from "@/data/derived";
 import {
   appRepos,
+  useActiveProgram,
   useDayDiet,
   useDayExtras,
+  useGymSessionsByDay,
   useLatestBody,
+  useProgramDays,
   useSettings,
 } from "@/data/hooks";
 import type { Food, IsoDay } from "@/data/schemas";
@@ -48,9 +51,11 @@ import {
   formatGramsFromDg,
   formatInt,
   formatQty,
+  isTrainingDay,
   kcalProteinLine,
   parseKcalInput,
   parseMacroInput,
+  trainingVariantFor,
 } from "./logic";
 import { QtyStepper } from "./qty-stepper";
 
@@ -58,6 +63,14 @@ export function OggiTab({ onGoToPiano }: { onGoToPiano: () => void }) {
   const today = useToday();
   const day = useDayDiet(today);
   const extras = useDayExtras(today);
+  // CROSS-02 (run-11 P5b): il giorno sa se è di allenamento — dal piano
+  // palestra (weekday del giorno-scheda) o da una sessione già esistente.
+  const gymProgram = useActiveProgram();
+  const gymDays = useProgramDays(gymProgram?.id ?? null);
+  const gymSessions = useGymSessionsByDay(today);
+  const training =
+    day !== undefined &&
+    isTrainingDay(day.weekday, gymDays ?? [], (gymSessions ?? []).length);
 
   if (day === undefined || extras === undefined) {
     return (
@@ -88,6 +101,13 @@ export function OggiTab({ onGoToPiano }: { onGoToPiano: () => void }) {
 
   return (
     <div className="flex flex-col gap-4 pt-4">
+      {training ? (
+        <p className="em-body-sm text-[var(--em-text-3)]">
+          <span className="rounded-full bg-[var(--em-surface-2)] px-2.5 py-1 shadow-[0_0_0_1px_var(--em-hairline)]">
+            Giorno di allenamento
+          </span>
+        </p>
+      ) : null}
       <TotalsHeader day={day} extras={extras} today={today} />
       {day.meals.length === 0 ? (
         <EmptyState
@@ -98,7 +118,7 @@ export function OggiTab({ onGoToPiano }: { onGoToPiano: () => void }) {
       ) : (
         <section aria-label="Pasti di oggi" className="flex flex-col gap-3">
           {day.meals.map((m) => (
-            <MealCard key={m.meal.id} m={m} date={today} />
+            <MealCard key={m.meal.id} m={m} date={today} training={training} />
           ))}
         </section>
       )}
@@ -186,10 +206,23 @@ function TotalsHeader({
 
 /* ── Card pasto ──────────────────────────────────────────────────────── */
 
-function MealCard({ m, date }: { m: DayDietMeal; date: IsoDay }) {
+function MealCard({
+  m,
+  date,
+  training,
+}: {
+  m: DayDietMeal;
+  date: IsoDay;
+  training: boolean;
+}) {
   const toast = useToast();
   const [choosing, setChoosing] = useState(false);
   const variantIds = m.variants.map((v) => v.variant.id);
+  // CROSS-02 fase 2: nei giorni di allenamento la variante marcata
+  // viene PROPOSTA (mai imposta) finché il pasto non è fatto.
+  const proposta = training && !m.eaten
+    ? trainingVariantFor(m.variants, m.chosenVariantId)
+    : null;
 
   async function setEaten(eaten: boolean, withUndo: boolean) {
     const r = await appRepos().diet.logMeal(m.meal.id, date, eaten);
@@ -212,6 +245,26 @@ function MealCard({ m, date }: { m: DayDietMeal; date: IsoDay }) {
   async function choose(variantId: string | null) {
     const r = await appRepos().diet.setVariant(m.meal.id, date, variantId);
     if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
+  /** Applica la variante proposta: un tap, con undo alla selezione di
+   *  prima (run-11 P5b — proposta, mai imposta). */
+  async function applyProposta(id: string, name: string) {
+    const previous = m.chosenVariantId;
+    const r = await appRepos().diet.setVariant(m.meal.id, date, id);
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    toast.show({
+      message: `${m.meal.name}: variante ${name}.`,
+      tone: "success",
+      action: {
+        label: "Annulla",
+        onClick: () =>
+          void appRepos().diet.setVariant(m.meal.id, date, previous),
+      },
+    });
   }
 
   function tapVariantChip() {
@@ -247,6 +300,21 @@ function MealCard({ m, date }: { m: DayDietMeal; date: IsoDay }) {
           </button>
         ) : null}
       </div>
+
+      {proposta !== null ? (
+        <div className="flex items-center justify-between gap-2 rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] px-3 py-1.5">
+          <p className="em-body-sm min-w-0 truncate text-[var(--em-text-2)]">
+            Giorno di allenamento: variante «{proposta.name}»?
+          </p>
+          <button
+            type="button"
+            onClick={() => void applyProposta(proposta.id, proposta.name)}
+            className="em-body-sm min-h-9 shrink-0 font-medium text-[var(--em-text)] transition-opacity duration-[var(--em-dur-tap)] hover:opacity-80"
+          >
+            Applica
+          </button>
+        </div>
+      ) : null}
 
       {m.selectionItems.length === 0 ? (
         <p className="em-body-sm text-[var(--em-text-3)]">
