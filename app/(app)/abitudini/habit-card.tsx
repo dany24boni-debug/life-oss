@@ -43,22 +43,51 @@ export function HabitCard({
   const { habit, target, value, done } = entry;
   const streak = useHabitStreak(habit.id, date);
 
-  async function increment(delta: number) {
-    const r = await appRepos().habits.incrementDay(habit.id, date, delta);
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  /** Annulla del toast: riporta il TOTALE del giorno al valore di prima. */
+  function undoTo(previous: number) {
+    void appRepos().habits.logDay(habit.id, date, previous);
   }
 
-  async function setValue(next: number) {
+  async function increment(delta: number, opts?: { withUndo?: boolean }) {
+    const previous = value;
+    const r = await appRepos().habits.incrementDay(habit.id, date, delta);
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    // Undo sui log a un tocco (run-10 P4, PROP-hab-01): il gesto che
+    // AGGIUNGE porta l'Annulla; il "−" di correzione resta muto.
+    if (opts?.withUndo) {
+      toast.show({
+        message: `${habit.name}: +${formatHabitValue(delta)}${habit.unit ? ` ${habit.unit}` : ""}.`,
+        action: { label: "Annulla", onClick: () => undoTo(previous) },
+      });
+    }
+  }
+
+  async function setValue(next: number, opts?: { withUndo?: boolean }) {
+    const previous = value;
     const r = await appRepos().habits.logDay(habit.id, date, next);
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    if (opts?.withUndo) {
+      toast.show({
+        message: `Fatta: ${habit.name}.`,
+        action: { label: "Annulla", onClick: () => undoTo(previous) },
+      });
+    }
   }
 
   const tapAction =
     !editable || habit.kind === "quantity"
       ? null
       : habit.kind === "boolean"
-        ? () => void setValue(done ? 0 : 1)
-        : () => void increment(1);
+        ? // Il ri-tap che "s-fa" È l'annullamento: resta muto (pattern
+          // del Fatto dieta, run-09).
+          () => void setValue(done ? 0 : 1, { withUndo: !done })
+        : () => void increment(1, { withUndo: true });
 
   const tapLabel =
     habit.kind === "boolean"
@@ -122,7 +151,7 @@ export function HabitCard({
               <button
                 key={step}
                 type="button"
-                onClick={() => void increment(step)}
+                onClick={() => void increment(step, { withUndo: true })}
                 className="em-body-sm em-num h-8 rounded-full bg-[var(--em-surface-2)] px-2.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] active:bg-[var(--em-ember-tint)] active:text-[var(--em-text)]"
               >
                 +{formatHabitValue(step)}

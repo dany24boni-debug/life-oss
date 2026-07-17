@@ -56,6 +56,7 @@ raggiungono solo via Impostazioni → Moduli (3 tap per arrivare a /corpo).
 - **PROP-oggi-03 — Undo sui log a un tocco della strip abitudini.** Il quick-log della
   strip (boolean/counter/quantity) mostra il toast con Annulla che riporta il valore
   precedente (stesso disegno del "Fatto" dieta). Effort S · Valore H · `[home]`.
+  **DONE-IN-RUN-10** (P4, insieme a PROP-hab-01).
 - **PROP-oggi-04 — Countdown esami su Oggi.** Tile/riga "Analisi II · fra 9 giorni ·
   2 cap/dì" quando il prossimo esame è ≤14 giorni (riusa `computePacing`, oggi consumato
   solo dentro /esami). Effort S-M · Valore M · `[home]` `[cross]`.
@@ -195,7 +196,9 @@ core e noi pure: ok. (5) Board single-column anche su desktop.
 
 - **PROP-hab-01 — Undo sui log a un tocco.** Board + strip Oggi (vedi PROP-oggi-03:
   stessa implementazione, due superfici): toast "Fatta · Annulla" che ripristina il
-  valore precedente del giorno. Effort S · Valore H.
+  valore precedente del giorno. Effort S · Valore H. **DONE-IN-RUN-10** (P4: il gesto
+  che aggiunge porta l'Annulla; il "−" di correzione e lo s-fare boolean restano muti,
+  come il pattern dieta).
 - **PROP-hab-02 — Tastiera sul riordino.** Frecce su/giù sulla maniglia (pattern
   ArrowButton già in programs-panel) e docstring di nuovo onesto. Effort S · Valore M.
 - **PROP-hab-03 — Traguardi di streak.** A 7/30/100 giorni, il toast del log porta una
