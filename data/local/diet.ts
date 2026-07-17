@@ -853,6 +853,7 @@ export class LocalDietRepo implements DietRepo {
         meal_id: v.data.meal_id,
         name: v.data.name,
         sort_order: v.data.sort_order ?? maxSort + 1,
+        training: v.data.training ?? null,
         created_at: now,
         updated_at: now,
         deleted_at: null,
@@ -895,6 +896,7 @@ export class LocalDietRepo implements DietRepo {
             meal_id: mealId,
             name: (name ?? `Variante ${letter}`).slice(0, 120),
             sort_order: maxSort + 1,
+            training: null,
             created_at: now,
             updated_at: now,
             deleted_at: null,
@@ -935,6 +937,7 @@ export class LocalDietRepo implements DietRepo {
         ...(v.data.sort_order !== undefined && {
           sort_order: v.data.sort_order,
         }),
+        ...(v.data.training !== undefined && { training: v.data.training }),
         updated_at: bumpFrom(this.clock, current.updated_at),
       };
       await this.db.meal_variants.put(next);

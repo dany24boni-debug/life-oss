@@ -1,0 +1,227 @@
+# Run 10 — Product Audit, v3 Proposals, Gated Elevation
+
+**Modello:** Fable 5, effort max. **Sessione:** non presidiata, auto mode.
+**Branch:** `feat/run-10` (off `main` @ `ecc92b7`). Mai pushato, mai mergiato.
+**Brief:** run-10 — primo run del ciclo v3 "elevation". Fase A: audit di prodotto → `v3-proposals.md`. Fase B (gated): IA palestra scheda-centrica, pass di larghezza desktop, quick win S-effort (cap 8).
+
+Questo report è fence-exempt e viene aggiornato a ogni prompt.
+
+---
+
+## P0 · Pre-flight gate
+
+**1. Clean tree.** `git status --porcelain` su `main` → vuoto. ✓
+
+**2. Run-09 in HEAD.** `git ls-files docs/plans/lifeos-rebuild | grep 99i` → `99i-run09-report.md`. ✓ (HEAD `ecc92b7`, merge di `feat/run-09`.)
+
+**3. Branch.** Creato `feat/run-10` e switchato. ✓
+
+**4. Baseline verde PRIMA di ogni edit (dalla radice, come da AGENTS.md).**
+- `npm run lint` → pulito ✓
+- `npm run typecheck` → pulito ✓
+- `npm run lint:sentinels` → pulito ✓ ("no personal-data sentinels found")
+- `npm run build` → ✓ (webpack, tutte le route presenti)
+- `npm test` → **Test Files 75 passed (75) · Tests 952 passed (952)** ✓ — combacia col finale run-09.
+
+**Baseline di dimensione (metodo 99h/99i: chunk client della route, budget Oggi):**
+- Oggi: `page-530ee343370a0da5.js` = **53.327 byte** (16.056 B gzip) — byte-identico al finale run-09 (~53 kB del brief confermato).
+- Layout `(app)`: `layout-27f267e27f7fbf5e.js` = 38.370 byte (11.989 B gzip).
+
+**5. Letture (per intero, in ordine):** `AGENTS.md`, `00-audit.md`, `01-blueprint.md`, `99g-run07-report.md`, `99h-run08-report.md`, `99i-run09-report.md`.
+
+**Delta brief ↔ documenti:** nessun conflitto rilevato. Il brief dice "baseline ~53 kB raw" per Oggi — confermato al byte (53.327). La convenzione golden-test di AGENTS.md (import canonico `deriveUuidV8` da `data/ids.ts` post run-09/P6) è più aggiornata della memoria storica dei report 99g/99h — vince AGENTS.md, e comunque questo run non tocca id derivati per regola.
+
+Pre-flight PASS.
+
+**Commit:** `run-10/P0: preflight + baseline`
+
+---
+
+## P1 · Product audit → `v3-proposals.md`
+
+**Fence rispettata:** zero modifiche a codice sorgente — `git status` al commit mostra SOLO `v3-proposals.md` + questo report. La lettura è stata totale: shell/Oggi/gym/settimana/ember letti in prima persona; le altre superfici auditate da 4 agenti Explore paralleli (Task+Calendario · Abitudini+Focus+Corpo · Dieta+Statistiche · Esami+Spese+Sera+Impostazioni) con evidenza file:riga per ogni claim, verificata a campione.
+
+**Documento consegnato:** `docs/plans/lifeos-rebuild/v3-proposals.md` — §1 findings+proposte per tutti i 14 moduli con tap-count misurati (metrica FLSI), §2 otto integrazioni cross-modulo, §3 dodici wow features con nota di fattibilità local-first/zero-deps, §4 tre set raccomandati per run-11 + lista quick-win candidati per il P4.
+
+**Findings load-bearing (il resto è nel documento):**
+1. **La shell cappa tutto a 768 px** (`layout.tsx:44`, `max-w-2xl → md:max-w-3xl`): nessuna superficie dichiara `lg:`; su 1440p restano ~450 px vuoti. La board Settimana è GIÀ `md:grid-cols-7` ma dentro 768 px (~96 px/colonna): il sintomo riportato da Davide è la shell, non la board. I grafici di /stats sono perfino `max-w-md` (448 px).
+2. **Zona morta task +8 giorni**: "Prossimi" è una finestra fissa +1..+7 (`tasks/logic.ts:301-306`) — un task datato oltre non compare in NESSUNA vista di /tasks.
+3. **Undo asimmetrico sui log a un tocco**: dieta "Fatto" ce l'ha; abitudini (board+strip), check agenda, "Capitolo fatto" esami e aggiunta spese no.
+4. **Dieta traccia carbo/grassi e non li mostra mai**; il "quanto manca" è calcolato (`remainingVsTarget`) e mai renderizzato.
+5. **Statistiche mono-variabile**: zero correlazioni, dieta invisibile, `DeltaChip` esiste in ui/ e nessuno lo usa; recap solo settimanale.
+6. **Sera è un silos completo** (niente entra, niente esce); Esami non esiste su Oggi (docstring di pacing.ts promette un widget mai costruito).
+7. **Palestra**: il prefill "ultima volta" c'è ma è invisibile al momento della conferma; PR celebrati solo a fine seduta; chunk più pesante dell'app (86.172 B pre-P2).
+8. **Impostazioni**: unica superficie (app) senza skeleton; tema sepolto sotto 5 card di import fotocopia.
+9. **Bugia d'accessibilità in Abitudini**: il docstring dichiara riordino "drag + tastiera", la maniglia non ha handler tastiera.
+
+**Stats del documento:** 44 PROP totali — per modulo: oggi 4 · task 5 · calendario 5 · palestra 6 · statistiche 4 · abitudini 5 · settimana 2 · focus 3 · dieta 5 · esami 3 · spese 3 · sera 2 · corpo 2 · impostazioni 2; più 8 CROSS e 12 WOW (con rimandi incrociati, non doppi conteggi dove coincidono). H-value: 19. Flag: 10 `[schema]`, 0 `[primitive]`, 15 `[cross]`, 9 `[home]`.
+
+**Checkpoint:** solo docs → lint/typecheck/build/test non toccati dal diff; la suite resta quella del baseline P0 (952/952, riverificata al P2).
+
+**Commit:** `run-10/P1: v3 proposals document`
+
+---
+
+## P2 · Palestra — IA scheda-centrica (MANDATORY)
+
+**Checkpoint: VERDE.** lint ✓ (una `no-unused-vars` corretta al volo) · tsc ✓ · build ✓ · sentinels ✓ · test **963/963, 76 file** (baseline 952/75: **+11**, `app/(app)/gym/card-history.test.ts` nuovo — colonne storiche, ultima-esecuzione, riepilogo sezioni forma-Torso-A, bucket set per colonna, href della card). **Dev-check produzione (`npm start`, da ospite):** `/gym` **200** con le 4 tab nell'HTML SSR — "Scheda" PRIMA; `/gym?scheda=x` **200** (deep link); zero controlli nativi nell'HTML; nel chunk servito della route: "Logga oggi" ✓ "suggerita" ✓ "ultima:" ✓ "Storico della scheda" ✓ "Sessione libera" ✓ "Rivedi la seduta" ✓ "scheda=" ✓; nel chunk di Oggi: "Apri: " ✓ e "scheda=" ✓.
+
+### La rotazione (dominio run-07 INTOCCATO — solo IA/navigazione/presentazione)
+
+1. **`/gym` = le card.** Tab nuove: **Scheda** (default) · Storico · Libreria · Programmi — il tab "Allenamento" muore. `SchedaCards` (`scheda-view.tsx`): una card per giorno del programma attivo con nome, sottotitolo, **riepilogo sezioni** ("3 FORZA · 3 IPERTROFIA · 1 CORE", `sectionSummary` pura), **ultima esecuzione** (`lastDoneDate`: ultima CONCLUSA; le abbandonate non sono storia), chip **"suggerita"** sul next-up (STESSA rotazione di sempre, `useNextUpDay` — zero logica di scheduling nuova) e l'ember dot se la seduta del giorno è in corso. Da lg le card vanno a 2 colonne. In coda: "Sessione libera" (ghost — la scorciatoia sopravvive, non è più la porta) e il prompt import legacy (solo autenticati, storico vuoto — riuso di `EmptyHistoryImportPrompt`). Senza programma: EmptyState con CTA → tab Programmi + "Importa esempio: Torso A".
+2. **La card = il cuore.** `SchedaCardView`: header (nome, sottotitolo, riepilogo, azione primaria) + **griglia storica Excel-style** (`CardHistoryGrid`): righe = esercizi nell'ordine della scheda nei **gruppi di sezione** (riuso `sectionGroups` del builder — mai riordino implicito), colonne = **date delle esecuzioni** più-recenti-prima con **"Oggi" evidenziata** quando esiste, celle = i set "62,5 × 9" (riuso `doneCellLabel`, formato compatto del progress-grid). Prima colonna **sticky** + `overflow-x-auto`: mobile ~2-3 colonne visibili, desktop quante ne entrano (la larghezza vera arriva col P3). Ogni riga porta la prescrizione ("4×3–5 · RIR 1 · rec 4'30", riuso `slotSummary`) e il **verdetto AUMENTA/RESTA inline** (riuso `verdictForSlot` sull'ultima seduta conclusa — nessuna logica di dominio nuova).
+3. **"Logga oggi" DENTRO la card.** Primario nell'header: crea la sessione (`startSessionFromDay`, esistente) o riprende quella in corso del giorno, ed entra nella **griglia di log ESISTENTE** (`SessionGrid` — griglia senza countdown, RIR testuale, micro-editor: internals byte-intoccati) con BackButton verso la card. A fine seduta (`finishSession` esistente + riepilogo modale invariato) **si torna alla card con la colonna di oggi popolata**. Guardie: sessione attiva di un ALTRO giorno → "Riprendi la sessione in corso" (mai due attive per sbaglio); giorno già fatto oggi → riga "Fatta oggi · Rivedi la seduta" (editor storico esistente).
+4. **L'ingresso session-centrico è una scorciatoia.** Deep link `/gym?scheda=<dayId>` (`gymCardHref`), letto via `useSearchParams` con **stato derivato nel render** (il deep link vale finché non navighi; niente setState-in-effect — la lezione lint di casa). Il tile Palestra di Oggi ora è un **Link** alla card suggerita: "Apri: Torso A" (era un bottone che creava la sessione e pushava); "Riprendi" porta alla card della sessione in corso (o a /gym per le libere). Nessun link morto: senza programmi il tile cade sul fallback "/gym".
+5. **Profondità per-esercizio.** Tap sul nome (colonna sticky) → `ExerciseDetailSheet` esistente (sparkline, PR, e1RM/Δ/Forza Rel., verdetto) — riuso puro.
+
+### Cancellazione grep-gated
+
+`StartPanel` (il pannello di partenza session-first) — consumatori PRIMA della rimozione:
+```
+$ grep -rn "StartPanel" app lib components data ui
+app/(app)/gym/gym-screen.tsx:482:function StartPanel({
+```
+Solo la definizione interna (il valore era già migrato nelle card) → rimossa; `EmptyHistoryImportPrompt` SOPRAVVIVE (riusato dalle card). `useNextUpDay`/`useProgramDays` escono dagli import di gym-screen (vivono in scheda-view).
+
+### Fence audit
+
+Diff su: `app/(app)/gym/{card-history.ts,card-history.test.ts,scheda-view.tsx}` (nuovi), `gym-screen.tsx`, `_components/today-gym.tsx` (SOLO bersagli dei link + copy del CTA — layout del tile intatto), questo report. `ui/` **zero diff** (nessun primitive nuovo: la griglia riusa il pattern sticky-column inline di progress-table). `data/**` **zero diff** — le righe caricano la storia col pattern "un hook per riga, numero stabile" (ricorsione dieta run-09); niente hook nuovi.
+
+### Delta dichiarati
+
+1. **Tap-count dell'avvio: 1 → 2** ("Apri: Torso A" → "Logga oggi"). È il costo dichiarato della rotazione: la porta è la scheda (il modello mentale di Davide), il log parte da lì; in cambio l'avvio avviene col contesto storico davanti. Il CTA cambia copy da "Inizia:" ad "Apri:" per onestà (fence: "link target, not layout" — il testo segue il bersaglio).
+2. **Test della nuova IA a livello logico** (il repo non ha render-testing — convenzione run-07): card list con last-done → `lastDoneDate`+`sectionSummary`; colonne storiche da fixture → `historyColumns`+`setsBySessionForExercise`; il tile di Oggi → `gymCardHref` golden. "Logga oggi entra nel flusso" e "per-esercizio → progressi" sono riuso puro di componenti già testati ai loro run, verificati nel dev-check via chunk.
+3. **Chunk /gym: 86.172 → 96.163 B raw** (23,8 kB gzip) — +10 kB per la vista nuova; /gym non ha budget formale, registrato per onestà. **Oggi: 53.327 → 53.798 B (+471 B)** — solo lo swap bottone→Link nel tile (budget P4/P5 intatto).
+
+**Commit:** `run-10/P2: gym card-centric IA`
+
+---
+
+## P3 · Desktop width pass (MANDATORY)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **963/963, 76 file** (nessun test nuovo: pure classi/token, zero logica). **Verifica servita (produzione, da ospite):** ogni rotta passa da `em-main`; SOLO `/settimana`, `/gym`, `/stats` dichiarano `data-page-width="wide"` (`/`, `/tasks`, `/dieta` restano lettura — quotato dal curl nel run log).
+
+### Il meccanismo (un token, zero magic number sparsi)
+
+La radice del sintomo era la shell: `max-w-2xl → md:max-w-3xl` su OGNI superficie (`layout.tsx:44`). Ora la colonna è la recipe **`.em-main`** in `ui/ember.css` (FLAGGED — token nuovi):
+
+- `--em-page-max: 48rem` (la larghezza di lettura storica) · `--em-page-wide: 88rem` (board/tabelle);
+- `.em-main { max-width: 42rem }` — parità BYTE col mobile pre-P3; da `md` sale a `--em-page-max`; **`.em-main:has([data-page-width="wide"])` sale a `--em-page-wide`** — la pagina dichiara la propria natura con un data-attribute sull'elemento radice, SSR, zero flash. `:has()` è nei browser target dal 2022-23 (Safari 15.4+/Chrome 105+); dove mancasse si degrada alla larghezza di lettura (comportamento pre-P3): fallback onesto, commentato nel CSS.
+
+### Le superfici
+
+1. **Settimana** — `data-page-width="wide"`: la board `md:grid-cols-7` già esistente ora respira (~180 px/colonna a 1440p invece di ~96): piani orari leggibili, check visibili senza scroll orizzontale. Mobile INTATTO (lo snap-scroll è un ramo separato).
+2. **Palestra** — wide: la griglia storica del P2 mostra più colonne-data, la tabella Progressi idem; le card a 2 colonne da lg (già nel P2).
+3. **Statistiche** — wide + la larghezza SPESA: da lg i riquadri vanno a **due colonne** (`lg:grid lg:grid-cols-2`, header a piena riga, tile Streak/Record nella prima cella accanto al grafico Settimana); `WeekBars` alza il tetto `max-w-md → lg:max-w-xl` (l'SVG scala col viewBox: oltre diventerebbe gonfio, non più leggibile).
+
+### surface → container before → after (a ogni breakpoint)
+
+| Superficie | < md (mobile) | md (prima → dopo) | lg/xl (prima → dopo) |
+| --- | --- | --- | --- |
+| Settimana | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** (board 7 col piene) |
+| Palestra | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** (griglia storica + progressi) |
+| Statistiche | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** + riquadri a 2 colonne |
+| Oggi, Task, Calendario, Dieta, Abitudini, Focus, Esami, Spese, Sera, Corpo, Impostazioni | 42rem (=) | 48rem (=) | 48rem (=, lettura) |
+
+\* a md il cap non morde quasi mai (viewport −224 px di rail < 48rem): l'effetto pratico parte da ~1040 px di viewport, esattamente dove il deserto cominciava.
+
+### Delta dichiarati (il brief elencava anche Dieta/Calendario/Spese/Esami)
+
+L'audit P1 (classNames quotati) mostra che quelle superfici NON sono tabellari oggi — allargarle ora peggiorerebbe la lettura, e il criterio del brief è "widen where the content is tabular/board-like":
+1. **Dieta**: il builder del piano è a chip-giorno a colonna singola (non una griglia); wide oggi = card stirate a 1400 px. La griglia settimanale desktop è PROP-diet-05 (run-11): larghezza e layout arrivano insieme.
+2. **Calendario**: il mese è a celle intrinseche 44 px (`h-11 w-11`) — wide produce solo gap, non un calendario desktop; il layout a due pannelli è PROP-cal-02 (run-11).
+3. **Spese/Esami**: liste impilate (righe descrizione+importo / card), non tabelle; a 88rem le righe diventano illeggibili (160+ caratteri di corsa visiva). Restano a lettura; se run-11 li tabellizza, il token è pronto (`data-page-width="wide"` è una riga).
+
+Nessuna regressione mobile: sotto md `.em-main` è byte-identica al pre-P3 (42rem) e nessuna classe mobile è stata toccata; gli snapshot logici (963 test) restano verdi.
+
+**Commit:** `run-10/P3: desktop width pass`
+
+---
+
+## P4 · Quick wins — selezione e fence dichiarate PRIMA di editare
+
+Criteri del brief rispettati: tutti S, zero `[schema]`, zero `[primitive]`, zero ambiguità di design (ognuno specifica la modifica per intero in v3-proposals). Cap 8. Fence per-item (SOLO questi file + v3-proposals.md per il marchio DONE + report):
+
+| # | PROP | File in fence |
+| --- | --- | --- |
+| 1 | PROP-hab-01/oggi-03 — undo sui log abitudini | `app/(app)/abitudini/habit-card.tsx` · `app/(app)/_components/today-habits.tsx` |
+| 2 | PROP-task-02 — undo sul check inline in agenda | `app/(app)/_components/agenda-list.tsx` |
+| 3 | PROP-spese-01 — undo sull'aggiunta spesa | `app/(app)/spese/spese-screen.tsx` |
+| 4 | PROP-esami-01 — toast+undo su "Capitolo fatto" | `app/(app)/esami/esami-screen.tsx` |
+| 5 | PROP-gym-02 — "L'ultima volta" nel micro-editor | `app/(app)/gym/session-grid.tsx` |
+| 6 | PROP-task-01 — "Più avanti" oltre i 7 giorni | `app/(app)/tasks/tasks-screen.tsx` (+ `_components/tasks/logic.ts` SOLO se serve una pura) |
+| 7 | PROP-oggi-01 — tile di Oggi tappabili | `app/(app)/_components/today-tiles.tsx` |
+| 8 | PROP-imp-01 — skeleton su Impostazioni | `app/(app)/impostazioni/{profile-section,protected-days,push-section}.tsx` |
+
+Riserve dichiarate (entrano SOLO se un titolare si rivela ambiguo alla lettura del codice): PROP-focus-03 spacebar · PROP-stats-01 delta · PROP-diet-01 numero rimanente. Checkpoint completo a fine batch (per-item: lint+typecheck mirati).
+
+### Esito del batch — 8/8 implementati, nessuna riserva usata
+
+**Checkpoint di fine batch: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **964/964, 76 file** (+1: `laterRange` in `_components/tasks/logic.test.ts`). Un commit per item (`run-10/P4: <PROP-id> …`), ogni PROP marcata **DONE-IN-RUN-10** in v3-proposals.md.
+
+1. **PROP-hab-01/oggi-03** — undo sui log abitudini, board + strip Oggi: il gesto che AGGIUNGE (spunta boolean, +1, +chip quantità) porta il toast "… · Annulla" che riporta il TOTALE del giorno al valore di prima (`logDay` assoluto); il "−" di correzione e lo s-fare boolean restano muti — il calco esatto del pattern "Fatto" dieta (run-09).
+2. **PROP-task-02** — il check inline in agenda ora completa col toast "Fatto: {titolo} · Annulla" (uncomplete — che ritira anche lo spawn dei ricorrenti, garanzia repo run-09). Delta dichiarato: la coda "prossima: …" resta solo nelle liste task (il check agenda non ha il Task intero e la fence non includeva altro).
+3. **PROP-spese-01** — "Spesa di 12,50 € aggiunta." guadagna l'Annulla (softDelete della riga creata); durata da 3 s → standard 5 s perché l'undo abbia il suo tempo.
+4. **PROP-esami-01** — "Capitolo fatto" parla e si annulla: "Capitolo 6 di 12: fatto · Annulla" (ripristino del conteggio precedente). Prima un +1 sbagliato si correggeva solo dalla scheda.
+5. **PROP-gym-02** — il ghost Hevy-style è VISIBILE: nel micro-editor serie la riga "Ultima volta: 62,5 × 9 @RIR1" sopra gli stepper (la storia era già caricata per il prefill — ora si vede il numero da battere).
+6. **PROP-task-01** — zona morta +8g chiusa: in Prossimi, sotto i gruppi dei 7 giorni, la sezione "Più avanti · N" (finestra +8..+365, `laterRange` pura + test di contiguità) come lista con data per riga (il pattern `showDate` del blocco In ritardo — più onesto dei gruppi-mese per task sparsi). Empty state aggiornato ("Nessun task in vista").
+7. **PROP-oggi-01** — TUTTI i tile di Oggi sono Link al loro modulo con la cornice `TileLink` unica (focus-ring del pattern Pasti): Task→/tasks, Streak/Settimana→/stats, Palestra→/gym, Peso→/corpo, Piano→/settimana, Pasti→/dieta.
+8. **PROP-imp-01** — Impostazioni non "poppa" più: skeleton su Profilo, Giorni protetti e Push durante il caricamento (la riga Sync aveva già il fallback onesto).
+
+**Budget Oggi (item 7 tocca la home):** chunk `page-*.js` = **47.845 B raw (14.891 gzip)** — SOTTO il baseline 53.327 B: il P2 ha tolto dal grafo della home il percorso di creazione-sessione del tile (appRepos/useRouter via bottone), e con i TileLink il bilancio netto del run sulla home è **−5,5 kB raw**. Misura col metodo 99h/99i, stessa build dei test.
+
+---
+
+## P5 · Chiusura del run
+
+**Checkpoint finale a HEAD: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · **964/964, 76 file** ✓. **Smoke di produzione da ospite:** tutte le 14 superfici **200** + il deep link `/gym?scheda=x` **200**. Albero pulito, un commit per prompt (P4: uno per item).
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ ecc92b7) | 75 | **952** | — |
+| P1 (v3-proposals, solo docs) | 75 | 952 | — |
+| P2 (IA scheda-centrica) | 76 | **963** | +11 (card-history) |
+| P3 (width pass, solo classi/token) | 76 | 963 | — |
+| P4 (8 quick win) | 76 | **964** | +1 (laterRange) |
+
+### Budget e misure
+
+- **Oggi**: 53.327 B → **47.845 B raw** (16.056 → 14.891 gzip) — **−5,5 kB**, budget rispettato in negativo (motivazione al P4).
+- **/gym**: 86.172 → 96.163 B raw (+10 kB, la vista scheda del P2; nessun budget formale, registrato).
+- Golden test (`data/ids.test.ts`, importer): **mai toccati, verdi** — il run non ha sfiorato id derivati né schema (zero migrazioni, zero Dexie bump, zero dipendenze: `package.json` byte-identico).
+
+### v3-proposals.md — statistiche per il triage
+
+44 PROP (oggi 4 · task 5 · calendario 5 · palestra 6 · statistiche 4 · abitudini 5 · settimana 2 · focus 3 · dieta 5 · esami 3 · spese 3 · sera 2 · corpo 2 · impostazioni 2) + 8 CROSS + 12 WOW; **19 H-value**; flag: 10 `[schema]`, 0 `[primitive]`, 15 `[cross]`, 9 `[home]`. §4 propone 3 set per run-11 (A "Giornata guidata" ~6 prompt · B "Palestra pro + numeri" ~5 · C "I moduli si parlano" ~5-6), ognuno con al più una migrazione.
+
+**Quick win: 8 implementati, 0 saltati** (nessuna riserva usata): hab-01/oggi-03, task-02, spese-01, esami-01, gym-02, task-01, oggi-01, imp-01 — dettagli e delta al P4. Le riserve (focus-03 spacebar, stats-01 delta, diet-01 numero rimanente) restano PROP aperte per run-11.
+
+### Delta vs brief (riepilogo completo)
+
+1. **P2 — avvio allenamento 1→2 tap** ("Apri: Torso A" → "Logga oggi"): costo dichiarato della rotazione voluta; il CTA del tile cambia copy per onestà (il bersaglio è la card).
+2. **P2 — test a livello logico** (niente framework di render-testing nel repo, convenzione run-07): i cinque punti di acceptance coperti da pure functions testate + dev-check sui chunk serviti.
+3. **P3 — Dieta/Calendario/Spese/Esami NON allargate**: l'audit mostra contenuto non tabellare oggi (chip-nav, celle intrinseche, liste); il criterio del brief era "widen where tabular/board-like" — larghezza e layout arrivano insieme in run-11 (PROP-diet-05, PROP-cal-02), il token è pronto.
+4. **P4 — coda "prossima:" dei ricorrenti solo nelle liste task** (il check agenda non ha il Task intero; fence minima).
+5. **P4 — "Più avanti" come lista con data per riga** invece dei gruppi-mese della PROP: pattern `showDate` esistente, più onesto per task sparsi.
+
+### ui/ e token FLAGGED (per la review di Davide)
+
+- **Nessun primitive nuovo in `ui/`** (la griglia storica riusa il pattern sticky-column inline di progress-table).
+- **`ui/ember.css`**: token nuovi **`--em-page-max` (48rem)** e **`--em-page-wide` (88rem)** + recipe **`.em-main`** con `:has([data-page-width="wide"])` (P3). Fallback dichiarato: browser senza `:has` restano alla larghezza di lettura.
+
+### Domande aperte per il triage chat
+
+1. **"Apri: Torso A" vs 1-tap start**: se il tap in più sul flusso quotidiano pesa, l'alternativa è il deep link che apre la card CON la griglia già attiva quando esiste una sessione in corso (oggi la scelta è uniforme: sempre la card). Giudizio sul device.
+2. **Larghezza wide a 88rem**: verificare a occhio su schermo grande (1440/monitor esterno) se Settimana respira giusto o se serve un token intermedio.
+3. **Toast sul quick-log acqua**: 3 tap rapidi = 3 toast in coda (auto-dismiss 5s, pattern task). Se infastidisce, la variante è un toast coalescente — decidere dopo l'uso.
+4. **Triage run-11**: scegliere il set (§4 di v3-proposals) — la mia raccomandazione è A ("Giornata guidata"), è il salto di prodotto più visibile dopo questo run.
+
+### GATE DI DAVIDE (la sessione non tocca mai il vivo)
+
+1. Review del diff di `feat/run-10` (12 commit), poi `git merge --no-ff --no-edit feat/run-10`.
+2. Smoke sul device: la rotazione palestra (card → griglia storica → Logga oggi → colonna di oggi), la Settimana su desktop largo, gli 8 quick win (undo su acqua/agenda/spese/capitoli, "Ultima volta" nel set editor, "Più avanti" nei task, tile tappabili, skeleton Impostazioni).
+3. Triage di `v3-proposals.md` in chat → brief del run-11.
+
+**Run 10 completo.** La palestra ora si apre come l'Excel — le card delle schede con la loro storia per colonna, il log che parte da dentro la scheda; il desktop ha smesso di essere una strip da telefono dove i dati sono tabelle; quattordici superfici auditate con i tap contati sono diventate 44 proposte triage-abili; e otto tagli piccoli ma quotidiani (gli undo che mancavano, la zona morta dei task, i tile muti) sono già chiusi. Quattro check verdi a ogni checkpoint; ogni commit su verde; `main` mai toccata.

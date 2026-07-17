@@ -9,6 +9,7 @@
  * spenti, mai finti.
  */
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { cx, useToast } from "@/ui";
 import { appRepos } from "@/data/hooks";
@@ -18,6 +19,9 @@ import { WEEKDAYS_IT } from "@/ui/calendar-core";
 import { IconCheck } from "../_components/icons";
 import { findNowSlot, nextStateOnLong, nextStateOnTap } from "./logic";
 
+/** Contesto palestra di uno slot (run-11 P5a): nome scheda + deep-link. */
+export type SlotGymLink = { name: string; href: string };
+
 export function WeekBoard({
   board,
   isoWeek,
@@ -25,6 +29,7 @@ export function WeekBoard({
   nowHhmm,
   editable,
   onOpenSlot,
+  gymForSlot,
 }: {
   board: WeekBoardDay[];
   isoWeek: IsoWeek;
@@ -34,6 +39,8 @@ export function WeekBoard({
   /** false = anteprima (settimane future): check spenti. */
   editable: boolean;
   onOpenSlot?: (entry: WeekSlotEntry) => void;
+  /** CROSS-01: il giorno-scheda per gli slot palestra (null = niente). */
+  gymForSlot?: (title: string, weekday: number) => SlotGymLink | null;
 }) {
   const todayRef = useRef<HTMLElement | null>(null);
 
@@ -94,6 +101,11 @@ export function WeekBoard({
                     current={now?.currentId === entry.slot.id}
                     editable={editable}
                     onOpen={onOpenSlot ? () => onOpenSlot(entry) : undefined}
+                    gymLink={
+                      gymForSlot
+                        ? gymForSlot(entry.slot.title, day.weekday)
+                        : null
+                    }
                   />
                 ))}
               </ul>
@@ -125,12 +137,16 @@ export function SlotRow({
   current,
   editable,
   onOpen,
+  gymLink,
 }: {
   entry: WeekSlotEntry;
   isoWeek: IsoWeek;
   current: boolean;
   editable: boolean;
   onOpen?: () => void;
+  /** CROSS-01 (run-11): la scheda accanto allo slot palestra — il
+   *  check resta lo slot, la scheda è contesto tappabile a parte. */
+  gymLink?: SlotGymLink | null;
 }) {
   const toast = useToast();
   const { slot, state } = entry;
@@ -175,6 +191,15 @@ export function SlotRow({
           <SlotLabel entry={entry} current={current} />
         </span>
       )}
+      {gymLink !== null && gymLink !== undefined ? (
+        <Link
+          href={gymLink.href}
+          aria-label={`Apri la scheda ${gymLink.name}`}
+          className="em-body-sm max-w-24 shrink-0 truncate text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
+        >
+          {gymLink.name}
+        </Link>
+      ) : null}
       <button
         type="button"
         disabled={!editable}

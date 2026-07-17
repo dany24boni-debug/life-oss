@@ -218,9 +218,14 @@ function QuickAdd({
       setNote("");
       setDate(null);
       onAdded(day);
+      // Undo sull'aggiunta (run-10 P4, PROP-spese-01): l'unica creazione
+      // one-shot del repo che non l'aveva.
       toast.show({
         message: `Spesa di ${formatEuro(parsedAmount)} aggiunta.`,
-        durationMs: 3000,
+        action: {
+          label: "Annulla",
+          onClick: () => void appRepos().spese.softDelete(r.data.id),
+        },
       });
     } finally {
       setBusy(false);

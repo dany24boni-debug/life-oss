@@ -156,6 +156,12 @@ export type AgendaItem = {
   end: TimeString | null;
   /** Solo task: stato fatto (riga attenuata, testo barrato). */
   done: boolean;
+  /**
+   * Annotazione quieta a destra del titolo (run-11 P3: la stima "30'"
+   * del task nella timeline di Oggi). I builder non la impostano mai:
+   * la decora chi compone la vista; /calendar resta com'era.
+   */
+  meta?: string;
 };
 
 /**

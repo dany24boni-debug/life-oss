@@ -9,10 +9,12 @@ import {
   formatQty,
   kcalProteinLine,
   parseKcalInput,
+  isTrainingDay,
   parseMacroInput,
   parseQtyInput,
   qtyStep,
   sumItemTotals,
+  trainingVariantFor,
 } from "./logic";
 
 describe("formattazione it-IT (grouping sempre attivo)", () => {
@@ -160,5 +162,41 @@ describe("stepper e somme di authoring", () => {
     const totals = sumItemTotals(items, foodById);
     expect(totals.kcal).toBe(282 + 156); // pasta 80 g + 2 uova; la persa non conta
     expect(totals.protein_dg).toBe(108 + 126);
+  });
+});
+
+describe("giorni di allenamento (run-11, CROSS-02)", () => {
+  it("isTrainingDay: weekday mappato o sessione di oggi; il fatto vince", () => {
+    const days = [{ weekday: 1 }, { weekday: null }, { weekday: 4 }];
+    expect(isTrainingDay(4, days, 0)).toBe(true);
+    expect(isTrainingDay(2, days, 0)).toBe(false);
+    expect(isTrainingDay(2, days, 1)).toBe(true); // sessione libera oggi
+    expect(isTrainingDay(2, [], 0)).toBe(false);
+  });
+
+  it("trainingVariantFor: la prima marcata, mai se già scelta", () => {
+    const variants = [
+      { variant: { id: "a", name: "Leggera", training: null } },
+      { variant: { id: "b", name: "Allenamento", training: true } },
+      { variant: { id: "c", name: "Extra", training: true } },
+    ];
+    expect(trainingVariantFor(variants, null)).toEqual({
+      id: "b",
+      name: "Allenamento",
+    });
+    expect(trainingVariantFor(variants, "a")).toEqual({
+      id: "b",
+      name: "Allenamento",
+    });
+    // Già selezionata (lei o un'altra variante-allenamento): niente.
+    expect(trainingVariantFor(variants, "b")).toBeNull();
+    expect(trainingVariantFor(variants, "c")).toBeNull();
+    // Nessuna marcata: nessuna proposta.
+    expect(
+      trainingVariantFor(
+        [{ variant: { id: "a", name: "Leggera", training: false } }],
+        null,
+      ),
+    ).toBeNull();
   });
 });

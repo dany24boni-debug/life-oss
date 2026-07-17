@@ -35,7 +35,9 @@ export function AgendaList({
   );
 }
 
-function AgendaRow({
+/** Riga singola del merge — esportata per la timeline di Oggi (run-11
+ *  P3), che interleava queste righe con slot del piano e fasi focus. */
+export function AgendaRow({
   item,
   onOpenEvent,
   onOpenTask,
@@ -71,6 +73,11 @@ function AgendaRow({
       >
         {item.title}
       </span>
+      {item.meta !== undefined ? (
+        <span className="em-body-sm em-num shrink-0 text-[var(--em-text-3)]">
+          {item.meta}
+        </span>
+      ) : null}
       {item.source === "google" ? (
         <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)]">
           Google
@@ -141,7 +148,24 @@ function TaskCheck({
     const r = done
       ? await tasks.uncomplete(id)
       : await tasks.complete(id, { today });
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    // Undo anche dal check in agenda (run-10 P4, PROP-task-02): lo
+    // stesso toast delle liste task; l'uncomplete ritira anche la
+    // prossima occorrenza generata da un ricorrente (garanzia del repo,
+    // run-09). Il ri-aprire resta muto: È l'annullamento.
+    if (!done) {
+      toast.show({
+        message: `Fatto: ${title}`,
+        tone: "success",
+        action: {
+          label: "Annulla",
+          onClick: () => void appRepos().tasks.uncomplete(id),
+        },
+      });
+    }
   }
 
   return (

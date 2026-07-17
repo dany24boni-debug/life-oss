@@ -305,6 +305,18 @@ export function upcomingRange(today: DayString): {
   return { from: addDays(today, 1), to: addDays(today, 7) };
 }
 
+/**
+ * Oltre la finestra dei 7 giorni: il resto del futuro datato, fino a un
+ * anno. Chiude la zona morta di "Prossimi" (run-10 P4, PROP-task-01):
+ * prima un task a oggi+8 non compariva in NESSUNA vista di /tasks.
+ */
+export function laterRange(today: DayString): {
+  from: DayString;
+  to: DayString;
+} {
+  return { from: addDays(today, 8), to: addDays(today, 365) };
+}
+
 /** "Oggi", "Domani", altrimenti "ven 17 lug". */
 export function dayHeading(day: DayString, today: DayString): string {
   if (day === today) return "Oggi";

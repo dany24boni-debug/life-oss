@@ -62,7 +62,14 @@ function item(over: Partial<MealItem> & { id: string }): MealItem {
 }
 
 function variant(over: Partial<MealVariant> & { id: string }): MealVariant {
-  return { meal_id: "m1", name: "Variante B", sort_order: 0, ...audit, ...over };
+  return {
+    meal_id: "m1",
+    name: "Variante B",
+    sort_order: 0,
+    training: null,
+    ...audit,
+    ...over,
+  };
 }
 
 function log(over: Partial<MealLog> & { id: string }): MealLog {

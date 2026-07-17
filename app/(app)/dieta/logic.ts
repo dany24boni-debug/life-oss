@@ -136,3 +136,37 @@ export function sumItemTotals(
   }
   return acc;
 }
+
+/* ── Giorni di allenamento (run-11 P5b, CROSS-02) ────────────────────── */
+
+/**
+ * Oggi è giorno di allenamento se il weekday ha un giorno-scheda col
+ * weekday impostato, O se esiste già una sessione oggi (anche libera):
+ * il fatto vince sul piano.
+ */
+export function isTrainingDay(
+  weekday: number,
+  programDays: ReadonlyArray<{ weekday: number | null }>,
+  sessionsToday: number,
+): boolean {
+  return sessionsToday > 0 || programDays.some((d) => d.weekday === weekday);
+}
+
+/**
+ * La variante da PROPORRE nei giorni di allenamento: la prima marcata
+ * `training` (per sort_order, l'ordine in cui arrivano), MAI se è già
+ * la selezione corrente. Proposta, non imposta: l'apply resta un tap
+ * dell'utente, con undo.
+ */
+export function trainingVariantFor(
+  variants: ReadonlyArray<{
+    variant: { id: string; name: string; training: boolean | null };
+  }>,
+  chosenVariantId: string | null,
+): { id: string; name: string } | null {
+  const chosen = variants.find((v) => v.variant.id === chosenVariantId);
+  if (chosen?.variant.training === true) return null;
+  const tv = variants.find((v) => v.variant.training === true);
+  if (tv === undefined) return null;
+  return { id: tv.variant.id, name: tv.variant.name };
+}

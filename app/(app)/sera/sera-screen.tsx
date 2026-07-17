@@ -32,6 +32,7 @@ import type { CheckinPatch, EveningCheckin } from "@/data/schemas";
 import { useIsDesktop, useToday } from "../_components/tasks/screen-hooks";
 import { saveDiaryEntry } from "./actions";
 import { SeraImportButton } from "./import-button";
+import { SeraRecap } from "./sera-recap";
 
 export type DriveState = "guest" | "none" | "scope_missing" | "ready";
 
@@ -55,6 +56,10 @@ export function SeraScreen({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Il recap della giornata (run-11 P4): i fatti prima del come è
+          andata — e "Prepara domani" per il rituale di domattina. */}
+      <SeraRecap today={today} />
+
       {checkin === undefined ? (
         <div className="em-card p-5" aria-busy="true">
           <Skeleton className="h-40 w-full" />

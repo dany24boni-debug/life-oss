@@ -33,7 +33,7 @@ export function WeekBars({
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={`Completamento per giorno: ${totalDone} task chiusi su ${totalPlanned} pianificati.`}
-      className="h-auto w-full max-w-md"
+      className="h-auto w-full max-w-md lg:max-w-xl"
     >
       {days.map((d, i) => {
         const x = i * SLOT_W;

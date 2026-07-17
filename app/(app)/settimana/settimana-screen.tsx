@@ -13,15 +13,24 @@ import { useEffect, useState } from "react";
 import { Button, EmptyState, Skeleton, Tabs, cx } from "@/ui";
 import { isoWeekOf, shiftIsoWeek, type IsoWeek } from "@/data/planner";
 import {
+  useActiveProgram,
   useActiveWeekPlan,
+  useNextUpDay,
+  useProgramDays,
   useWeekBoard,
   useWeekStats,
 } from "@/data/hooks";
 import { APP_TIME_ZONE } from "../_components/tasks/logic";
 import { useToday } from "../_components/tasks/screen-hooks";
 import { IconChevronRight } from "../_components/icons";
+import { gymCardHref } from "../gym/card-history";
 import { PlanManager } from "./plan-manager";
-import { completionPct, hhmmInZone, weekRangeLabel } from "./logic";
+import {
+  completionPct,
+  gymDayForSlot,
+  hhmmInZone,
+  weekRangeLabel,
+} from "./logic";
 import { WeekBoard } from "./week-board";
 
 const TAB_ITEMS = [
@@ -75,6 +84,15 @@ function BoardTab({ onGoToPlans }: { onGoToPlans: () => void }) {
   const shownWeek = week ?? thisWeek;
   const plan = useActiveWeekPlan();
   const board = useWeekBoard(plan?.id ?? null, shownWeek);
+  // CROSS-01 (run-11 P5a): gli slot "Palestra" mostrano il giorno-scheda
+  // e deep-linkano alla sua card — il check resta lo slot.
+  const gymProgram = useActiveProgram();
+  const gymDays = useProgramDays(gymProgram?.id ?? null);
+  const nextUp = useNextUpDay();
+  const gymForSlot = (title: string, weekday: number) => {
+    const day = gymDayForSlot(title, weekday, gymDays ?? [], nextUp?.id ?? null);
+    return day === null ? null : { name: day.name, href: gymCardHref(day.id) };
+  };
 
   if (plan === undefined) {
     return (
@@ -157,6 +175,7 @@ function BoardTab({ onGoToPlans }: { onGoToPlans: () => void }) {
           today={today}
           nowHhmm={nowHhmm}
           editable={!isFuture}
+          gymForSlot={gymForSlot}
         />
       )}
       <p className="em-body-sm text-[var(--em-text-3)]">

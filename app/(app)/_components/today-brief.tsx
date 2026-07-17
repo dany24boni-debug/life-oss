@@ -16,15 +16,20 @@ import { useEffect, useRef, useState } from "react";
 import { composeBrief, type BriefSnapshot } from "@/data/brief";
 import { WATER_HABIT_ID } from "@/data/habits";
 import {
+  useActiveProgram,
   useDayDiet,
   useGymSessionsByDay,
   useHabitBoard,
   useNextUpDay,
   useOverdueTasks,
+  useProgramDays,
   useStreak,
   useTasksSummary,
 } from "@/data/hooks";
+import { isTrainingDay, trainingVariantFor } from "../dieta/logic";
 import { adessoEntry, hhmmInZone } from "../settimana/logic";
+import { formatMin } from "./format-min";
+import { useRitualDay } from "./ritual/ritual-store";
 import { APP_TIME_ZONE } from "./tasks/logic";
 import { useToday } from "./tasks/screen-hooks";
 import { useTodayPlanSlots } from "./today-adesso";
@@ -42,6 +47,11 @@ export function TodayBrief({ authed }: { authed: boolean }) {
   const board = useHabitBoard(today);
   const streak = useStreak(today, APP_TIME_ZONE);
   const dayDiet = useDayDiet(today);
+  // run-11 P5c: lo stamp del rituale (per-dispositivo) e il giorno di
+  // allenamento per la variante dieta.
+  const ritual = useRitualDay(today);
+  const gymProgram = useActiveProgram();
+  const gymDays = useProgramDays(gymProgram?.id ?? null);
   // Basta l'ora del mount: la riga è del mattino, non un orologio.
   const [nowHhmm] = useState(() => hhmmInZone(new Date(), APP_TIME_ZONE));
 
@@ -54,7 +64,8 @@ export function TodayBrief({ authed }: { authed: boolean }) {
     entries !== undefined &&
     board !== undefined &&
     streak !== undefined &&
-    dayDiet !== undefined;
+    dayDiet !== undefined &&
+    gymProgram !== undefined;
 
   let snapshot: BriefSnapshot | null = null;
   if (loaded) {
@@ -63,8 +74,37 @@ export function TodayBrief({ authed }: { authed: boolean }) {
         ? adessoEntry(entries, nowHhmm)
         : null;
     const water = board.find((e) => e.habit.id === WATER_HABIT_ID) ?? null;
+    // Lo stamp del rituale: presente solo se girato QUI oggi (run-11).
+    const plan =
+      ritual !== undefined && ritual !== null && ritual.planned_at !== undefined
+        ? {
+            tasks: ritual.tasks_planned ?? 0,
+            estimatedLabel:
+              ritual.estimated_min !== undefined && ritual.estimated_min > 0
+                ? formatMin(ritual.estimated_min)
+                : null,
+            over:
+              ritual.estimated_min !== undefined &&
+              ritual.free_min !== undefined &&
+              ritual.estimated_min > ritual.free_min,
+          }
+        : null;
+    // Variante dieta del giorno di allenamento (run-11, CROSS-02): il
+    // nome della variante marcata, proposta O già applicata.
+    const training = isTrainingDay(
+      dayDiet.weekday,
+      gymDays ?? [],
+      sessions.length,
+    );
+    const dietVariant = training
+      ? (dayDiet.meals
+          .map((m) => trainingVariantFor(m.variants, null)?.name)
+          .find((n) => n !== undefined) ?? null)
+      : null;
     snapshot = {
       date: today,
+      plan,
+      dietVariant,
       tasksOpen: Math.max(0, summary.total - summary.done),
       tasksOverdue: overdue.length,
       gymNextUp: nextUp?.name ?? null,

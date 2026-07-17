@@ -20,6 +20,7 @@ import {
   Input,
   Modal,
   Skeleton,
+  Switch,
   cx,
   useToast,
 } from "@/ui";
@@ -609,6 +610,16 @@ function MealSheetBody({
     if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
   }
 
+  /** CROSS-02 (run-11 P5b): marca la variante da giorno di allenamento
+   *  — nei giorni giusti /dieta la PROPONE, mai la impone. */
+  async function setVariantTraining(checked: boolean) {
+    if (!selectedVariant) return;
+    const r = await appRepos().diet.updateVariant(selectedVariant.id, {
+      training: checked ? true : null,
+    });
+    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  }
+
   async function removeVariant() {
     if (!selectedVariant) return;
     const r = await appRepos().diet.softDeleteVariant(selectedVariant.id);
@@ -714,26 +725,33 @@ function MealSheetBody({
       </div>
 
       {selectedVariant ? (
-        <div className="flex items-center gap-2">
-          <Input
-            key={selectedVariant.id + selectedVariant.name}
-            defaultValue={selectedVariant.name}
-            maxLength={120}
-            aria-label="Nome della variante"
-            className="min-w-0 flex-1"
-            onBlur={(e) => void renameVariant(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Input
+              key={selectedVariant.id + selectedVariant.name}
+              defaultValue={selectedVariant.name}
+              maxLength={120}
+              aria-label="Nome della variante"
+              className="min-w-0 flex-1"
+              onBlur={(e) => void renameVariant(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void removeVariant()}
+            >
+              Elimina variante
+            </Button>
+          </div>
+          <Switch
+            label="Variante da giorno di allenamento"
+            checked={selectedVariant.training === true}
+            onChange={(checked) => void setVariantTraining(checked)}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void removeVariant()}
-          >
-            Elimina variante
-          </Button>
         </div>
       ) : null}
 

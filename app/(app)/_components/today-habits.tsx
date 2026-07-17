@@ -78,17 +78,33 @@ function StripRing({
 
   async function quickLog() {
     const habits = appRepos().habits;
+    const previous = value;
+    const step =
+      habit.kind === "counter" ? 1 : defaultQuickStep(habit.unit, target);
     const r =
       habit.kind === "boolean"
         ? await habits.logDay(habit.id, today, done ? 0 : 1)
-        : await habits.incrementDay(
-            habit.id,
-            today,
-            habit.kind === "counter"
-              ? 1
-              : defaultQuickStep(habit.unit, target),
-          );
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+        : await habits.incrementDay(habit.id, today, step);
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    // Undo sui log a un tocco (run-10 P4, PROP-hab-01/oggi-03): stesso
+    // disegno del "Fatto" dieta — il gesto che aggiunge porta l'Annulla
+    // (ripristino del totale di prima), lo s-fare della boolean resta
+    // muto perché È l'annullamento.
+    if (habit.kind !== "boolean" || !done) {
+      toast.show({
+        message:
+          habit.kind === "boolean"
+            ? `Fatta: ${habit.name}.`
+            : `${habit.name}: +${formatHabitValue(step)}${habit.unit ? ` ${habit.unit}` : ""}.`,
+        action: {
+          label: "Annulla",
+          onClick: () => void habits.logDay(habit.id, today, previous),
+        },
+      });
+    }
   }
 
   const label =

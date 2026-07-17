@@ -103,6 +103,7 @@ describe("buildSpawnTask — la prossima istanza, pura", () => {
     status: "done",
     completed_at: "2026-07-13T19:00:00.000Z",
     recurrence: { freq: "weekly", weekdays: [1, 4] },
+    estimate_min: 45,
     sort_order: 3,
     subtasks: [
       { id: "bbbb1111-0000-4000-8000-000000000001", title: "Borsa", done: true },
@@ -125,6 +126,8 @@ describe("buildSpawnTask — la prossima istanza, pura", () => {
     expect(spawn.status).toBe("open");
     expect(spawn.completed_at).toBeNull();
     expect(spawn.recurrence).toEqual({ freq: "weekly", weekdays: [1, 4] });
+    // La stima viaggia con l'occorrenza (run-11).
+    expect(spawn.estimate_min).toBe(45);
     expect(spawn.tags).toEqual(["salute"]);
     expect(spawn.subtasks).toEqual([
       { id: "bbbb1111-0000-4000-8000-000000000001", title: "Borsa", done: false },

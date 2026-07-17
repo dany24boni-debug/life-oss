@@ -8,9 +8,10 @@ import {
   WhileAwayCard,
 } from "./_components/reminders-cards";
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
-import { TodayAdesso } from "./_components/today-adesso";
+import { TodayRitual } from "./_components/ritual/today-ritual";
 import { TodayBrief } from "./_components/today-brief";
-import { TodayAgenda } from "./_components/today-agenda";
+import { TodaySera } from "./_components/today-sera";
+import { TodayTimeline } from "./_components/today-timeline";
 import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
 import { TodayHabits } from "./_components/today-habits";
@@ -88,14 +89,24 @@ export default async function TodayPage() {
         ) : null}
       </header>
 
+      {/* Il rituale del mattino (run-11 P2): un invito, mai un cancello —
+          congedabile per il giorno, ogni passo saltabile, Oggi resta
+          identico per chi lo ignora. */}
+      <TodayRitual google={googleEvents} />
+
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
       <TodayTiles />
 
       {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
       <TodayHabits />
 
-      {/* "Adesso" (run-08 prompt 4): lo slot corrente del piano attivo. */}
-      <TodayAdesso />
+      {/* La timeline unica (run-11 P3, CROSS-05): Agenda + "Adesso"
+          convergono qui — slot, eventi, task e focus in una colonna. */}
+      <TodayTimeline google={googleEvents} />
+
+      {/* L'aggancio serale (run-11 P4, PROP-sera-01): dopo le 20, se il
+          check-in non c'è, l'invito quieto a chiudere la giornata. */}
+      <TodaySera />
 
       {/* Mini-launcher del pomodoro (run-08 prompt 5). */}
       <TodayFocus />
@@ -105,10 +116,6 @@ export default async function TodayPage() {
 
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />
-
-      {/* Agenda reale (run-04 prompt 09): strip settimana + merge del
-          giorno — eventi locali, task con orario, Google read-only. */}
-      <TodayAgenda google={googleEvents} />
 
       {/* Palestra reale (run-04 prompt 10): stato di oggi + CTA. */}
       <TodayGym />

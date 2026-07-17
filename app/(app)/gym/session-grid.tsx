@@ -724,10 +724,28 @@ function SetEditorForm({
 
   return (
     <div className="flex flex-col gap-4">
-      {ghost ? (
-        <p className="em-body-sm text-[var(--em-text-3)]">
-          Obiettivo: <span className="em-num">{ghost}</span>
-        </p>
+      {ghost !== null || lastTime !== undefined ? (
+        <div className="flex flex-col gap-0.5">
+          {ghost ? (
+            <p className="em-body-sm text-[var(--em-text-3)]">
+              Obiettivo: <span className="em-num">{ghost}</span>
+            </p>
+          ) : null}
+          {/* Il ghost Hevy-style reso VISIBILE (run-10 P4, PROP-gym-02):
+              il prefill "dall'ultima volta" c'era già — ora si vede anche
+              il numero da battere, confermare è confrontare. */}
+          {lastTime ? (
+            <p className="em-body-sm text-[var(--em-text-3)]">
+              Ultima volta:{" "}
+              <span className="em-num text-[var(--em-text-2)]">
+                {doneCellLabel(lastTime)}
+              </span>
+              {lastTime.rir_done !== null ? (
+                <span className="em-num"> @RIR{lastTime.rir_done}</span>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {!bodyweight ? (

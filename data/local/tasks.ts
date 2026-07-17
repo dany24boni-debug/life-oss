@@ -66,6 +66,7 @@ export class LocalTasksRepo implements TasksRepo {
         status: "open",
         completed_at: null,
         recurrence: data.recurrence ? normalizeRecurrence(data.recurrence) : null,
+        estimate_min: data.estimate_min ?? null,
         sort_order: await this.nextSortOrder(),
         subtasks: fillSubtaskIds(data.subtasks ?? []),
         created_at: now,
@@ -98,6 +99,9 @@ export class LocalTasksRepo implements TasksRepo {
             data.recurrence === null
               ? null
               : normalizeRecurrence(data.recurrence),
+        }),
+        ...(data.estimate_min !== undefined && {
+          estimate_min: data.estimate_min,
         }),
         ...(data.subtasks !== undefined && {
           subtasks: fillSubtaskIds(data.subtasks),

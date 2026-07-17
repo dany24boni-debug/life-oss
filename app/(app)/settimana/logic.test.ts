@@ -5,6 +5,7 @@ import {
   adessoEntry,
   completionPct,
   findNowSlot,
+  gymDayForSlot,
   hhmmInZone,
   hhmmToMinutes,
   nextStateOnLong,
@@ -140,5 +141,40 @@ describe("macchina degli stati del check", () => {
     expect(nextStateOnLong(null)).toBe("skipped");
     expect(nextStateOnLong("done")).toBe("skipped");
     expect(nextStateOnLong("skipped")).toBeNull();
+  });
+});
+
+describe("gymDayForSlot — lo slot Palestra conosce la scheda (run-11)", () => {
+  const days = [
+    { id: "a", name: "Torso A", weekday: 1 },
+    { id: "b", name: "Gambe", weekday: null },
+    { id: "c", name: "Torso B", weekday: 4 },
+  ];
+
+  it("titolo palestra + weekday impostato: vince il giorno del weekday", () => {
+    expect(gymDayForSlot("07:00 Palestra", 4, days, "a")).toEqual({
+      id: "c",
+      name: "Torso B",
+    });
+    expect(gymDayForSlot("Gym serale", 1, days, null)).toEqual({
+      id: "a",
+      name: "Torso A",
+    });
+  });
+
+  it("weekday non mappato: cade sul suggerito della rotazione", () => {
+    expect(gymDayForSlot("Palestra", 2, days, "b")).toEqual({
+      id: "b",
+      name: "Gambe",
+    });
+    expect(gymDayForSlot("Palestra", 2, days, null)).toBeNull();
+  });
+
+  it("titolo non-palestra o senza giorni: null, lo slot resta slot", () => {
+    expect(gymDayForSlot("Studio", 1, days, "a")).toBeNull();
+    expect(gymDayForSlot("Palestra", 1, [], "a")).toBeNull();
+    // "Allenamento" e "workout" matchano; "spalestrato" no (word boundary).
+    expect(gymDayForSlot("Allenamento", 4, days, null)?.id).toBe("c");
+    expect(gymDayForSlot("spalestrato", 4, days, null)).toBeNull();
   });
 });

@@ -9,11 +9,13 @@ import {
 function empty(over: Partial<BriefSnapshot> = {}): BriefSnapshot {
   return {
     date: "2026-07-13",
+    plan: null,
     tasksOpen: 0,
     tasksOverdue: 0,
     gymNextUp: null,
     gymDoneToday: false,
     planSlot: null,
+    dietVariant: null,
     meals: null,
     water: null,
     streak: null,
@@ -31,13 +33,11 @@ describe("composeBrief — una frase, mai inventata", () => {
     expect(composeBrief(empty({ tasksOpen: 1 }))).toBe("1 task aperto.");
   });
 
-  it("i ritardi pesano: dentro il conteggio o da soli", () => {
+  it("i 'da ieri' pesano: dentro il conteggio o da soli (run-11)", () => {
     expect(composeBrief(empty({ tasksOpen: 4, tasksOverdue: 2 }))).toBe(
-      "4 task aperti (2 in ritardo).",
+      "4 task aperti (2 da ieri).",
     );
-    expect(composeBrief(empty({ tasksOverdue: 2 }))).toBe(
-      "2 task in ritardo.",
-    );
+    expect(composeBrief(empty({ tasksOverdue: 3 }))).toBe("3 task da ieri.");
   });
 
   it("giornata piena: al più QUATTRO pezzi, in ordine di priorità", () => {
@@ -51,8 +51,38 @@ describe("composeBrief — una frase, mai inventata", () => {
       streak: { current: 12, todayCounts: false },
     });
     expect(composeBrief(full)).toBe(
-      "Palestra: Torso A, 4 task aperti (2 in ritardo), alle 09:00 Deep work, 1/4 pasti.",
+      "Palestra: Torso A, 4 task aperti (2 da ieri), alle 09:00 Deep work, 1/4 pasti.",
     );
+  });
+
+  it("rituale girato: la frase si apre col piano (run-11 P5c)", () => {
+    expect(
+      composeBrief(
+        empty({
+          plan: { tasks: 5, estimatedLabel: "3h30", over: false },
+          gymNextUp: "Torso A",
+          tasksOpen: 5,
+        }),
+      ),
+    ).toBe("Giornata pianificata: 5 task (~3h30), palestra: Torso A, 5 task aperti.");
+    expect(
+      composeBrief(empty({ plan: { tasks: 0, estimatedLabel: null, over: false } })),
+    ).toBe("Giornata pianificata.");
+    expect(
+      composeBrief(empty({ plan: { tasks: 6, estimatedLabel: "5h30", over: true } })),
+    ).toBe("Giornata piena: 6 task (~5h30).");
+  });
+
+  it("variante dieta del giorno di allenamento (run-11 P5c)", () => {
+    expect(
+      composeBrief(
+        empty({
+          gymNextUp: "Gambe",
+          dietVariant: "Allenamento",
+          meals: { eaten: 0, total: 4 },
+        }),
+      ),
+    ).toBe("Palestra: Gambe, variante Allenamento, 0/4 pasti.");
   });
 
   it("palestra fatta e slot in corso cambiano forma", () => {
