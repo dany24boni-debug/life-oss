@@ -101,18 +101,30 @@ export function CalendarScreen({
   const loading = events === undefined || dayTasks === undefined;
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="em-card p-5" aria-label="Mese">
-        <Calendar
-          value={selected}
-          onChange={setSelected}
-          markers={(day) => density.get(day) ?? 0}
-        />
-      </section>
+    // Run-12 P5b (PROP-cal-02): da lg due pannelli — mese a sinistra,
+    // agenda del giorno a destra (il "peek" dei prodotti craft) — e la
+    // superficie diventa "wide". Su mobile i tre wrapper sono pile
+    // flex identiche a prima: ordine e spaziatura byte-uguali.
+    <div
+      className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start"
+      data-page-width="wide"
+    >
+      <div className="flex flex-col gap-6">
+        <section className="em-card p-5" aria-label="Mese">
+          <Calendar
+            value={selected}
+            onChange={setSelected}
+            markers={(day) => density.get(day) ?? 0}
+          />
+        </section>
 
-      <EventQuickAdd today={today} defaultDate={selected} />
+        <EventQuickAdd today={today} defaultDate={selected} />
+      </div>
 
-      <section aria-label="Agenda del giorno" className="em-card p-5">
+      <section
+        aria-label="Agenda del giorno"
+        className="em-card p-5 lg:row-span-2"
+      >
         <p className="em-eyebrow">{formatDayFull(selected)}</p>
         {loading ? (
           <div className="mt-3 flex flex-col gap-2" aria-busy="true">
@@ -136,25 +148,29 @@ export function CalendarScreen({
         )}
       </section>
 
-      {/* Prompt inline dell'import legacy (run-05 prompt 1): solo utenti
-          autenticati (google !== null) con zero eventi locali nella
-          finestra — i dati della vecchia /agenda vivono sul server. */}
-      {google !== null && events !== undefined && events.length === 0 ? (
-        <section
-          aria-label="Importa dalla vecchia agenda"
-          className="rounded-[var(--em-r-lg)] border border-dashed border-[var(--em-hairline-strong)] p-5"
-        >
-          <p className="em-body-sm text-[var(--em-text-3)]">
-            Qui non ci sono ancora eventi, ma quelli della vecchia Agenda non
-            si perdono: importali quando vuoi.
-          </p>
-          <div className="mt-3">
-            <CalendarImportButton compact />
-          </div>
-        </section>
-      ) : null}
+      {google !== null ? (
+        <div className="flex flex-col gap-6">
+          {/* Prompt inline dell'import legacy (run-05 prompt 1): solo utenti
+              autenticati (google !== null) con zero eventi locali nella
+              finestra — i dati della vecchia /agenda vivono sul server. */}
+          {events !== undefined && events.length === 0 ? (
+            <section
+              aria-label="Importa dalla vecchia agenda"
+              className="rounded-[var(--em-r-lg)] border border-dashed border-[var(--em-hairline-strong)] p-5"
+            >
+              <p className="em-body-sm text-[var(--em-text-3)]">
+                Qui non ci sono ancora eventi, ma quelli della vecchia Agenda
+                non si perdono: importali quando vuoi.
+              </p>
+              <div className="mt-3">
+                <CalendarImportButton compact />
+              </div>
+            </section>
+          ) : null}
 
-      {google !== null ? <GoogleBlock google={google} /> : null}
+          <GoogleBlock google={google} />
+        </div>
+      ) : null}
 
       <EventDetailSheet
         eventId={detailEventId}
