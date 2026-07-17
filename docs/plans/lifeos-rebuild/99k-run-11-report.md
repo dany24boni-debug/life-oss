@@ -205,3 +205,18 @@ Misura del chunk Oggi dopo c e d (regola del brief).
 **Esperimento lazy-sheets, BOCCIATO dai numeri:** per guadagnare margine ho provato a rendere `TaskDetailSheet`/`EventDetailSheet` `next/dynamic` nei consumer della home — il chunk è SALITO a 65.155 B. Spiegazione misurata: quelle schede NON erano nel route chunk della home — vivono nei chunk COMMONS condivisi con /tasks e /calendar; spezzare la condivisione statica ha rimescolato i commons DENTRO `page-*.js`. Il metodo di misura run-08 (solo `page-*.js`) già non addebita alla home il codice condiviso dei dialoghi. Revert integrale (A/B: 59.743 byte-identico), lezione a verbale: **prima di lazy-izzare, verificare in QUALE chunk vive il modulo.**
 
 Guardia per P6: interventi home a costo ~zero (skeleton nella shell del rituale, transizioni via classi); il coalescing del toast acqua — opzionale da brief — diventa PROP-note se sfora.
+
+---
+
+## P6 · Polish del flusso nuovo + debito a11y
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **998/998, 79 file**. **Smoke (porta pulita):** tutte le 8 rotte toccate dal run **200**.
+
+1. **La bugia di tastiera in Abitudini è sanata** (il finding P1 dell'audit): la maniglia di riordino ora ha `tabIndex`, `onKeyDown` (ArrowUp/Down → `persistOrder`, la STESSA persistenza del drag) e l'aria-label che dichiara il gesto ("Riordina X: trascina, o frecce su e giù"). Il docstring del run-08 ("drag dalla maniglia + tastiera") adesso dice il vero senza cambiare una virgola.
+2. **Skeleton sul corpo del rituale**: il gate dati non rende più null ma la cornice della card con shimmer (`aria-busy`), niente pop-in. La timeline aveva già skeleton+empty dal P3; il recap Sera degrada con "…" per riga; TodaySera e il tile Esami sono one-liner condizionali (il pattern dei tile: compaiono a dati pronti).
+3. **Timeline, micro-pulizia**: l'entry focus porta `hhmm` (via il `.find` ridondante nel render) — il costo dello skeleton è stato ripagato: chunk Oggi **59.729 B** (−14 sul P5).
+4. **Transizioni**: ogni nuovo elemento interattivo del run usa i token di durata di casa (`--em-dur-tap`/`--em-dur-control`, 120–200 ms) — audit a vista sul diff, nessuna transizione fuori scala.
+5. **Audit undo, esito**: rollover per-task (snooze toast) ✓ · "Porta tutte a oggi" (cumulativo) ✓ · stamp "Fatto" del rituale ✓ · "Prepara domani" (cumulativo) ✓ · "Applica variante" ✓ · stime = chip auto-annullanti (delta P2 dichiarato) · riordini = muti per convenzione di casa ("gesto, non transazione") · check task in timeline e slot = pattern esistenti già coperti.
+6. **Coalescing del toast acqua: NON fatto, PROP-note** (facoltativo da brief, budget a 271 B dal tetto): la proposta resta — un toast coalescente per i quick-log rapidi la cui Annulla riporta al totale pre-raffica; S-effort, da fare quando il budget della home respira (o dietro il pannello di un run che alleggerisce Oggi).
+
+**Commit:** `run-11/P6: polish + a11y`

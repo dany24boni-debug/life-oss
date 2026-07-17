@@ -14,7 +14,13 @@ import type { AgendaItem } from "../calendar/agenda";
 export type TimedEntry =
   | { kind: "slot"; startMin: number; entry: WeekSlotEntry }
   | { kind: "item"; startMin: number; item: AgendaItem }
-  | { kind: "focus"; startMin: number; id: string; minutes: number };
+  | {
+      kind: "focus";
+      startMin: number;
+      id: string;
+      hhmm: string;
+      minutes: number;
+    };
 
 /** A parità di minuto: prima gli slot (il piano incornicia l'ora), poi
  *  le voci d'agenda, poi le fasi focus (che sono passato compiuto). */
@@ -53,6 +59,7 @@ export function buildTimedStream(input: {
       kind: "focus",
       startMin: hhmmToMinutes(f.hhmm),
       id: f.id,
+      hhmm: f.hhmm,
       minutes: f.minutes,
     });
   }

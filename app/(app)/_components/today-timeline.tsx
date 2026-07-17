@@ -273,7 +273,7 @@ export function TodayTimeline({ google }: { google: GoogleAgendaEvent[] }) {
                   className="flex min-h-11 items-start gap-3 border-b border-[var(--em-hairline)] py-2.5 last:border-b-0"
                 >
                   <span className="em-body-sm em-num w-[4.75rem] shrink-0 pt-0.5 text-left text-[var(--em-text-3)]">
-                    {focusRows.find((f) => f.id === e.id)?.hhmm ?? ""}
+                    {e.hhmm}
                   </span>
                   <span className="em-body min-w-0 flex-1 truncate text-[var(--em-text-3)]">
                     Focus

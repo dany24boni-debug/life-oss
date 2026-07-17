@@ -224,17 +224,25 @@ function ManageCard({
 }) {
   const toast = useToast();
   const list = useMemo(() => habits ?? [], [habits]);
+  function persistOrder(from: number, to: number) {
+    const next = moveIndex(list, from, to).map((h) => h.id);
+    void appRepos()
+      .habits.reorder(next)
+      .then((r) => {
+        if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+      });
+  }
   const { drag, startDrag, rowTransform, setRowRef } = useRowDrag(
     list.length,
-    (from, to) => {
-      const next = moveIndex(list, from, to).map((h) => h.id);
-      void appRepos()
-        .habits.reorder(next)
-        .then((r) => {
-          if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
-        });
-    },
+    persistOrder,
   );
+  // run-11 P6: la tastiera sulla maniglia ESISTE davvero (il docstring
+  // la prometteva dal run-08; ora frecce su/giù = riordino).
+  function moveByKey(index: number, delta: -1 | 1) {
+    const to = index + delta;
+    if (to < 0 || to >= list.length) return;
+    persistOrder(index, to);
+  }
 
   return (
     <section aria-label="Gestione abitudini" className="em-card p-5">
@@ -271,8 +279,18 @@ function ManageCard({
             >
               <span
                 role="button"
-                aria-label={`Riordina ${habit.name}`}
+                tabIndex={0}
+                aria-label={`Riordina ${habit.name}: trascina, o frecce su e giù`}
                 onPointerDown={(e) => startDrag(index, e)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    moveByKey(index, -1);
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    moveByKey(index, 1);
+                  }
+                }}
                 className="grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center text-[var(--em-text-3)]"
               >
                 <IconGrip />

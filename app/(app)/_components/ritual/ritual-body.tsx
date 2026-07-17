@@ -14,7 +14,7 @@
  */
 
 import { useState } from "react";
-import { Button, cx, useToast } from "@/ui";
+import { Button, cx, Skeleton, useToast } from "@/ui";
 import { useEventsRange, useOverdueTasks, useTasks } from "@/data/hooks";
 import type { Task } from "@/data/schemas";
 import { buildDayAgenda, type GoogleAgendaEvent } from "../../calendar/agenda";
@@ -63,9 +63,22 @@ export default function RitualBody({
   const [touched, setTouched] = useState(false);
 
   // La visibilità (congedo/pianificato/idratazione) è della shell; qui
-  // resta solo il gate sui dati non ancora pronti.
+  // resta il gate sui dati non ancora pronti — skeleton nella cornice
+  // della card, mai un pop-in (run-11 P6).
   if (overdue === undefined || todays === undefined || events === undefined) {
-    return null;
+    return (
+      <section
+        aria-label="Pianifica la giornata"
+        aria-busy="true"
+        className="em-card p-5"
+      >
+        <p className="em-eyebrow">Pianifica la giornata</p>
+        <div className="mt-3 flex flex-col gap-2">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-2/3" />
+        </div>
+      </section>
+    );
   }
 
   const openToday = todays.filter((t) => t.status === "open");
