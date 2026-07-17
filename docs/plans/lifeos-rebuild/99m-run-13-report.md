@@ -76,3 +76,38 @@ Sette agenti paralleli come da brief (5 di superficie + contratto a11y + inventa
 4. **em-dot--live**: 14 usi censiti, tutti "vivo/adesso" o conferma — niente da unificare, niente da ritirare.
 
 **Commit:** `run-13/P1: craft audit`
+
+---
+
+## P2 · The Motion Layer (FLAGGED)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 83 file**. **Budget: Oggi 59.729 B raw, HASH byte-identico alla baseline (`00a0cfdfcd6a93bd`)** — le primitive vivono nei commons, come previsto dalla legge di residenza run-11. Layout 30.434, hash identico. I byte veri del P2: commons `3456-*` 46.736 → **47.898 (+1.162)** (le tre macchine di chiusura), CSS bundle 80.396 raw/13.391 gz (keyframes+utility). Fuori dal metodo di misura route, registrati per onestà.
+
+### Cosa è entrato in `ui/ember.css` (tutto FLAGGED)
+
+1. **`--em-ease-in`** (`cubic-bezier(0.4,0,1,1)`) — l'easing d'uscita che mancava: le uscite accelerano via. **Delta dichiarato vs brief:** il brief presupponeva solo `--em-dur-tap`/`--em-dur-control` e contemplava una "terza durata ~200–240ms" — ember.css ne aveva GIÀ quattro (tap/control/card/screen: la 240 esiste, si chiama card). **Zero durate nuove.**
+2. **Keyframes -out**: `em-fade-out` · `em-pop-out` · `em-sheet-out` · `em-toast-out`. Le uscite sono PIÙ CORTE delle entrate (control 180 vs card/screen) — lo standard.
+3. **`--em-r-full: 9999px`** — il fix F1 dell'audit: una riga, 8 siti guariti (i "cerchi" di Sera, badge/barre esami, chip/barre spese tornano pill).
+4. **`.em-hit`** — estensione dell'area di tocco a 44px via pseudo-elemento, zero pixel mossi (per i controlli F3b il cui look compatto è disegno). **`.em-pressable`** — feedback di pressione scale(0.97) a dur-tap, solo per elementi chip-scale (il precedente è il FAB `active:scale-95`). Applicazioni in P3.
+5. **Gate reduced-motion: NESSUNA modifica necessaria** — il gate esistente clampa `animation-duration`/`transition-duration` per PROPRIETÀ sotto `.em-scope *`, quindi copre automaticamente ogni keyframe nuovo; i portali ri-applicano `.em-scope` (verificato dall'inventario P1). Il requisito "un solo gate CSS globale" era già soddisfatto; sotto reduced-motion le uscite durano 0.01ms e l'unmount è di fatto istantaneo, come prima.
+6. **Delta dichiarato — niente utility di mount** (`em-rise`): il brief la elenca tra i momenti ricorrenti, ma NESSUN finding SAFE la applica (lo swap skeleton→contenuto è J-34, gusto) — una utility morta sarebbe CSS spedito a vuoto. Se il triage scioglie J-34, è una riga.
+
+### Le macchine di chiusura (BottomSheet · Modal · Toast)
+
+Pattern unico: `shown` + aggiustamento render-phase (mai setState sincrono negli effect — la lint di casa), fase `closing` che scambia la classe d'animazione, **unmount su `animationend`** (guardato su `e.target`) con **fallback a timeout 400ms** (un animationend perso non può lasciare un overlay morto a mangiare i tap — il contenitore è `fixed inset-0`), `pointer-events-none` durante la chiusura, riapertura a metà uscita gestita (la classe torna enter, `shown` resta). Toast: il timer/l'azione/la X ora portano a `leaving` (l'exit) invece che all'unmount diretto; il card smonta a fine animazione.
+
+- **CRAFT-motion-01 → FIXED (P2).** Sheet/modal/toast ora escono come entrano.
+- **CRAFT-motion-02 → FIXED (P2).** Il drag annullato della sheet ora MOLLEGGIA indietro (`transition-transform` a dur-tap sul panel; durante il drag l'inline `transition:none` la spegne, com'era).
+
+### Delta dichiarati (oltre ai due sopra)
+
+1. **Eviction del toast** (arriva il 4°, lo stack è 3): il più vecchio smonta dall'ESTERNO (filter del provider) → senza exit. Raro, dichiarato, accettato.
+2. **Chiusura della sheet via drag**: `dragY` si azzera prima dell'exit → l'animazione parte da translateY(0) (micro-salto se il drag era lungo). Accettato: coreografare drag+exit richiederebbe stato condiviso drag→animazione.
+3. **I popover NON migrano** (select, date/time-picker, menu task, palette): restano enter-only — J-33, scope deliberato (il brief nomina sheet/modal/toast). L'infrastruttura (keyframes, ease-in) è pronta.
+4. **em-dot--live**: censimento P1 = 14 usi, tutti "vivo/adesso" o conferma — unificato per constatazione, nessuna moltiplicazione da fermare, nessun ritiro.
+
+### Fence
+
+`ui/ember.css` · `ui/bottom-sheet.tsx` · `ui/modal.tsx` · `ui/toast.tsx` + report. Test: nessuno nuovo (CSS + micro-stati; la suite intera resta verde — le macchine sono dietro le stesse prop `open/onClose`, API invariata).
+
+**Commit:** `run-13/P2: motion layer (FLAGGED)`
