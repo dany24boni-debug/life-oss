@@ -80,3 +80,40 @@ PROP-gym-03 diceva "profilo per-dispositivo, localStorage come il chime"; il bri
 `data/schemas.ts` · `data/local/settings.ts` · `supabase/migrations/0033_*` · `data/schemas.test.ts` · `data/local/settings.test.ts`. Nessun altro file toccato; `data/db.ts` NON toccato (nessun bump — v12 resta l'ultima versione).
 
 **Commit:** `run-12/P1: schema decision (+0033)`
+
+---
+
+## P2 · Palestra pro — la scheda che allena
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1015/1015, 80 file** (+12: 8 plate-math, 4 pr). **Smoke produzione (kill per PID):** `/gym` **200**; nel chunk della route: "Per lato" ✓ "Imposta bilanciere" ✓ "Attrezzatura salvata" ✓ "record personale" ✓ "Più vicino" ✓.
+
+### a · Plate calculator (PROP-gym-03/WOW-01)
+
+- **`plate-math.ts` (+8 test), matematica pura in GRAMMI INTERI** (la lezione spese-cents/dieta: una conversione al bordo, mai float a metà conto). NON il greedy nudo del titolo della PROP: un greedy sui tagli decrescenti sbaglia i profili non-canonici (30/lato con {20×1cp, 15×2cp}: prende il 20 e muore, mentre 15+15 è esatto — caso a verbale nei test). Si enumerano le somme per-lato RAGGIUNGIBILI (subset-sum limitato dalle coppie: floor(n/2) per taglio) con un testimone per somma; tagli processati in ordine decrescente → la prima rappresentazione è quella coi dischi grossi, lo spirito del greedy senza i falsi negativi. **Irraggiungibile → il totale più vicino** (anche sopra il target; pari distanza → il più leggero), mai un vicolo cieco. Coi cap zod (≤24 tagli, n≤40) l'enumerazione è banale. **Delta dichiarato** ("greedy" del brief onorato nello spirito, corretto nella lettera — il brief stesso chiede l'edge "unreachable → nearest").
+- **Entry point come da brief**: nel micro-editor del set, nel blocco "Ultima volta" — riga quieta viva sul peso corrente ("Per lato: 2×20 + 2,5" · "Per lato: solo bilanciere" · "Più vicino: 77,5 kg (…)"); il tap apre l'editor del profilo. **Senza profilo: solo il link quieto** "Dischi per lato? Imposta bilanciere e dischi". Righe a corpo libero: niente, per costruzione.
+- **Il touchpoint del profilo (decisione P1→P2): DENTRO il micro-editor**, `equipment-editor.tsx` come SWAP di contenuto dello sheet (mai sheet-sopra-sheet: gli stati della serie sopravvivono alla deviazione, "Indietro" torna alla serie). Stepper bilanciere (±2,5, 2,5..100, default 20), righe dischi con conteggio TOTALE posseduto (− sotto 1 = rimozione), chip d'aggiunta per i tagli comuni (25…0,5, n=2 al primo tap). "Salva" → `settings.update` con toast **"Attrezzatura salvata · Annulla"** (ripristina i due campi precedenti).
+
+### b · Il momento PR (PROP-gym-04/WOW-02)
+
+- **`pr.ts` (+4 test)**: `weightPrCheck` (il carico batte STRETTAMENTE il massimo storico; serve un passato — la prima volta non è record; corpo-libero fuori — la semantica di `newRecords` run-07) e `weightPrSetIds` (gli id dei set che ERANO record quando furono fatti: done_at, null legacy in testa, tiebreak id UUIDv7 — deterministico su input mescolato).
+- **Al log** (`confirmSet`): toast ember `PR: 82,5 kg su Panca · prima 80` + la cella confermata porta **em-dot--live (il pulse di casa) + chip "PR"** e l'aria-label dice "record personale". Stato effimero della sessione (il "momento"); la storia INCLUDE i set precedenti di oggi (il massimo corrente vale sempre). Il check usa la storia MENO il set in modifica; limite storia dell'editor 25→**500** (al massimo storico servono TUTTI i set, non gli ultimi 25 — anchored edit dichiarato).
+- **Nella griglia storica** (scheda-view): marcatore PERMANENTE "PR" ember sulle celle di `weightPrSetIds` — la storia resta visibile nello storico, come chiede il brief.
+
+### c · Set semantics → PROP-note
+
+PROP-gym-05 (warmup/failure) non è specificata a fondo dalla PROP (Effort M · Valore L · `[schema]` · "solo se lo chiede"): **niente implementazione**, resta PROP aperta per il triage. Zero schema speso.
+
+### L'incidente di budget che vale il report (la regola cardinale difesa coi numeri)
+
+Prima stesura: `weightPrCheck`/`weightPrSetIds` dentro `gym/logic.ts` → **Oggi 60.114 B (+385, TETTO SFONDATO)**. Diagnosi A/B (stash + build fresca): P1 è byte-identico (59.729, HASH identico `21696031733f0d65`); il leak era P2 — `today-gym.tsx` e `today-tiles.tsx` importano `gym/logic` (formatKg) e **webpack non tree-shaka gli export tra moduli** (la lezione run-11 P2, ri-misurata). Rimedio: le due funzioni PR in un **modulo separato `pr.ts`** importato solo da session-grid/scheda-view. Esito: **Oggi 59.729, hash byte-identico** ✓. Nota di processo: un primo A/B "al commit P0" era inquinato dai file P2 non tracciati rimasti nel tree (build fallita, chunk stantio) — gli A/B onesti si fanno con `git stash -u`.
+
+### Budget
+
+- **Oggi: 59.729 B raw — BYTE-IDENTICO (stesso hash chunk). Congelamento rispettato.**
+- **/gym: 96.527 → 103.268 B raw (23.927 → 25.722 gz)** = +6.741 raw: calcolatore+editor attrezzatura+PR (nessun budget formale, registrato).
+
+### Fence
+
+`gym/plate-math.ts`(+test) · `gym/pr.ts`(+test) · `gym/equipment-editor.tsx` (nuovi) · `gym/session-grid.tsx` · `gym/scheda-view.tsx` (anchored). `gym/logic.ts` toccato e RIPRISTINATO byte-identico (il trasloco in pr.ts).
+
+**Commit:** `run-12/P2: palestra pro`

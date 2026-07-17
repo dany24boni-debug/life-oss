@@ -51,6 +51,7 @@ import {
   setsBySessionForExercise,
   type HistoryColumn,
 } from "./card-history";
+import { weightPrSetIds } from "./pr";
 import { doneCellLabel, verdictForSlot, verdictLabel } from "./progression";
 import { sectionGroups, slotSummary } from "./program-parse";
 import { BackButton } from "./programs-panel";
@@ -494,6 +495,9 @@ function CardExerciseRow({
     () => setsBySessionForExercise(sets ?? [], columns),
     [sets, columns],
   );
+  // Run-12 (PROP-gym-04): i set che ERANO record quando furono fatti —
+  // il momento PR resta visibile nella storia, non solo nel toast.
+  const prIds = useMemo(() => weightPrSetIds(sets ?? []), [sets]);
   const verdict =
     verdictSessionId !== null && sets !== undefined
       ? verdictForSlot(slot, bySession.get(verdictSessionId) ?? [])
@@ -552,6 +556,14 @@ function CardExerciseRow({
                     className="em-body-sm em-num text-[var(--em-text)]"
                   >
                     {doneCellLabel(s)}
+                    {prIds.has(s.id) ? (
+                      <span
+                        title="Record personale al momento del set"
+                        className="em-eyebrow ml-1 text-[var(--em-ember-text)]"
+                      >
+                        PR
+                      </span>
+                    ) : null}
                   </span>
                 ))}
               </span>
