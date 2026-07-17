@@ -1,24 +1,29 @@
 "use client";
 
 /**
- * Lo schermo di /gym (B2.3, programmi dal run-07) — quattro tab:
- *   - Allenamento: la sessione di oggi (inizia da zero o da piano,
- *     runner col timer di recupero, concludi con riepilogo volume/durata/
- *     record). Lo stato del timer vive QUI, sopra i Tabs: cambiare tab
- *     non lo azzera (i pannelli si smontano).
+ * Lo schermo di /gym — dal run-10 P2 la porta d'ingresso è la SCHEDA
+ * (card-manager, il modello mentale di Davide), quattro tab:
+ *   - Scheda: le card dei giorni del programma attivo; aprirne una
+ *     mostra la griglia storica di QUEL giorno (righe = esercizi,
+ *     colonne = date) e "Logga oggi" entra nel flusso di log esistente
+ *     (griglia senza countdown, run-07 — internals intoccati). La
+ *     sessione libera resta come scorciatoia in coda alle card.
  *   - Storico: lista sessioni + strip mensile dei giorni di allenamento
  *     (riusa MonthHeat di /stats); una sessione passata si apre e si
  *     modifica con lo stesso runner (senza timer).
  *   - Libreria: catalogo seminato + custom, scheda con progressi e PR.
- *   - Programmi (run-07): la scheda vera — programmi → giorni → slot
- *     con sezioni e prescrizioni testuali (programs-panel.tsx). I piani
- *     v1 vengono convertiti UNA volta in un programma al mount
+ *   - Programmi (run-07): l'authoring — programmi → giorni → slot con
+ *     sezioni e prescrizioni testuali (programs-panel.tsx). I piani v1
+ *     vengono convertiti UNA volta in un programma al mount
  *     (convertPlansToPrograms, idempotente) e restano leggibili.
- * Semina del catalogo al primo uso (idempotente). Guest-first: tutto
- * locale; l'import legacy compare solo agli autenticati.
+ * Deep link: /gym?scheda=<dayId> apre direttamente quella card (è il
+ * bersaglio del tile di Oggi). Semina del catalogo al primo uso
+ * (idempotente). Guest-first: tutto locale; l'import legacy compare
+ * solo agli autenticati.
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Button,
   EmptyState,
@@ -41,13 +46,11 @@ import {
   useGymSessionsByDay,
   useGymSessionsRange,
   useLatestBody,
-  useNextUpDay,
-  useProgramDays,
 } from "@/data/hooks";
 import { getDb, hasIndexedDb } from "@/data/db";
 import { convertPlansToPrograms } from "@/data/gym-programs";
 import { seedGymExercises } from "@/data/gym-seed";
-import type { GymExercise, GymProgramDay, GymSession } from "@/data/schemas";
+import type { GymExercise, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
 import { WeightQuickEntry } from "../corpo/corpo-screen";
@@ -62,8 +65,9 @@ import {
   totalVolumeKg,
   type NewRecord,
 } from "./logic";
-import { ProgramsPanel } from "./programs-panel";
+import { BackButton, ProgramsPanel } from "./programs-panel";
 import { plannedSetCount } from "./progression";
+import { SchedaCards, SchedaCardView } from "./scheda-view";
 import { SessionGrid } from "./session-grid";
 import { SessionRunner } from "./session-runner";
 
@@ -78,11 +82,20 @@ type FinishSummary = {
   plannedSets: number | null;
 };
 
+/** Vista interna della tab Scheda: card list → card → griglia di log. */
+type SchedaNav =
+  | { kind: "cards" }
+  | { kind: "card"; dayId: string }
+  | { kind: "log"; dayId: string | null };
+
 export function GymScreen({ authed }: { authed: boolean }) {
   const toast = useToast();
   const today = useToday();
   const todaySessions = useGymSessionsByDay(today);
   const exercises = useExercises();
+  const program = useActiveProgram();
+  const searchParams = useSearchParams();
+  const urlScheda = searchParams.get("scheda");
 
   // Semina idempotente del catalogo + conversione una-tantum dei piani
   // v1 in programma (run-07; idempotente, id derivati) al primo uso.
@@ -93,27 +106,68 @@ export function GymScreen({ authed }: { authed: boolean }) {
     }
   }, []);
 
+  const [tab, setTab] = useState("scheda");
   const [finish, setFinish] = useState<FinishSummary | null>(null);
   const [detailExercise, setDetailExercise] = useState<GymExercise | null>(null);
   const [createExercise, setCreateExercise] = useState(false);
   const [historySessionId, setHistorySessionId] = useState<string | null>(null);
 
+  // Navigazione della tab Scheda, DERIVATA: il deep link (?scheda=) vale
+  // finché l'utente non naviga; un link nuovo (param diverso) riprende
+  // il comando. Niente setState negli effetti — stato derivato nel
+  // render (la lezione lint dei run 07-09).
+  const [nav, setNav] = useState<{
+    param: string | null;
+    view: SchedaNav;
+  } | null>(null);
+  const schedaView: SchedaNav =
+    nav !== null && nav.param === urlScheda
+      ? nav.view
+      : urlScheda !== null
+        ? { kind: "card", dayId: urlScheda }
+        : { kind: "cards" };
+  function go(view: SchedaNav) {
+    setNav({ param: urlScheda, view });
+  }
+
   const active =
     (todaySessions ?? []).find((s) => s.finished_at === null) ?? null;
-  const doneToday =
-    (todaySessions ?? []).find((s) => s.finished_at !== null) ?? null;
+  const freeActive =
+    (todaySessions ?? []).find(
+      (s) => s.finished_at === null && s.program_day_id === null,
+    ) ?? null;
+  // La sessione mostrata dalla griglia di log (per giorno-scheda o
+  // libera): sempre dalla live query, mai tenuta in stato.
+  const logSession =
+    schedaView.kind === "log"
+      ? ((todaySessions ?? []).find(
+          (s) =>
+            s.finished_at === null && s.program_day_id === schedaView.dayId,
+        ) ?? null)
+      : null;
 
   async function startFree() {
     const r = await appRepos().gym.createSession({
       date: today,
       started_at: new Date().toISOString(),
     });
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+    if (!r.ok) {
+      toast.show({ message: r.error.message, tone: "error" });
+      return;
+    }
+    go({ kind: "log", dayId: null });
   }
 
-  async function startFromDay(day: GymProgramDay) {
-    const r = await appRepos().gym.startSessionFromDay(day.id, today);
-    if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
+  /** "Logga oggi" dalla card: riprende la sessione o la crea, poi griglia. */
+  async function logDay(dayId: string, existing: GymSession | null) {
+    if (existing === null) {
+      const r = await appRepos().gym.startSessionFromDay(dayId, today);
+      if (!r.ok) {
+        toast.show({ message: r.error.message, tone: "error" });
+        return;
+      }
+    }
+    go({ kind: "log", dayId });
   }
 
   async function finishSession(session: GymSession) {
@@ -152,48 +206,98 @@ export function GymScreen({ authed }: { authed: boolean }) {
       doneSets: sets.length,
       plannedSets,
     });
+    // Si torna alla card, con la colonna di oggi popolata (run-10 P2);
+    // il riepilogo si apre sopra come modale.
+    go(
+      session.program_day_id !== null
+        ? { kind: "card", dayId: session.program_day_id }
+        : { kind: "cards" },
+    );
   }
 
-  const loading = todaySessions === undefined;
+  function renderScheda() {
+    if (todaySessions === undefined) {
+      return <Skeleton className="h-24 w-full" />;
+    }
+    if (schedaView.kind === "log" && logSession !== null) {
+      const backToCard = logSession.program_day_id;
+      return (
+        <div className="flex flex-col gap-3">
+          <BackButton
+            label={backToCard !== null ? "Scheda" : "Schede"}
+            onClick={() =>
+              go(
+                backToCard !== null
+                  ? { kind: "card", dayId: backToCard }
+                  : { kind: "cards" },
+              )
+            }
+          />
+          <SessionGrid
+            session={logSession}
+            onFinish={() => void finishSession(logSession)}
+          />
+        </div>
+      );
+    }
+    const cardDayId =
+      schedaView.kind === "card"
+        ? schedaView.dayId
+        : schedaView.kind === "log"
+          ? schedaView.dayId
+          : null;
+    if (cardDayId !== null) {
+      return (
+        <SchedaCardView
+          dayId={cardDayId}
+          activeToday={active}
+          onBack={() => go({ kind: "cards" })}
+          onLog={(existing) => void logDay(cardDayId, existing)}
+          onResumeActive={(session) =>
+            go({ kind: "log", dayId: session.program_day_id })
+          }
+          onOpenExercise={setDetailExercise}
+          onOpenSession={setHistorySessionId}
+        />
+      );
+    }
+    return (
+      <SchedaCards
+        program={program}
+        freeActive={freeActive}
+        onOpenCard={(day) => go({ kind: "card", dayId: day.id })}
+        onResumeFree={() => go({ kind: "log", dayId: null })}
+        onStartFree={() => void startFree()}
+        onGoProgrammi={() => setTab("programmi")}
+        importPrompt={authed ? <EmptyHistoryImportPrompt /> : null}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
       <Tabs
         items={[
-          { value: "oggi", label: "Allenamento" },
+          { value: "scheda", label: "Scheda" },
           { value: "storico", label: "Storico" },
           { value: "libreria", label: "Libreria" },
           { value: "programmi", label: "Programmi" },
         ]}
+        value={tab}
+        onChange={setTab}
       >
-        {(tab) => (
+        {(activeTab) => (
           <div className="pt-4">
-            {tab === "oggi" ? (
-              loading ? (
-                <Skeleton className="h-24 w-full" />
-              ) : active ? (
-                <SessionGrid
-                  session={active}
-                  onFinish={() => void finishSession(active)}
-                />
-              ) : (
-                <StartPanel
-                  authed={authed}
-                  doneToday={doneToday}
-                  onStartFree={() => void startFree()}
-                  onStartDay={(day) => void startFromDay(day)}
-                />
-              )
-            ) : null}
+            {activeTab === "scheda" ? renderScheda() : null}
 
-            {tab === "storico" ? (
+            {activeTab === "storico" ? (
               <HistoryPanel
                 authed={authed}
                 onOpen={setHistorySessionId}
               />
             ) : null}
 
-            {tab === "libreria" ? (
+            {activeTab === "libreria" ? (
               <LibraryPanel
                 exercises={exercises}
                 onOpen={setDetailExercise}
@@ -201,7 +305,7 @@ export function GymScreen({ authed }: { authed: boolean }) {
               />
             ) : null}
 
-            {tab === "programmi" ? <ProgramsPanel /> : null}
+            {activeTab === "programmi" ? <ProgramsPanel /> : null}
           </div>
         )}
       </Tabs>
@@ -369,84 +473,6 @@ function FinishWeightField() {
         fallbackKg={latest?.weight_kg ?? 80}
         compact
       />
-    </div>
-  );
-}
-
-/* ── Pannello di partenza ────────────────────────────────────────────── */
-
-function StartPanel({
-  authed,
-  doneToday,
-  onStartFree,
-  onStartDay,
-}: {
-  authed: boolean;
-  doneToday: GymSession | null;
-  onStartFree: () => void;
-  onStartDay: (day: GymProgramDay) => void;
-}) {
-  const nextUp = useNextUpDay();
-  const program = useActiveProgram();
-  const days = useProgramDays(program?.id ?? null);
-  const others = (days ?? []).filter((d) => d.id !== nextUp?.id);
-
-  return (
-    <div className="flex flex-col gap-4">
-      {doneToday ? (
-        <p className="em-body text-[var(--em-text-2)]">
-          Oggi ti sei già allenato. Un&apos;altra sessione? Nessuno ti ferma.
-        </p>
-      ) : null}
-
-      {nextUp ? (
-        <div className="flex flex-col gap-3">
-          <div>
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              onClick={() => onStartDay(nextUp)}
-            >
-              Inizia: {nextUp.name}
-            </Button>
-            {nextUp.subtitle ? (
-              <p className="em-body-sm mt-1.5 text-[var(--em-text-3)]">
-                {nextUp.subtitle}
-              </p>
-            ) : null}
-          </div>
-          {others.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="em-body-sm text-[var(--em-text-3)]">
-                oppure:
-              </span>
-              {others.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  onClick={() => onStartDay(day)}
-                  className="em-body-sm h-11 rounded-full bg-[var(--em-surface-2)] px-3.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
-                >
-                  {day.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <div>
-            <Button type="button" variant="ghost" onClick={onStartFree}>
-              Sessione libera
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="primary" size="lg" onClick={onStartFree}>
-            Inizia allenamento
-          </Button>
-        </div>
-      )}
-      {authed ? <EmptyHistoryImportPrompt /> : null}
     </div>
   );
 }

@@ -59,3 +59,38 @@ Pre-flight PASS.
 **Checkpoint:** solo docs → lint/typecheck/build/test non toccati dal diff; la suite resta quella del baseline P0 (952/952, riverificata al P2).
 
 **Commit:** `run-10/P1: v3 proposals document`
+
+---
+
+## P2 · Palestra — IA scheda-centrica (MANDATORY)
+
+**Checkpoint: VERDE.** lint ✓ (una `no-unused-vars` corretta al volo) · tsc ✓ · build ✓ · sentinels ✓ · test **963/963, 76 file** (baseline 952/75: **+11**, `app/(app)/gym/card-history.test.ts` nuovo — colonne storiche, ultima-esecuzione, riepilogo sezioni forma-Torso-A, bucket set per colonna, href della card). **Dev-check produzione (`npm start`, da ospite):** `/gym` **200** con le 4 tab nell'HTML SSR — "Scheda" PRIMA; `/gym?scheda=x` **200** (deep link); zero controlli nativi nell'HTML; nel chunk servito della route: "Logga oggi" ✓ "suggerita" ✓ "ultima:" ✓ "Storico della scheda" ✓ "Sessione libera" ✓ "Rivedi la seduta" ✓ "scheda=" ✓; nel chunk di Oggi: "Apri: " ✓ e "scheda=" ✓.
+
+### La rotazione (dominio run-07 INTOCCATO — solo IA/navigazione/presentazione)
+
+1. **`/gym` = le card.** Tab nuove: **Scheda** (default) · Storico · Libreria · Programmi — il tab "Allenamento" muore. `SchedaCards` (`scheda-view.tsx`): una card per giorno del programma attivo con nome, sottotitolo, **riepilogo sezioni** ("3 FORZA · 3 IPERTROFIA · 1 CORE", `sectionSummary` pura), **ultima esecuzione** (`lastDoneDate`: ultima CONCLUSA; le abbandonate non sono storia), chip **"suggerita"** sul next-up (STESSA rotazione di sempre, `useNextUpDay` — zero logica di scheduling nuova) e l'ember dot se la seduta del giorno è in corso. Da lg le card vanno a 2 colonne. In coda: "Sessione libera" (ghost — la scorciatoia sopravvive, non è più la porta) e il prompt import legacy (solo autenticati, storico vuoto — riuso di `EmptyHistoryImportPrompt`). Senza programma: EmptyState con CTA → tab Programmi + "Importa esempio: Torso A".
+2. **La card = il cuore.** `SchedaCardView`: header (nome, sottotitolo, riepilogo, azione primaria) + **griglia storica Excel-style** (`CardHistoryGrid`): righe = esercizi nell'ordine della scheda nei **gruppi di sezione** (riuso `sectionGroups` del builder — mai riordino implicito), colonne = **date delle esecuzioni** più-recenti-prima con **"Oggi" evidenziata** quando esiste, celle = i set "62,5 × 9" (riuso `doneCellLabel`, formato compatto del progress-grid). Prima colonna **sticky** + `overflow-x-auto`: mobile ~2-3 colonne visibili, desktop quante ne entrano (la larghezza vera arriva col P3). Ogni riga porta la prescrizione ("4×3–5 · RIR 1 · rec 4'30", riuso `slotSummary`) e il **verdetto AUMENTA/RESTA inline** (riuso `verdictForSlot` sull'ultima seduta conclusa — nessuna logica di dominio nuova).
+3. **"Logga oggi" DENTRO la card.** Primario nell'header: crea la sessione (`startSessionFromDay`, esistente) o riprende quella in corso del giorno, ed entra nella **griglia di log ESISTENTE** (`SessionGrid` — griglia senza countdown, RIR testuale, micro-editor: internals byte-intoccati) con BackButton verso la card. A fine seduta (`finishSession` esistente + riepilogo modale invariato) **si torna alla card con la colonna di oggi popolata**. Guardie: sessione attiva di un ALTRO giorno → "Riprendi la sessione in corso" (mai due attive per sbaglio); giorno già fatto oggi → riga "Fatta oggi · Rivedi la seduta" (editor storico esistente).
+4. **L'ingresso session-centrico è una scorciatoia.** Deep link `/gym?scheda=<dayId>` (`gymCardHref`), letto via `useSearchParams` con **stato derivato nel render** (il deep link vale finché non navighi; niente setState-in-effect — la lezione lint di casa). Il tile Palestra di Oggi ora è un **Link** alla card suggerita: "Apri: Torso A" (era un bottone che creava la sessione e pushava); "Riprendi" porta alla card della sessione in corso (o a /gym per le libere). Nessun link morto: senza programmi il tile cade sul fallback "/gym".
+5. **Profondità per-esercizio.** Tap sul nome (colonna sticky) → `ExerciseDetailSheet` esistente (sparkline, PR, e1RM/Δ/Forza Rel., verdetto) — riuso puro.
+
+### Cancellazione grep-gated
+
+`StartPanel` (il pannello di partenza session-first) — consumatori PRIMA della rimozione:
+```
+$ grep -rn "StartPanel" app lib components data ui
+app/(app)/gym/gym-screen.tsx:482:function StartPanel({
+```
+Solo la definizione interna (il valore era già migrato nelle card) → rimossa; `EmptyHistoryImportPrompt` SOPRAVVIVE (riusato dalle card). `useNextUpDay`/`useProgramDays` escono dagli import di gym-screen (vivono in scheda-view).
+
+### Fence audit
+
+Diff su: `app/(app)/gym/{card-history.ts,card-history.test.ts,scheda-view.tsx}` (nuovi), `gym-screen.tsx`, `_components/today-gym.tsx` (SOLO bersagli dei link + copy del CTA — layout del tile intatto), questo report. `ui/` **zero diff** (nessun primitive nuovo: la griglia riusa il pattern sticky-column inline di progress-table). `data/**` **zero diff** — le righe caricano la storia col pattern "un hook per riga, numero stabile" (ricorsione dieta run-09); niente hook nuovi.
+
+### Delta dichiarati
+
+1. **Tap-count dell'avvio: 1 → 2** ("Apri: Torso A" → "Logga oggi"). È il costo dichiarato della rotazione: la porta è la scheda (il modello mentale di Davide), il log parte da lì; in cambio l'avvio avviene col contesto storico davanti. Il CTA cambia copy da "Inizia:" ad "Apri:" per onestà (fence: "link target, not layout" — il testo segue il bersaglio).
+2. **Test della nuova IA a livello logico** (il repo non ha render-testing — convenzione run-07): card list con last-done → `lastDoneDate`+`sectionSummary`; colonne storiche da fixture → `historyColumns`+`setsBySessionForExercise`; il tile di Oggi → `gymCardHref` golden. "Logga oggi entra nel flusso" e "per-esercizio → progressi" sono riuso puro di componenti già testati ai loro run, verificati nel dev-check via chunk.
+3. **Chunk /gym: 86.172 → 96.163 B raw** (23,8 kB gzip) — +10 kB per la vista nuova; /gym non ha budget formale, registrato per onestà. **Oggi: 53.327 → 53.798 B (+471 B)** — solo lo swap bottone→Link nel tile (budget P4/P5 intatto).
+
+**Commit:** `run-10/P2: gym card-centric IA`

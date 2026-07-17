@@ -1,46 +1,34 @@
 "use client";
 
 /**
- * Sezione Palestra di Oggi (B2.3, run-07) — lo stato VERO della
- * giornata: niente sessione → "Inizia: Torso A" (il next-up del
- * programma attivo, partenza a UN tap) o il fallback libero senza
- * programmi; in corso → riprendi; conclusa → riga riepilogo con volume
- * e durata. Le sessioni v1 (senza giorno di programma) rendono qui come
- * sempre.
+ * Sezione Palestra di Oggi (B2.3, run-07; bersagli run-10 P2) — lo
+ * stato VERO della giornata. La rotta è SEMPRE la card della scheda
+ * (IA scheda-centrica): niente sessione → "Apri: Torso A" porta alla
+ * card suggerita, da cui "Logga oggi" parte; in corso → "Riprendi"
+ * porta alla card della sessione (o a /gym per le libere); conclusa →
+ * riga riepilogo con volume e durata. Le sessioni v1 (senza giorno di
+ * programma) rendono qui come sempre.
  */
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Skeleton, useToast } from "@/ui";
+import { Skeleton } from "@/ui";
 import {
-  appRepos,
   useGymSessionsByDay,
   useNextUpDay,
   useSetsBySession,
 } from "@/data/hooks";
 import type { GymSession } from "@/data/schemas";
+import { gymCardHref } from "../gym/card-history";
 import { formatKg, sessionDurationMin, totalVolumeKg } from "../gym/logic";
 import { useToday } from "./tasks/screen-hooks";
 
 export function TodayGym() {
-  const toast = useToast();
-  const router = useRouter();
   const today = useToday();
   const sessions = useGymSessionsByDay(today);
   const nextUp = useNextUpDay();
 
   const active = (sessions ?? []).find((s) => s.finished_at === null) ?? null;
   const done = (sessions ?? []).find((s) => s.finished_at !== null) ?? null;
-
-  async function startNextUp() {
-    if (!nextUp) return;
-    const r = await appRepos().gym.startSessionFromDay(nextUp.id, today);
-    if (!r.ok) {
-      toast.show({ message: r.error.message, tone: "error" });
-      return;
-    }
-    router.push("/gym");
-  }
 
   return (
     <section aria-label="Palestra" className="em-card p-5">
@@ -64,7 +52,14 @@ export function TodayGym() {
             Allenamento in corso
             <span className="em-dot em-dot--live ml-2" aria-hidden="true" />
           </p>
-          <GymCta href="/gym" label="Riprendi" />
+          <GymCta
+            href={
+              active.program_day_id !== null
+                ? gymCardHref(active.program_day_id)
+                : "/gym"
+            }
+            label="Riprendi"
+          />
         </div>
       ) : done ? (
         <DoneLine session={done} />
@@ -73,13 +68,7 @@ export function TodayGym() {
           <p className="em-body-sm min-w-0 truncate text-[var(--em-text-3)]">
             {nextUp.subtitle ?? "Il prossimo giorno della tua scheda."}
           </p>
-          <button
-            type="button"
-            onClick={() => void startNextUp()}
-            className="inline-flex h-[var(--em-control-h-md)] shrink-0 items-center justify-center rounded-[var(--em-r-md)] bg-[var(--em-ember)] px-4 text-[length:var(--em-fs-body)] font-semibold text-[var(--em-on-ember)] transition-[background] duration-[var(--em-dur-control)] hover:bg-[color-mix(in_srgb,var(--em-ember)_88%,var(--em-text))]"
-          >
-            Inizia: {nextUp.name}
-          </button>
+          <GymCta href={gymCardHref(nextUp.id)} label={`Apri: ${nextUp.name}`} />
         </div>
       ) : (
         <div className="mt-3 flex items-center justify-between gap-3">
