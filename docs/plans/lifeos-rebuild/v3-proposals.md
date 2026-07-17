@@ -144,7 +144,7 @@ del set che li batte. (4) Niente plate calculator. (5) Chunk più pesante dell'a
   DONE-IN-RUN-10.
 - **PROP-gym-02 — "L'ultima volta" visibile nel micro-editor.** Riga quieta "Ultima
   volta: 62,5 × 9 @RIR1" sopra gli stepper (la storia è già caricata per il prefill:
-  `session-grid.tsx:678-691`). Effort S · Valore H.
+  `session-grid.tsx:678-691`). Effort S · Valore H. **DONE-IN-RUN-10** (P4).
 - **PROP-gym-03 — Plate calculator.** Dato un peso target e un profilo bilanciere+dischi
   (per-dispositivo, localStorage come il chime), i dischi per lato nel micro-editor.
   Matematica locale pura. Effort M · Valore H (la "chicca" della ricerca).
