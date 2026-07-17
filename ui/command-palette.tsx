@@ -40,17 +40,28 @@ export function CommandPalette({
   onClose,
   items,
   placeholder = "Cerca o digita un comando",
+  rank,
 }: {
   open: boolean;
   onClose: () => void;
   items: CommandItem[];
   placeholder?: string;
+  /**
+   * Optional scorer (run-12): higher wins, null excludes. When absent,
+   * the built-in boolean subsequence filter keeps the original order.
+   */
+  rank?: (query: string, item: CommandItem) => number | null;
 }) {
   // The body mounts fresh on every open, so query/active state resets by
   // construction — no reset effects needed.
   if (!open) return null;
   return (
-    <PaletteBody items={items} onClose={onClose} placeholder={placeholder} />
+    <PaletteBody
+      items={items}
+      onClose={onClose}
+      placeholder={placeholder}
+      rank={rank}
+    />
   );
 }
 
@@ -58,10 +69,12 @@ function PaletteBody({
   onClose,
   items,
   placeholder,
+  rank,
 }: {
   onClose: () => void;
   items: CommandItem[];
   placeholder: string;
+  rank?: (query: string, item: CommandItem) => number | null;
 }) {
   const [query, setQueryRaw] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -81,10 +94,20 @@ function PaletteBody({
 
   const filtered = useMemo(() => {
     if (!query.trim()) return items;
+    if (rank) {
+      // Ranked mode: score, drop nulls, best first (stable on ties).
+      return items
+        .map((it) => ({ it, score: rank(query, it) }))
+        .filter((x): x is { it: CommandItem; score: number } =>
+          x.score !== null,
+        )
+        .sort((a, b) => b.score - a.score)
+        .map((x) => x.it);
+    }
     return items.filter((it) =>
       fuzzyMatch(query, `${it.label} ${it.keywords ?? ""}`),
     );
-  }, [items, query]);
+  }, [items, query, rank]);
 
   // Grouped view preserving filter order.
   const grouped = useMemo(() => {

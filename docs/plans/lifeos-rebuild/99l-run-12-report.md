@@ -168,3 +168,42 @@ Prima stesura: `monthShift`/`monthLabel`/`deltaPct` dentro `stats/logic.ts` → 
 `data/ports.ts` · `data/local/stats.ts` · `data/local/diet.ts` · `data/hooks.ts` (selettori read-only, sanciti dalla fence) + loro test · `stats/correlations.ts`(+test) · `stats/recap-logic.ts`(+test) · `stats/correlations-panel.tsx` · `stats/diet-panel.tsx` · `stats/month-recap.tsx` (nuovi) · `stats/stats-screen.tsx` · `stats/logic.ts` (netto: byte-identico al committed dopo il trasloco) · `stats/logic.test.ts` (import ripuliti).
 
 **Commit:** `run-12/P3: numeri + il tuo mese`
+
+---
+
+## P4 · La command palette (⌘K / Ctrl+K)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file** (+8: matcher+sorgenti). **Smoke produzione:** `/` **200**; il chunk del corpo è servito **200**; "Apri scheda:"/"Logga acqua"/"Tema scuro"/"Recenti"/"Nuovo task…" vivono SOLO nel chunk lazy; nel layout resta solo l'overlay scorciatoie.
+
+### Il punto di partenza onesto (scoperto, non presunto)
+
+La palette NON andava inventata: `ui/command-palette.tsx` (shell con ARIA combobox/listbox, focus trap, tastiera, Ember) esiste dal B4 e `comfort-host.tsx` la montava già con ⌘K/Ctrl+K (`preventDefault` ✓), nav alle 14 superfici, "Nuovo task…", "Avvia focus", tema e recenti — PROP-WOW-07 lo diceva ("la palette e i repo ci sono; solo cablaggio"). Misura preliminare (la lezione P5 run-11): la shell ui viveva in un chunk COMMONS (`3456-*`), NON nel layout — il layout portava solo le sorgenti di comfort-host. Il P4 quindi è stato: **corpo lazy + ranking + sorgenti nuove**, non una palette nuova.
+
+### Cosa è cambiato
+
+- **Shell nel layout** (`comfort-host.tsx`, riscritto e DIMAGRITO): tiene keydown (⌘K toggle, chords `g`+lettera, `n`, `?`), overlay scorciatoie, boot tema, stato `paletteOpen`. Il corpo si carica con **`React.lazy` alla prima apertura** — e NON `next/dynamic`, di proposito: un secondo consumer di next/dynamic nel gruppo (app) faceva nascere lo shim di interop DENTRO il chunk congelato della home (+78 B, diagnosi al diff dei moduli webpack: 37→38, il modulo era il facade `n.n()` di next/dynamic). Con React.lazy: **Oggi 59.729 B, 37 moduli, set IDENTICO alla baseline** (hash diverso per soli id commons rinumerati — misurato). Il corpo rende solo su gesto client: l'SSR non lo incontra mai, `Suspense fallback null`.
+- **`palette/matcher.ts`** (puro, +4 test): subsequence CON punteggio — inizio-parola +2, sequenze consecutive crescenti, penalità dolce per bersagli lunghi; null = escluso. `rankOf` su "label + keywords".
+- **`palette/sources.ts`** (puro, +4 test): le 14 nav (traslocate da comfort-host, descrittori senza closure) e **`gymCardSources`**: i giorni del programma attivo → "Apri scheda: Torso A" con deep-link `gymCardHref` — "tor…" trova la scheda DAVANTI alle superfici (test di ranking dedicato).
+- **`palette/palette-body.tsx`** (il chunk lazy): monta la shell ui con la prop `rank` nuova; sorgenti = nav + schede (via `useActiveProgram`+`useProgramDays`) + azioni + tema + recenti per-dispositivo (traslocati). **"Logga acqua"**: lo STESSO gesto della strip di Oggi — `incrementDay` col passo one-thumb (`defaultQuickStep`, 330 ml per l'acqua) e toast **"Acqua: +330 ml · Annulla"** che ripristina il totale di prima; la voce compare solo se l'abitudine acqua esiste e non è archiviata. Regola di sicurezza del brief rispettata: solo navigazione e azioni che GIÀ portano undo (nuovo task = apre il quick-add, mutazione zero; tema = reversibile per natura; avvia focus = azione palette preesistente dal run-05, dichiarata).
+- **`ui/command-palette.tsx` — FLAGGED (modifica additiva a una primitive esistente, non una primitive nuova)**: prop opzionale `rank?: (query, item) => number | null` — presente: filtra i null e ordina per punteggio (stabile sui pari); assente: il filtro booleano di prima, byte-per-byte lo stesso comportamento (lo showcase /dev non cambia). La shell vive nei COMMONS (misurato: +125 B su `3456-*`, fuori dal metodo di misura run-08 dei route chunk).
+
+### Delta dichiarati
+
+1. **Nessun "button affordance"**: PROP-WOW-07 non ne colloca uno e il brief lo condiziona a "where the PROP puts one" — la palette resta keyboard-first; l'overlay `?` la documenta. (Con essa: niente entry point touch questo run → **PROP-nota**, come da brief.)
+2. Su touch la palette "non monta" PER COSTRUZIONE: il corpo nasce solo da ⌘K/Ctrl+K — non esiste altro trigger; il listener nel layout è il medesimo di prima (run-05).
+3. "Nuovo task via the NL parser": il gesto resta l'apertura del quick-add PERSISTENTE (che il parser NL ce l'ha dentro, chips comprese) — la palette non duplica il parser; è il cablaggio che esisteva, dichiarato.
+
+### Budget (le tre misure del brief)
+
+| Chunk | Prima | Dopo | Δ |
+| --- | --- | --- | --- |
+| **Oggi** | 59.729 | **59.729** (37 moduli, set identico) | **0** ✓ |
+| **Layout (app)** | 38.370 | **30.434** (9.434 gz) | **−7.936** (budget ≤ +2.500: sotto di 10,4 kB) |
+| **Corpo palette (lazy, nuovo)** | — | **15.274 raw / 6.099 gz** (`7418.*.js`) | registrato |
+| Commons `3456-*` (shell ui) | 46.611 | 46.736 | +125 (prop rank; fuori misura route) |
+
+### Fence
+
+`_components/palette/**` (nuovi: matcher, sources, palette-body + test) · `_components/comfort-host.tsx` (riscritto shell) · `ui/command-palette.tsx` (prop `rank`, FLAGGED). Montaggio nel layout: INVARIATO (`<ComfortHost />` com'era).
+
+**Commit:** `run-12/P4: command palette`

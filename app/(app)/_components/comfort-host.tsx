@@ -4,72 +4,32 @@
  * ComfortHost (run-05 prompt 6, stub 14) — il layer di comfort della
  * shell, montato nel layout del gruppo (app):
  *
- *   - palette comandi (cmd+K / ctrl+K): navigazione, "Nuovo task…",
- *     azioni tema — fuzzy della shell ui/, coi comandi RECENTI in testa
- *     (per-dispositivo, localStorage);
+ *   - palette comandi (cmd+K / ctrl+K): la SHELL è solo il listener e
+ *     lo stato open — il corpo (sorgenti, ranking, recenti) vive in
+ *     `palette/palette-body.tsx`, caricato con next/dynamic alla prima
+ *     apertura (run-12 P4: il layout non paga i byte della palette);
  *   - scorciatoie: `n` nuovo task, `g` poi `t/c/g/s` vai-a, `?` overlay
  *     delle scorciatoie (Modal Ember). MAI dentro input/textarea/select/
  *     contenteditable, mai con modificatori (tranne cmd/ctrl+K e ?);
  *   - boot del tema per-dispositivo (theme.ts) + listener di sistema.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CommandPalette, Modal, type CommandItem } from "@/ui";
-import { startFocusNow } from "../focus/use-focus";
+import { Modal } from "@/ui";
 import { requestQuickAdd } from "./quick-add-bus";
-import { bootTheme, setThemeMode } from "./theme";
+import { bootTheme } from "./theme";
 
-const RECENT_KEY = "lifeos.palette.recent";
-const RECENT_MAX = 4;
 const CHORD_TIMEOUT_MS = 900;
 
-/* ── Recenti (per-dispositivo, difensivo) ────────────────────────────── */
-
-function readRecents(): string[] {
-  try {
-    const raw = window.localStorage.getItem(RECENT_KEY);
-    if (raw === null) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((x): x is string => typeof x === "string" && x.length <= 40)
-      .slice(0, RECENT_MAX);
-  } catch {
-    return [];
-  }
-}
-
-function pushRecent(id: string) {
-  try {
-    const next = [id, ...readRecents().filter((r) => r !== id)].slice(
-      0,
-      RECENT_MAX,
-    );
-    window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-  } catch {
-    // Storage negato: i recenti semplicemente non si ricordano.
-  }
-}
-
-/* ── Destinazioni e comandi ──────────────────────────────────────────── */
-
-const NAV_TARGETS: Array<{ id: string; label: string; href: string; keywords: string }> = [
-  { id: "nav:/", label: "Oggi", href: "/", keywords: "home today dashboard" },
-  { id: "nav:/tasks", label: "Task", href: "/tasks", keywords: "todo attività" },
-  { id: "nav:/calendar", label: "Calendario", href: "/calendar", keywords: "agenda eventi" },
-  { id: "nav:/gym", label: "Palestra", href: "/gym", keywords: "gym allenamento" },
-  { id: "nav:/stats", label: "Statistiche", href: "/stats", keywords: "stats numeri streak" },
-  { id: "nav:/abitudini", label: "Abitudini", href: "/abitudini", keywords: "habits anelli acqua streak" },
-  { id: "nav:/settimana", label: "Settimana", href: "/settimana", keywords: "planner piano slot settimana tipo" },
-  { id: "nav:/focus", label: "Focus", href: "/focus", keywords: "pomodoro timer concentrazione" },
-  { id: "nav:/dieta", label: "Dieta", href: "/dieta", keywords: "pasti alimenti kcal proteine piano" },
-  { id: "nav:/esami", label: "Esami", href: "/esami", keywords: "studio università capitoli" },
-  { id: "nav:/spese", label: "Spese", href: "/spese", keywords: "soldi uscite finance" },
-  { id: "nav:/sera", label: "Sera", href: "/sera", keywords: "diario check-in journal" },
-  { id: "nav:/corpo", label: "Corpo", href: "/corpo", keywords: "peso corporeo bilancia trend" },
-  { id: "nav:/impostazioni", label: "Impostazioni", href: "/impostazioni", keywords: "settings account sync tema" },
-];
+/**
+ * Corpo lazy della palette: chunk dedicato, montato solo da aperta.
+ * React.lazy e NON next/dynamic, di proposito: un secondo consumer di
+ * next/dynamic nel gruppo (app) faceva nascere lo shim di interop nel
+ * chunk della home (+78 B sul congelato — misurato al P4). Il corpo
+ * rende solo su gesto client (⌘K): l'SSR non lo incontra mai.
+ */
+const PaletteBody = lazy(() => import("./palette/palette-body"));
 
 /** Le go-to della tastiera: `g` poi questa lettera. */
 const GO_KEYS: Record<string, string> = {
@@ -93,8 +53,6 @@ export function ComfortHost() {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  // I recenti si leggono all'APERTURA della palette (mai in render SSR).
-  const [recents, setRecents] = useState<string[]>([]);
 
   // Tema per-dispositivo: boot una volta (lo script inline del layout ha
   // già stampato l'attributo prima del paint; qui parte il listener).
@@ -109,67 +67,6 @@ export function ComfortHost() {
     requestQuickAdd();
   }
 
-  const items: CommandItem[] = useMemo(() => {
-    const nav: CommandItem[] = NAV_TARGETS.map((t) => ({
-      id: t.id,
-      label: t.label,
-      group: "Vai a",
-      hint: t.href,
-      keywords: t.keywords,
-      onSelect: () => {
-        pushRecent(t.id);
-        router.push(t.href);
-      },
-    }));
-    const actions: CommandItem[] = [
-      {
-        id: "act:new-task",
-        label: "Nuovo task…",
-        group: "Azioni",
-        hint: "n",
-        keywords: "aggiungi crea todo",
-        onSelect: () => {
-          pushRecent("act:new-task");
-          openQuickAdd();
-        },
-      },
-      {
-        id: "act:start-focus",
-        label: "Avvia focus",
-        group: "Azioni",
-        keywords: "pomodoro timer concentrazione parti",
-        onSelect: () => {
-          pushRecent("act:start-focus");
-          startFocusNow();
-          router.push("/focus");
-        },
-      },
-    ];
-    const theme: CommandItem[] = [
-      { id: "theme:dark", label: "Tema scuro", keywords: "dark notte" },
-      { id: "theme:light", label: "Tema chiaro", keywords: "light giorno" },
-      { id: "theme:system", label: "Tema di sistema", keywords: "auto os" },
-    ].map((t) => ({
-      ...t,
-      group: "Tema",
-      onSelect: () => {
-        pushRecent(t.id);
-        setThemeMode(t.id.slice("theme:".length) as "dark" | "light" | "system");
-      },
-    }));
-
-    const all = [...nav, ...actions, ...theme];
-    const byId = new Map(all.map((i) => [i.id, i] as const));
-    // Recenti in testa, nel loro gruppo — l'ordine dell'array comanda.
-    const recentItems = recents
-      .map((id) => byId.get(id))
-      .filter((i): i is CommandItem => i !== undefined)
-      .map((i) => ({ ...i, group: "Recenti" }));
-    const recentIds = new Set(recentItems.map((i) => i.id));
-    return [...recentItems, ...all.filter((i) => !recentIds.has(i.id))];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recents, pathname]);
-
   // ── Tastiera globale ─────────────────────────────────────────────────
   useEffect(() => {
     let chordUntil = 0;
@@ -179,7 +76,6 @@ export function ComfortHost() {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setHelpOpen(false);
-        setRecents(readRecents());
         setPaletteOpen((o) => !o);
         return;
       }
@@ -222,11 +118,14 @@ export function ComfortHost() {
 
   return (
     <>
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        items={items}
-      />
+      {paletteOpen ? (
+        <Suspense fallback={null}>
+          <PaletteBody
+            onClose={() => setPaletteOpen(false)}
+            onQuickAdd={openQuickAdd}
+          />
+        </Suspense>
+      ) : null}
       <Modal
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
@@ -234,7 +133,7 @@ export function ComfortHost() {
       >
         <dl className="flex flex-col gap-3 pb-2">
           {[
-            ["⌘K / Ctrl+K", "Palette comandi: naviga, crea, cambia tema"],
+            ["⌘K / Ctrl+K", "Palette comandi: naviga, apri una scheda, agisci"],
             ["n", "Nuovo task (da qualsiasi schermata)"],
             ["g poi t", "Vai a Task"],
             ["g poi c", "Vai a Calendario"],
