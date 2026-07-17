@@ -210,7 +210,7 @@ Guardia per P6: interventi home a costo ~zero (skeleton nella shell del rituale,
 
 ## P6 · Polish del flusso nuovo + debito a11y
 
-**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **998/998, 79 file**. **Smoke (porta pulita):** tutte le 8 rotte toccate dal run **200**.
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **998/998, 78 file**. **Smoke (porta pulita):** tutte le 8 rotte toccate dal run **200**.
 
 1. **La bugia di tastiera in Abitudini è sanata** (il finding P1 dell'audit): la maniglia di riordino ora ha `tabIndex`, `onKeyDown` (ArrowUp/Down → `persistOrder`, la STESSA persistenza del drag) e l'aria-label che dichiara il gesto ("Riordina X: trascina, o frecce su e giù"). Il docstring del run-08 ("drag dalla maniglia + tastiera") adesso dice il vero senza cambiare una virgola.
 2. **Skeleton sul corpo del rituale**: il gate dati non rende più null ma la cornice della card con shimmer (`aria-busy`), niente pop-in. La timeline aveva già skeleton+empty dal P3; il recap Sera degrada con "…" per riga; TodaySera e il tile Esami sono one-liner condizionali (il pattern dei tile: compaiono a dati pronti).
@@ -220,3 +220,63 @@ Guardia per P6: interventi home a costo ~zero (skeleton nella shell del rituale,
 6. **Coalescing del toast acqua: NON fatto, PROP-note** (facoltativo da brief, budget a 271 B dal tetto): la proposta resta — un toast coalescente per i quick-log rapidi la cui Annulla riporta al totale pre-raffica; S-effort, da fare quando il budget della home respira (o dietro il pannello di un run che alleggerisce Oggi).
 
 **Commit:** `run-11/P6: polish + a11y`
+
+---
+
+## P7 · Chiusura del run
+
+**Checkpoint finale a HEAD: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · **998/998, 78 file** ✓. Smoke di produzione (porta chiusa per PID): le 8 rotte toccate tutte **200**, home con timeline nell'SSR, /sera con recap nell'SSR. Albero pulito; un commit per prompt (P5: uno per sub-item).
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`feat/run-10` @ 20e80ed) | 76 | **964** | — |
+| P1 (schema: estimate_min + training, Dexie v12) | 76 | 965 | +1 (survival v11→v12) |
+| P2 (rituale del mattino) | 77 | **984** | +19 (ritual-logic) |
+| P3 (timeline unica) | 78 | **991** | +7 (timeline-logic) |
+| P4 (chiusura serale) | 78 | 991 | — (riuso puro) |
+| P5a/b/c (slot→scheda · dieta×allenamento · brief) | 78 | **998** | +3 · +2 · +2 |
+| P5d + P6 | 78 | 998 | — |
+
+### Budget Oggi (il numero finale vs 60.000)
+
+**59.729 B raw (18.689 gzip)** — **SOTTO il tetto di 271 B.** Il viaggio: 47.845 → 52.423 (P2: shell+store del rituale; il corpo è un chunk on-demand da 10.966 B) → 55.776 (P3: timeline al netto di Agenda+Adesso assorbite) → 56.574 (P4: aggancio serale) → 58.297 (P5c: fonti del brief) → 59.743 (P5d: tile esami) → **59.729** (P6: skeleton pagato dalla micro-pulizia). Ogni kB è giustificato al suo prompt; il risultato negativo dei lazy-sheets (P5) è a verbale per i run futuri. **Avviso onesto per run-12: la home non ha più margine — la prossima feature `[home]` deve prima liberare byte (ritirare un pannello doppione, alleggerire una sezione) o rinegoziare il tetto.**
+
+### La decisione di schema, in una riga
+
+Column-only, esattamente il percorso preferito dal cerimoniale: **2 colonne nullable su tabelle esistenti** (`lo_tasks.estimate_min`, `lo_meal_variants.training`) in UNA migrazione (`0032_guided_day_fields.sql`, SCRITTA mai applicata), **Dexie v11→v12 solo-backfill** con survival test a perdita zero, **zero tabelle nuove** → zero ridichiarazioni `lo_push` (0029 resta finale a 28), zero id derivati nuovi → zero golden nuovi. Il resto della giornata guidata è a schema ZERO: playlist = `sort_order` che esisteva dal v1, rollover = patch di data, stamp "pianificata" = localStorage per-dispositivo (pattern brief-cache).
+
+### Delta consolidati vs brief e vs PROP (il dettaglio è al prompt di ognuno)
+
+1. **P0**: `main` NON conteneva run-10 — branch da `feat/run-10@20e80ed`; al gate un solo merge di `feat/run-11` porta TUTTO (contiene run-10).
+2. **P1**: PROP-sera-02 ("domani" testuale, `[schema]`) FUORI RUN — il brief la sostituisce con "Prepara domani" a schema zero; la stima VIAGGIA con l'occorrenza ricorrente (lo ha preteso il test di convergenza two-device); fixture-fix meccanico dichiarato su `calendar/agenda.test.ts`.
+3. **P2**: niente bottone "Salta" separato (con azioni istantanee, "Avanti" senza aver agito È saltare); chip stima auto-annullanti (pattern EnergyPicker) senza toast; "Lascia" non vale come "toccato"; card monolitica → shell + corpo lazy per il budget.
+4. **P3**: marker dieta = "Pasti · N di M" (la "variante del giorno" per-giorno non esiste nel modello: le varianti sono per-pasto — la proposta vive nella card pasto, P5b); i marker palestra/pasti duplicano di proposito il contesto dei pannelli sotto; PROP-oggi-02 in gran parte assorbita dalla timeline (resto: aperto).
+5. **P4**: PROP-sera-01 (aggancio su Oggi) consegnata con fence estesa dichiarata; NIENTE util condivisa remaining-vs-target (non specificata dalla PROP; PROP-diet-01 — il numero "restano" DENTRO /dieta — resta aperta).
+6. **P5**: la "scheda suggerita" nel brief c'era già dal run-09 (dichiarato, non rifatto); lazy-sheets bocciato dai numeri (+5,4 kB: i dialoghi condivisi vivono nei commons, non nel route chunk); tile esami nel 14-giorni della PROP.
+7. **P6**: coalescing toast acqua → PROP-note (budget); chips stima 15/30/60/90 da brief (la PROP diceva 15/30/1h/2h) — confermare sul device.
+
+### Rimandato a run-12 / triage
+
+PROP-oggi-02 (promozione/retrocessione sezioni per fascia oraria — la parte non assorbita) · PROP-diet-01 (il "restano" nell'header di /dieta) · coalescing toast acqua · stamp "pianificata" cross-device (oggi per-dispositivo, dichiarato) · CROSS-01 fase 2 (`module_link` sullo slot; spedita l'euristica) · PROP-sera-02 ("domani" testuale) · tutto il Set B e il resto del Set C.
+
+### ui/ e token FLAGGED
+
+**NESSUNO.** Zero primitive nuove in `ui/`, zero token nuovi in `ember.css` — il run intero è composto coi mattoni esistenti (Skeleton, Switch, StatCard, SlotRow, useRowDrag, chip patterns). L'unica famiglia di file "infrastruttura" nuova è `_components/ritual/*` + `format-min.ts` + `timeline-logic.ts`, tutta fuori da ui/.
+
+### Domande aperte per il triage chat
+
+1. **Il rituale compare a qualunque ora** finché non è pianificato/congedato (deterministico, congedabile). Se al pomeriggio stona, il gate a fascia mattutina è una riga — deciderlo sul device.
+2. **I marker della timeline doppiano i pannelli** (Palestra sotto, tile Pasti): se all'uso il doppione pesa, run-12 ritira il PANNELLO (il posto nel flusso vince) — e libera anche budget.
+3. **"Più avanti" nel rollover punta a +8 giorni** (l'inizio della finestra run-10): è il giorno giusto o serve un picker?
+4. **Esami su Oggi**: finestra 14 giorni e stati `computePacing` — verificare la resa con un esame "scaduto" vicino (oggi il tile mostra solo esami con data ≥ oggi; il CTA sugli scaduti è PROP-esami-03, aperta).
+5. **Budget della home a fine corsa** (59.729/60.000): scegliere la strategia per run-12 — ritirare doppioni o alzare il tetto con motivazione.
+
+### GATE DI DAVIDE (dopo il report, mai durante — la sessione non tocca il vivo)
+
+1. Verifica in chat → **un solo merge**: `git merge --no-ff --no-edit feat/run-11` (contiene per intero anche run-10, mai mergiato), push.
+2. **La migrazione 0032 ESISTE**: applicarla col runner DOPO merge+deploy (0031 → 0032, in ordine; idempotente). Poi **aggiornare l'app su TUTTI i dispositivi collegati** — LWW è per-riga: un client vecchio che riscrive una riga evoluta azzera `estimate_min`/`training` al push (la finestra deploy→apply invece è sicura: `jsonb_populate_recordset` ignora le chiavi non-colonna).
+3. Smoke sul device: **rituale** (rollover → stime → ordine → capacità; "Non oggi"; undo dello stamp) · **timeline** (slot con check, task con undo, cursore adesso, marker palestra→card e pasti, focus concluse) · **Sera** (recap coi numeri veri, "Prepara domani" + undo, aggancio su Oggi dopo le 20) · **i link** (slot Palestra→card in Settimana; chip+proposta variante in Dieta col toggle nel builder; brief con "Giornata pianificata/piena", "N task da ieri", variante) · **tile Esami** (≤14 giorni) · **tastiera sul riordino Abitudini** (frecce sulla maniglia).
+
+**Run 11 completo.** La giornata adesso si GUIDA: il mattino invita a pianificarla (rollover, stime, ordine, capacità — mai un cancello), la home la mostra come UN flusso in ordine d'ora con il cursore sull'adesso, la sera la chiude coi numeri veri e prepara domani; la Settimana sa quale scheda, la Dieta sa quando ti alleni, il brief apre col piano. Due colonne nullable, una migrazione scritta e mai applicata, un bump Dexie a perdita zero, 964→998 test, la home a 271 byte dal tetto — e `main` mai toccata.
