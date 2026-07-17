@@ -72,113 +72,129 @@ export function TodayTiles() {
 
   return (
     <section aria-label="Statistiche di oggi" className="grid grid-cols-2 gap-3">
-      <StatCard
-        label="Task oggi"
-        loading={summary === undefined}
-        value={
-          summary === undefined
-            ? undefined
-            : summary.total === 0
-              ? "—"
-              : `${summary.done}/${summary.total}`
-        }
-        hint={
-          summary === undefined
-            ? undefined
-            : summary.total === 0
-              ? "Nessun task per oggi."
-              : summary.done === summary.total
-                ? "Tutti chiusi."
-                : undefined
-        }
-      />
-      <StatCard
-        label="Streak"
-        loading={streak === undefined}
-        value={streak?.current}
-        unit={streak?.current === 1 ? "giorno" : "giorni"}
-        hint={
-          streak === undefined
-            ? undefined
-            : streak.todayCounts
-              ? "Oggi conta già."
-              : streak.current > 0
-                ? "Si tiene con un'azione oggi."
-                : "Riparti oggi: basta un task."
-        }
-      >
-        {streak !== undefined && streak.current > 0 && streak.todayCounts ? (
-          <span className="em-dot em-dot--live" aria-hidden="true" />
-        ) : null}
-      </StatCard>
-      <StatCard
-        label="Settimana"
-        loading={weekPct === undefined}
-        value={weekPct === null ? "—" : `${weekPct}%`}
-        hint={
-          weekPct === undefined
-            ? undefined
-            : weekPct === null
-              ? "Nessun task da lunedì a oggi."
-              : "Completamento da lunedì a oggi."
-        }
-      />
-      <StatCard
-        label="Palestra"
-        loading={gym === undefined}
-        value={
-          gym === undefined
-            ? undefined
-            : gym.sessions === 0
-              ? "—"
-              : gym.sessions
-        }
-        unit={
-          gym === undefined || gym.sessions === 0
-            ? undefined
-            : gym.sessions === 1
-              ? "sessione"
-              : "sessioni"
-        }
-        hint={
-          gym === undefined
-            ? undefined
-            : gym.sessions === 0
-              ? "Nessun allenamento questa settimana."
-              : gym.totalVolumeKg > 0
-                ? `${formatKg(gym.totalVolumeKg)} da lunedì.`
-                : "Da lunedì a oggi."
-        }
-      />
-      {latestWeight !== undefined && latestWeight !== null ? (
+      {/* Ogni tile è un Link al suo modulo (run-10 P4, PROP-oggi-01):
+          prima lo era solo Pasti — stessa incorniciatura per tutti. */}
+      <TileLink href="/tasks" label="Task di oggi: apri Task">
         <StatCard
-          label="Peso"
-          value={formatBodyKg(latestWeight.weight_kg)}
-          hint={
-            weightDelta !== null
-              ? `${formatBodyDelta(weightDelta)} dall'ultima pesata.`
-              : "Prima pesata registrata."
+          label="Task oggi"
+          loading={summary === undefined}
+          value={
+            summary === undefined
+              ? undefined
+              : summary.total === 0
+                ? "—"
+                : `${summary.done}/${summary.total}`
           }
+          hint={
+            summary === undefined
+              ? undefined
+              : summary.total === 0
+                ? "Nessun task per oggi."
+                : summary.done === summary.total
+                  ? "Tutti chiusi."
+                  : undefined
+          }
+          className="h-full"
         />
+      </TileLink>
+      <TileLink href="/stats" label="Streak: apri Statistiche">
+        <StatCard
+          label="Streak"
+          loading={streak === undefined}
+          value={streak?.current}
+          unit={streak?.current === 1 ? "giorno" : "giorni"}
+          hint={
+            streak === undefined
+              ? undefined
+              : streak.todayCounts
+                ? "Oggi conta già."
+                : streak.current > 0
+                  ? "Si tiene con un'azione oggi."
+                  : "Riparti oggi: basta un task."
+          }
+          className="h-full"
+        >
+          {streak !== undefined && streak.current > 0 && streak.todayCounts ? (
+            <span className="em-dot em-dot--live" aria-hidden="true" />
+          ) : null}
+        </StatCard>
+      </TileLink>
+      <TileLink href="/stats" label="Settimana: apri Statistiche">
+        <StatCard
+          label="Settimana"
+          loading={weekPct === undefined}
+          value={weekPct === null ? "—" : `${weekPct}%`}
+          hint={
+            weekPct === undefined
+              ? undefined
+              : weekPct === null
+                ? "Nessun task da lunedì a oggi."
+                : "Completamento da lunedì a oggi."
+          }
+          className="h-full"
+        />
+      </TileLink>
+      <TileLink href="/gym" label="Palestra: apri il modulo">
+        <StatCard
+          label="Palestra"
+          loading={gym === undefined}
+          value={
+            gym === undefined
+              ? undefined
+              : gym.sessions === 0
+                ? "—"
+                : gym.sessions
+          }
+          unit={
+            gym === undefined || gym.sessions === 0
+              ? undefined
+              : gym.sessions === 1
+                ? "sessione"
+                : "sessioni"
+          }
+          hint={
+            gym === undefined
+              ? undefined
+              : gym.sessions === 0
+                ? "Nessun allenamento questa settimana."
+                : gym.totalVolumeKg > 0
+                  ? `${formatKg(gym.totalVolumeKg)} da lunedì.`
+                  : "Da lunedì a oggi."
+          }
+          className="h-full"
+        />
+      </TileLink>
+      {latestWeight !== undefined && latestWeight !== null ? (
+        <TileLink href="/corpo" label="Peso: apri Corpo">
+          <StatCard
+            label="Peso"
+            value={formatBodyKg(latestWeight.weight_kg)}
+            hint={
+              weightDelta !== null
+                ? `${formatBodyDelta(weightDelta)} dall'ultima pesata.`
+                : "Prima pesata registrata."
+            }
+            className="h-full"
+          />
+        </TileLink>
       ) : null}
       {planEntries !== undefined && planEntries.length > 0 ? (
-        <StatCard
-          label="Piano di oggi"
-          value={remainingCount(planEntries)}
-          unit="slot"
-          hint={
-            remainingCount(planEntries) === 0
-              ? "Tutto spuntato."
-              : "Ancora senza esito."
-          }
-        />
+        <TileLink href="/settimana" label="Piano di oggi: apri Settimana">
+          <StatCard
+            label="Piano di oggi"
+            value={remainingCount(planEntries)}
+            unit="slot"
+            hint={
+              remainingCount(planEntries) === 0
+                ? "Tutto spuntato."
+                : "Ancora senza esito."
+            }
+            className="h-full"
+          />
+        </TileLink>
       ) : null}
       {mealsToday.length > 0 ? (
-        <Link
-          href="/dieta"
-          aria-label="Pasti di oggi: apri Dieta"
-          className="rounded-[var(--em-r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--em-ember)]"
-        >
+        <TileLink href="/dieta" label="Pasti di oggi: apri Dieta">
           <StatCard
             label="Pasti"
             value={`${mealsEaten}/${mealsToday.length}`}
@@ -190,8 +206,29 @@ export function TodayTiles() {
             }
             className="h-full"
           />
-        </Link>
+        </TileLink>
       ) : null}
     </section>
+  );
+}
+
+/** La cornice-Link dei tile (il pattern nato col tile Pasti, run-09). */
+function TileLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="rounded-[var(--em-r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--em-ember)]"
+    >
+      {children}
+    </Link>
   );
 }

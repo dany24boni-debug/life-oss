@@ -48,7 +48,7 @@ raggiungono solo via Impostazioni → Moduli (3 tap per arrivare a /corpo).
   modulo (Task→/tasks, Streak e Settimana→/stats, Palestra→/gym, Peso→/corpo, Piano di
   oggi→/settimana), stesso pattern focus-ring del tile Pasti. Riduce il costo di
   raggiungere i moduli su mobile (3 tap → 1 per /corpo quando il tile c'è). Effort S ·
-  Valore H · `[home]`.
+  Valore H · `[home]`. **DONE-IN-RUN-10** (P4, cornice `TileLink` unica).
 - **PROP-oggi-02 — Ordine consapevole dell'ora.** Dopo le 18 la sezione Sera (nudge
   check-in, PROP-sera-01) sale sopra i task e Palestra sale di rango al mattino; la
   composizione resta deterministica (fasce orarie fisse, niente ML). Effort M · Valore M
