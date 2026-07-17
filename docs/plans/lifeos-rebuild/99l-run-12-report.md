@@ -122,7 +122,7 @@ Prima stesura: `weightPrCheck`/`weightPrSetIds` dentro `gym/logic.ts` → **Oggi
 
 ## P3 · I numeri — stats elevation + "Il tuo mese"
 
-**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1031/1031, 83 file** (+16: 9 correlazioni, 3 recap-logic, 3 selettori stats, 1 consumedByDay). **Smoke produzione:** `/stats` **200**, `/` **200**; nel chunk stats: "Il tuo mese" ✓ "I moduli si parlano" ✓ "Aderenza della settimana" ✓ "vs settimana scorsa" ✓ "Ancora pochi dati" ✓.
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1031/1031, 82 file** (+16: 9 correlazioni, 3 recap-logic, 3 selettori stats, 1 consumedByDay). **Smoke produzione:** `/stats` **200**, `/` **200**; nel chunk stats: "Il tuo mese" ✓ "I moduli si parlano" ✓ "Aderenza della settimana" ✓ "vs settimana scorsa" ✓ "Ancora pochi dati" ✓.
 
 ### I selettori read-only (la fence li sancisce)
 
@@ -173,7 +173,7 @@ Prima stesura: `monthShift`/`monthLabel`/`deltaPct` dentro `stats/logic.ts` → 
 
 ## P4 · La command palette (⌘K / Ctrl+K)
 
-**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file** (+8: matcher+sorgenti). **Smoke produzione:** `/` **200**; il chunk del corpo è servito **200**; "Apri scheda:"/"Logga acqua"/"Tema scuro"/"Recenti"/"Nuovo task…" vivono SOLO nel chunk lazy; nel layout resta solo l'overlay scorciatoie.
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 83 file** (+8: matcher+sorgenti). **Smoke produzione:** `/` **200**; il chunk del corpo è servito **200**; "Apri scheda:"/"Logga acqua"/"Tema scuro"/"Recenti"/"Nuovo task…" vivono SOLO nel chunk lazy; nel layout resta solo l'overlay scorciatoie.
 
 ### Il punto di partenza onesto (scoperto, non presunto)
 
@@ -212,7 +212,7 @@ La palette NON andava inventata: `ui/command-palette.tsx` (shell con ARIA combob
 
 ## P5 · I layout desktop rimandati (un commit per sub-item)
 
-**Checkpoint (a fine P5): VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file** (nessuna logica pura nuova: layout e composizione di derivazioni già golden). **Smoke produzione:** `/dieta` **200** · `/calendar` **200**; "Piano della settimana" e "Restano " nel chunk di /dieta.
+**Checkpoint (a fine P5): VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 83 file** (nessuna logica pura nuova: layout e composizione di derivazioni già golden). **Smoke produzione:** `/dieta` **200** · `/calendar` **200**; "Piano della settimana" e "Restano " nel chunk di /dieta.
 
 ### a · Dieta — griglia settimanale a lg+ (PROP-diet-05)
 
@@ -248,7 +248,7 @@ Sotto le barre dell'header del giorno, la riga che la derivazione conosceva da s
 
 ## P6 · Polish + a11y delle superfici nuove
 
-**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 84 file**. **Smoke produzione (porta chiusa per PID):** le 8 rotte del giro tutte **200** (/, /gym, /stats, /dieta, /calendar, /tasks, /sera, /settimana).
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **1039/1039, 83 file**. **Smoke produzione (porta chiusa per PID):** le 8 rotte del giro tutte **200** (/, /gym, /stats, /dieta, /calendar, /tasks, /sera, /settimana).
 
 1. **Il passaggio a11y dedicato alla palette** (la superficie più rischiosa del ciclo): i GRUPPI dentro il listbox erano `div` nudi — ora `role="group"` + `aria-label` col nome del gruppo e l'eyebrow `aria-hidden` (i figli di un listbox devono essere option o gruppi etichettati). Verificato il resto del contratto: focus trap sull'input ✓ (`useFocusTrap`), `combobox` + `aria-controls` + `aria-activedescendant` ✓, opzioni con id stabili e `aria-selected` ✓, Esc/frecce/Invio ✓, risultato vuoto = EmptyState onesto ✓. Da tastiera la palette si apre, naviga, committa e chiude senza mouse per costruzione.
 2. **Editor attrezzatura**: intestazione propria ("Bilanciere e dischi", eyebrow ember) — lo swap dentro lo sheet non lascia più il solo titolo della serie a raccontare il contesto.
@@ -268,3 +268,73 @@ Sotto le barre dell'header del giorno, la riga che la derivazione conosceva da s
 | /calendar | 10.425 (4.270 gz) | **10.618 (4.322 gz)** | +193 | Due pannelli (solo classi + wrapper). |
 
 **Commit:** `run-12/P6: polish + a11y`
+
+---
+
+## P7 · Chiusura del run
+
+**Checkpoint finale a HEAD: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · **1039/1039, 83 file** ✓. Smoke di produzione (porta chiusa per PID): le 8 rotte toccate/adiacenti tutte **200**. Albero pulito; un commit per prompt (P5: uno per sub-item, tre commit).
+
+### La prova del congelamento, PRIMA di tutto
+
+**Oggi: 59.729 B raw — IDENTICO al numero congelato del brief**, verificato con build fresca a ogni prompt e difeso TRE volte coi numeri:
+1. **P2**: +385 B da `weightPrCheck`/`weightPrSetIds` in `gym/logic.ts` (la home importa gym/logic per formatKg) → trasloco in `gym/pr.ts`, hash byte-identico.
+2. **P3**: +439 B da `monthShift`/`monthLabel`/`deltaPct` in `stats/logic.ts` (today-tiles importa stats/logic) → trasloco in `stats/recap-logic.ts`, hash byte-identico.
+3. **P4**: +78 B dallo shim di interop di `next/dynamic` (un secondo consumer nel gruppo (app) lo materializza NEL chunk della home; diagnosi al diff dei moduli webpack: 37→38) → `React.lazy` al suo posto, 37 moduli, set identico alla baseline.
+**La legge che ne esce, a verbale per i run futuri:** webpack non tree-shaka gli export tra moduli — ogni export nuovo va in un modulo che la home non importa; i moduli-home noti sono `gym/logic`, `gym/card-history`, `stats/logic`, `_components/*`; gli A/B onesti si fanno con `git stash -u` + build fresca (un A/B col tree sporco ha prodotto un falso baseline, P2); e un `next/dynamic` in più nel layout costa byte ALLA HOME.
+
+### Test (baseline → finale)
+
+| Stadio | File | Test | Δ |
+| --- | --- | --- | --- |
+| Baseline (`main` @ ff17b91) | 78 | **998** | — |
+| P1 (0033 + attrezzatura su Settings) | 78 | 1003 | +5 |
+| P2 (plate math + PR) | 80 | **1015** | +12 |
+| P3 (correlazioni + selettori + mese) | 82 | **1031** | +16 |
+| P4 (matcher + sorgenti palette) | 83 | **1039** | +8 |
+| P5 (layout) + P6 (polish) | 83 | 1039 | — (riuso e composizione) |
+
+### La decisione di schema, in una riga
+
+**Column-only su `lo_settings`** (`gym_bar_kg numeric` 1..100 + `gym_plates jsonb` `[{kg,n}]`) in UNA migrazione — **`0033_gym_equipment_profile.sql`, SCRITTA mai applicata**, idempotente, senza ridichiarare `lo_push` (0029 resta finale a 28) — e **ZERO bump Dexie** (v12 resta l'ultima): per Settings vale il precedente v7 (merge sui default alla lettura, `.default(null)` al parse), con la prova zero-perdita nel test del repo. Tutto il resto del run è derivato: zero entità nuove, zero id derivati, zero golden nuovi.
+
+### I numeri dei chunk (dettaglio nella tabella P6)
+
+Oggi **59.729 (0)** · layout **30.436 (−7.934**, budget +2.500 mai avvicinato**)** · corpo palette **15.275** (chunk lazy nuovo) · /gym **103.393** (+6.866) · /stats **25.096** (+14.202, di cui ~3,2k di rimescolo commons post-P4) · /dieta **58.503** (+6.232) · /calendar **10.618** (+193).
+
+### Delta consolidati vs brief e vs PROP (il dettaglio è al prompt di ognuno)
+
+1. **P0**: baseline /gym reale 96.527 (il ~96.163 del brief era la misura 99j; drift run-11 registrato).
+2. **P1**: profilo attrezzatura SINCRONIZZATO su lo_settings (la PROP diceva localStorage; il brief vince su invarianti — e il prodotto ci guadagna); NESSUN Dexie v13 (precedente v7: cerimonia morta per Settings; "at most one bump" = zero usati).
+3. **P2**: plate math NON greedy-nudo ma subset-sum con testimone big-plates-first (il greedy sbaglia i profili non-canonici — caso nei test; l'edge "nearest" della PROP è onorato anche SOPRA il target); PROP-gym-05 (marker set) NON implementata → PROP-nota; il touchpoint profilo vive DENTRO il micro-editor (swap, mai sheet-su-sheet); limite storia editor 25→500 (il massimo storico vero).
+4. **P3**: PROP-corpo-01 (media mobile) fuori run (non nominata dal brief); la carta dieta×peso usa il target kcal corrente per le settimane passate (dichiarato); DeltaChip usato via prop di StatCard, SENZA export dal barrel ui (il primo tentativo d'export è stato revertito: byte sulla home).
+5. **P4**: niente bottone-affordance (nessuna PROP lo colloca) e niente entry point touch → PROP-nota; "nuovo task via NL parser" = apertura del quick-add che il parser ce l'ha dentro (cablaggio esistente, dichiarato); "avvia focus" resta (azione palette preesistente dal run-05); prop `rank` su ui/command-palette FLAGGED (modifica additiva, non primitive nuova).
+6. **P5**: wide di /dieta CONDIZIONALE al tab Piano (la lettura fedele di "width and layout together"); "Copia giorno su…" resta mobile-only (7 copie in griglia = rumore) — annotato per il triage.
+7. **P6**: gruppi del listbox palette con role/label veri (i div nudi erano il debito a11y della shell B4).
+
+### Rimandato a run-13 / triage
+
+PROP-gym-05 (warmup/failure `[schema]`, "solo se lo chiede") · PROP-corpo-01 (media mobile 7g) · copia-giorno nella griglia desktop di /dieta · entry point MOBILE della palette (PROP-nota P4) · PROP-gym-06 (timer recupero opt-in — resta PROP, la griglia è countdown-free per legge) · gli ereditati dal 99k ancora aperti: coalescing toast acqua, stamp rituale cross-device, CROSS-01 fase 2 (`module_link`), PROP-sera-02, PROP-oggi-02 residua, resto del Set C (recenti extra dieta, focus×task fase 2, vista settimana calendario).
+
+### ui/ e token FLAGGED
+
+**UNO**: `ui/command-palette.tsx` — prop opzionale `rank` (P4) + gruppi ARIA veri (P6). Nessuna primitive NUOVA, zero token nuovi in ember.css; tutto il resto del run è composto coi mattoni esistenti (StatCard con la sua prop `delta` mai usata prima, ChartFrame, Skeleton, BottomSheet/Modal, em-dot--live).
+
+### Domande aperte per il triage chat
+
+1. **Plate calculator**: il passo del bilanciere nell'editor è ±2,5 con default 20 e chip tagli comuni 25…0,5 — combacia con la tua attrezzatura vera? (I conteggi sono dischi TOTALI; gli spaiati restano a terra per costruzione.)
+2. **Momento PR**: si celebra il PR di PESO al set (toast + chip effimero in griglia + marcatore permanente nello storico); reps/volume restano alla schermata di fine (newRecords run-07). Basta così o vuoi anche gli altri al set?
+3. **Correlazioni**: soglie oneste a 5 giorni per gruppo (3 settimane per dieta×peso) e finestra 60 giorni — da tarare sul device coi dati veri.
+4. **"Il tuo mese"**: il delta peso è prima→ultima pesata del mese (non media mobile) — ok o preferisci la media delle prime/ultime N?
+5. **/dieta wide solo sul tab Piano**: se su desktop stona il "salto" di larghezza cambiando tab, si allarga tutta la superficie (una riga).
+6. **/stats +3,2k di rimescolo commons** (moduli ui riaddebitati alla route dopo il dimagrimento del layout): innocuo per l'utente; se in run-13 si vuole il conto pulito va rimisurato il perimetro commons.
+7. **Palette senza affordance visibile** (⌘K only, documentata in `?`): se la vuoi anche cliccabile sul rail desktop, è una PROP da una riga.
+
+### GATE DI DAVIDE (dopo il report, mai durante — la sessione non tocca il vivo)
+
+1. Verifica in chat → **merge**: `git merge --no-ff --no-edit feat/run-12`, push. (P0: branch da `main` post run-11 — questo merge porta solo run-12.)
+2. **La migrazione 0033 ESISTE**: applicarla col runner DOPO merge+deploy, IN ORDINE dopo la 0032. Poi **aggiornare l'app su TUTTI i dispositivi collegati — tuoi e dell'altro utente** (LWW per-riga: un client vecchio che riscrive la riga settings azzera `gym_bar_kg`/`gym_plates` al push; la finestra deploy→apply invece è sicura).
+3. Smoke sul device (la lista del brief): **plate calculator** (senza profilo → link quieto; imposta bilanciere+dischi; per lato / più vicino / solo bilanciere; Annulla del salvataggio) · **un PR vero** (toast + chip sulla cella + "PR" nello storico della scheda) · **correlazioni + "Il tuo mese"** (mesi indietro, mese vuoto) · **⌘K** (nav, "tor…"→scheda, "Logga acqua" con Annulla, esc/focus trap, gruppi letti dallo screen reader) · **griglia dieta** a lg (+ mobile intatto) e **due pannelli calendario** · **"Restano N kcal · M g proteine"** in /dieta.
+4. Dopo questo run: manda 99l + le note DEVICE (va bene la voce) di entrambi i run — run-13 sarà il polish corto costruito da quelle, più il residuo login gate.
+
+**Run 12 completo.** La palestra adesso allena: il micro-editor dice i dischi per lato e celebra il record nel momento in cui lo fai, la storia lo ricorda; i numeri adesso parlano: la dieta è visibile alle statistiche, i moduli si confrontano con medie oneste e il mese ha il suo recap navigabile; la craft bar c'è: ⌘K apre un corpo lazy che trova le schede per nome e logga l'acqua con l'Annulla; il desktop spende la larghezza dove serve (settimana della dieta a griglia, calendario a due pannelli) e /dieta dice finalmente quanto resta. Una migrazione scritta e mai applicata, zero bump Dexie, zero dipendenze nuove, 998→1039 test — e la home CONGELATA a 59.729 byte, difesa tre volte coi numeri, con `main` mai toccata.
