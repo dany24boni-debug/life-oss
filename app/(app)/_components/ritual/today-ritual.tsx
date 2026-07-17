@@ -15,10 +15,20 @@ import type { GoogleAgendaEvent } from "../../calendar/agenda";
 import { useToday } from "../tasks/screen-hooks";
 import { useRitualDay } from "./ritual-store";
 
-const RitualBody = dynamic(() => import("./ritual-body"), {
-  ssr: false,
-  loading: () => null,
-});
+// Il .catch è l'hardening P5c (run-13): il corpo che non arriva (offline
+// al primo uso) degrada a null — mai la shell intera su error.tsx per
+// un invito facoltativo.
+const RitualBody = dynamic(
+  () =>
+    import("./ritual-body").catch(() => ({
+      default: (() =>
+        null) as unknown as (typeof import("./ritual-body"))["default"],
+    })),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 
 export function TodayRitual({
   google,

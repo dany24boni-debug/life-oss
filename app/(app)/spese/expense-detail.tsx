@@ -13,6 +13,7 @@ import {
   Field,
   Input,
   Modal,
+  Skeleton,
   useToast,
 } from "@/ui";
 import type { DayString } from "@/ui/calendar-core";
@@ -33,7 +34,13 @@ export function ExpenseDetailSheet({
   const open = expenseId !== null;
 
   const body =
-    expense === undefined ? null : expense === null ? (
+    expense === undefined ? (
+      <div className="flex flex-col gap-3 pb-4" aria-busy="true">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-2/3" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    ) : expense === null ? (
       <p className="em-body-sm py-4 text-[var(--em-text-3)]">
         Questa spesa non c&apos;è più.
       </p>

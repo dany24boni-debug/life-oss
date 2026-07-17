@@ -31,6 +31,7 @@ import { monthLabel, monthShift } from "./recap-logic";
 const KG_DELTA = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 1,
   signDisplay: "exceptZero",
+  useGrouping: "always",
 } as Intl.NumberFormatOptions);
 
 export function MonthRecap({ today }: { today: IsoDay }) {

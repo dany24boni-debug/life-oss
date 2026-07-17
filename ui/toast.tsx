@@ -3,6 +3,11 @@
 // Toast — provider + useToast(). Stacks up to 3, auto-dismisses (5s,
 // paused on hover/focus), supports an action slot (the undo pattern),
 // aria-live polite region. Tones: neutral / success / error.
+//
+// run-13: dismissal is animated — the card plays em-toast-out and calls
+// onDone on animationend (timeout fallback). Eviction by stack overflow
+// (a 4th toast arriving) still removes the oldest instantly: that path
+// unmounts from outside the card, declared and accepted.
 
 import {
   createContext,
@@ -87,10 +92,13 @@ function ToastCard({
   onDone: () => void;
 }) {
   const [paused, setPaused] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const remaining = useRef(item.durationMs ?? 5000);
   const lastTick = useRef(0);
 
   useEffect(() => {
+    if (leaving) return;
     lastTick.current = Date.now();
     const iv = setInterval(() => {
       const now = Date.now();
@@ -98,25 +106,39 @@ function ToastCard({
         remaining.current -= now - lastTick.current;
         if (remaining.current <= 0) {
           clearInterval(iv);
-          onDone();
+          setLeaving(true);
         }
       }
       lastTick.current = now;
     }, 100);
     return () => clearInterval(iv);
-  }, [paused, onDone]);
+  }, [paused, leaving]);
+
+  // Fallback if animationend never fires (reduced-motion clamps it to
+  // 0.01ms, so this only covers pathological cases).
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(onDone, 400);
+    return () => clearTimeout(t);
+  }, [leaving, onDone]);
 
   return (
     <div
-      role="status"
+      ref={cardRef}
+      role={item.tone === "error" ? "alert" : "status"}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
+      onAnimationEnd={(e) => {
+        if (leaving && e.target === cardRef.current) onDone();
+      }}
       className={cx(
         "pointer-events-auto flex w-full max-w-sm items-center gap-3 overflow-hidden",
         "rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] py-3 pl-4 pr-2 shadow-[var(--em-e3)]",
-        "animate-[em-toast-in_var(--em-dur-card)_var(--em-ease-out)]",
+        leaving
+          ? "animate-[em-toast-out_var(--em-dur-control)_var(--em-ease-in)_forwards]"
+          : "animate-[em-toast-in_var(--em-dur-card)_var(--em-ease-out)]",
       )}
     >
       <span
@@ -134,7 +156,7 @@ function ToastCard({
           type="button"
           onClick={() => {
             item.action?.onClick();
-            onDone();
+            setLeaving(true);
           }}
           className="em-body-sm shrink-0 rounded-[var(--em-r-sm)] px-2.5 py-1.5 font-semibold text-[var(--em-ember-text)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[var(--em-ember-tint)]"
         >
@@ -144,7 +166,7 @@ function ToastCard({
       <button
         type="button"
         aria-label="Chiudi notifica"
-        onClick={onDone}
+        onClick={() => setLeaving(true)}
         className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_9%,transparent)] hover:text-[var(--em-text)]"
       >
         <svg

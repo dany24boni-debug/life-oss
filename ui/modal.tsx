@@ -3,8 +3,12 @@
 // Modal — portal, overlay, focus trap, Esc/overlay close, scroll lock,
 // focus restore. Centered card on all sizes (BottomSheet is the touch-first
 // alternative for pickers/menus).
+//
+// run-13: exit is animated (em-pop-out/em-fade-out, shorter than the enter,
+// --em-ease-in) with unmount on animationend + timeout fallback. Under
+// prefers-reduced-motion the gate clamps it to 0.01ms — instant, as before.
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cx } from "./cx";
 import {
   Portal,
@@ -32,19 +36,40 @@ export function Modal({
   className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const [shown, setShown] = useState(open);
+  if (open && !shown) setShown(true);
+  const closing = shown && !open;
+
   useFocusTrap(panelRef, open);
   useLockBodyScroll(open);
   useEscape(onClose, open);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!closing) return;
+    const t = setTimeout(() => setShown(false), 400);
+    return () => clearTimeout(t);
+  }, [closing]);
+
+  if (!shown) return null;
 
   return (
     <Portal>
-      <div className="em-scope fixed inset-0 z-[90] bg-transparent">
+      <div
+        className={cx(
+          "em-scope fixed inset-0 z-[90] bg-transparent",
+          closing && "pointer-events-none",
+        )}
+      >
         <div
           aria-hidden="true"
           onClick={onClose}
-          className="absolute inset-0 bg-[var(--em-overlay)] backdrop-blur-[2px] animate-[em-fade-in_var(--em-dur-control)_linear]"
+          className={cx(
+            "absolute inset-0 bg-[var(--em-overlay)] backdrop-blur-[2px]",
+            closing
+              ? "animate-[em-fade-out_var(--em-dur-control)_linear_forwards]"
+              : "animate-[em-fade-in_var(--em-dur-control)_linear]",
+          )}
         />
         <div className="absolute inset-0 grid place-items-center overflow-y-auto p-5">
           <div
@@ -53,9 +78,14 @@ export function Modal({
             aria-modal="true"
             aria-label={title}
             tabIndex={-1}
+            onAnimationEnd={(e) => {
+              if (closing && e.target === panelRef.current) setShown(false);
+            }}
             className={cx(
               "relative w-full max-w-md rounded-[var(--em-r-xl)] bg-[var(--em-surface-2)] p-6 shadow-[var(--em-e3)]",
-              "animate-[em-pop-in_var(--em-dur-card)_var(--em-ease-out)]",
+              closing
+                ? "animate-[em-pop-out_var(--em-dur-control)_var(--em-ease-in)_forwards]"
+                : "animate-[em-pop-in_var(--em-dur-card)_var(--em-ease-out)]",
               className,
             )}
           >

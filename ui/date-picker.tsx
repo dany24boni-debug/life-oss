@@ -88,29 +88,23 @@ export function DatePicker({
         </span>
         <span className="flex items-center gap-1">
           {clearable && selected && !disabled ? (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Cancella data"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelected(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelected(null);
-                }
-              }}
-              className="grid h-6 w-6 place-items-center rounded-full text-[var(--em-text-3)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
-            >
-              <CrossIcon />
-            </span>
+            // Spacer: il bottone Cancella vero è un SIBLING del trigger
+            // (interattivo dentro <button> = albero ARIA invalido, run-13).
+            <span aria-hidden="true" className="h-6 w-6" />
           ) : null}
           <CalendarIcon />
         </span>
       </button>
+      {clearable && selected && !disabled ? (
+        <button
+          type="button"
+          aria-label="Cancella data"
+          onClick={() => setSelected(null)}
+          className="absolute right-9 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
+        >
+          <CrossIcon />
+        </button>
+      ) : null}
 
       {name ? (
         <input type="hidden" name={name} value={selected ?? ""} />

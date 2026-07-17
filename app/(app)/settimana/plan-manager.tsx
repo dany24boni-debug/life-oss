@@ -186,7 +186,9 @@ function PlanEditor({ plan, onBack }: { plan: WeekPlan; onBack: () => void }) {
     toast.show({
       message:
         copied > 0
-          ? `${copied} slot copiati su ${WEEKDAYS_IT[target - 1]}.`
+          ? copied === 1
+            ? `1 slot copiato su ${WEEKDAYS_IT[target - 1]}.`
+            : `${copied} slot copiati su ${WEEKDAYS_IT[target - 1]}.`
           : "Niente da copiare.",
       tone: copied > 0 ? "success" : undefined,
     });
@@ -375,7 +377,7 @@ function CopyDayControl({
         );
       })}
       <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-        annulla
+        Annulla
       </Button>
     </span>
   );

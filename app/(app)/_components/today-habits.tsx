@@ -136,7 +136,7 @@ function StripRing({
           key={done ? "done" : `v-${value}`}
           className={cx(
             "grid place-items-center animate-[em-pop-in_var(--em-dur-card)_var(--em-ease-out)]",
-            done ? "text-[var(--em-ember)]" : "text-[var(--em-text-2)]",
+            done ? "text-[var(--em-ember-text)]" : "text-[var(--em-text-2)]",
           )}
         >
           {done ? (

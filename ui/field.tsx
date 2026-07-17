@@ -10,6 +10,7 @@ export type FieldRenderProps = {
   id: string;
   "aria-describedby": string | undefined;
   "aria-invalid": true | undefined;
+  "aria-required": true | undefined;
 };
 
 export function Field({
@@ -48,6 +49,7 @@ export function Field({
         id,
         "aria-describedby": describedBy,
         "aria-invalid": error ? true : undefined,
+        "aria-required": required ? true : undefined,
       })}
       {error ? (
         <p

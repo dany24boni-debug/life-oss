@@ -90,3 +90,33 @@ CI (`.github/workflows/ci.yml`) runs lint · typecheck · sentinels · tests · 
 - **Diet math is integer math.** kcal are integers, macros are INTEGER DECIGRAMS
   (`data/diet.ts`): one rounding in `itemTotals`, then only integer sums (the spese-cents
   lesson). Display divides by 10 at the very end (`formatGramsFromDg`), never mid-math.
+- **Chunk residency (runs 11-13, measured four times).** webpack does NOT tree-shake exports
+  between modules: every new export travels with its module into every chunk that imports it.
+  A new export on a module the home imports = bytes on the frozen Oggi chunk. Known
+  home-modules: `gym/logic`, `gym/card-history`, `stats/logic`, `corpo/logic`,
+  `_components/*`. New derivations get their OWN module (precedents: `gym/pr.ts`,
+  `stats/recap-logic.ts`, `corpo/trend.ts`). Honest A/B measurements: `git stash -u` +
+  `rm -rf .next` + fresh build — an A/B with a dirty tree produced a false baseline once.
+- **React.lazy, never next/dynamic, in the (app) group.** A second `next/dynamic` consumer
+  materializes its interop shim INSIDE the home chunk (+78 B, measured run-12). Lazy bodies
+  load on user gesture with `React.lazy` + `Suspense`; harden the factory with
+  `.catch(() => ({ default: () => null }))` so a chunk that never arrives degrades instead of
+  crashing the shell (run-13 P5c). Once loaded, keep sheets MOUNTED (ever-mounted gate) so
+  exit animations survive close.
+- **The motion layer (run-13).** Durations `--em-dur-tap/control/card/screen` + easings
+  `--em-ease-out` (enters) / `--em-ease-in` (exits) / `--em-ease-in-out`; exits are SHORTER
+  than enters and use the `em-*-out` keyframes; overlay primitives own a closing phase and
+  unmount on `animationend` (+400ms timeout fallback). The reduced-motion gate in `ember.css`
+  is property-based under `.em-scope *`: it covers every NEW animation automatically — never
+  add a second gate, never bypass `.em-scope` (portals re-apply it). `.em-hit` grows a tap
+  target to 44px with zero visual change (not on `<input>` — pseudo-elements don't render on
+  replaced elements). Accent AS TEXT uses the `--em-*-text` variants, never the raw palette
+  (raw fills fail AA in light theme).
+- **Page width tokens (run-10).** Reading width is the default; a surface that SPENDS the
+  width (boards, grids) sets `data-page-width="wide"` on its root and the shell opens to
+  `--em-page-wide` (88rem) from md up via `:has()` — mobile never changes. Wide is per-view:
+  /dieta flips it only on the Piano tab.
+- **"Committato ≠ mergiato" (run-11 lesson, P0 pattern).** A run brief saying "run N is
+  merged" is a claim to VERIFY: from `main`, `git ls-files docs/plans/lifeos-rebuild | grep
+  <report-slug>`. Present → branch from `main`. Absent but the feature branch exists → branch
+  from its tip and declare the lineage delta loudly (one merge then carries both runs).

@@ -209,7 +209,7 @@ export function StatsScreen() {
         }
         emptyText="Nessun allenamento questa settimana. Il primo accende questo riquadro."
         minHeight={120}
-        caption="Settimana in corso (lun -> dom): sessioni registrate e volume totale sollevato."
+        caption="Settimana in corso (lun → dom): sessioni registrate e volume totale sollevato."
       >
         {gym !== undefined && gym.sessions > 0 ? (
           <dl className="grid grid-cols-2 gap-3">
@@ -242,7 +242,7 @@ export function StatsScreen() {
         }
         emptyText="Nessun pomodoro questa settimana. Il primo accende questo riquadro."
         minHeight={120}
-        caption="Settimana in corso (lun -> dom): fasi di lavoro concluse dal timer."
+        caption="Settimana in corso (lun → dom): fasi di lavoro concluse dal timer."
       >
         {focus !== undefined && (focusWeek ?? 0) > 0 ? (
           <dl className="grid grid-cols-2 gap-3">

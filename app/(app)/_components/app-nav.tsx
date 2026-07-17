@@ -31,6 +31,7 @@ import {
   IconWallet,
   IconWeek,
 } from "./icons";
+import { requestPalette } from "./palette-bus";
 import { SyncDot } from "./sync-dot";
 
 type NavItem = {
@@ -134,6 +135,19 @@ export function Rail() {
           ))}
         </ul>
         <div className="mt-auto pb-5">
+          {/* run-13 P4b (triage 99l#7): l'affordance cliccabile della
+              palette — quieta, solo desktop (il rail È md+), stesso corpo
+              lazy via bus. */}
+          <button
+            type="button"
+            onClick={requestPalette}
+            className="flex min-h-11 w-full items-center gap-3 rounded-[var(--em-r-md)] px-3 text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_6%,transparent)] hover:text-[var(--em-text)]"
+          >
+            <span className="em-body-sm font-medium">Cerca e comandi</span>
+            <kbd className="em-eyebrow ml-auto rounded-[4px] bg-[color-mix(in_srgb,var(--em-text)_8%,transparent)] px-1.5 py-0.5">
+              ⌘K
+            </kbd>
+          </button>
           <RailLink
             item={{
               href: "/impostazioni",

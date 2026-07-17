@@ -206,7 +206,9 @@ export function SlotRow({
         aria-label={
           state === "done"
             ? `${slot.title}: fatto — tocca per annullare`
-            : `${slot.title}: segna come fatto (tieni premuto per saltato)`
+            : state === "skipped"
+              ? `${slot.title}: saltato — tocca per segnare fatto`
+              : `${slot.title}: segna come fatto (tieni premuto o premi S per saltato)`
         }
         aria-pressed={state === "done"}
         onPointerDown={pressStart}
@@ -243,7 +245,16 @@ export function SlotRow({
           {state === "done" ? (
             <IconCheck className="h-3.5 w-3.5" />
           ) : state === "skipped" ? (
-            <span className="text-[10px] font-semibold leading-none">–</span>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <path d="M7 12h10" />
+            </svg>
           ) : null}
         </span>
       </button>

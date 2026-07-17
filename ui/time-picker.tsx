@@ -122,39 +122,33 @@ export function TimePicker({
         </span>
         <span className="flex items-center gap-1">
           {clearable && selected && !disabled ? (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="Cancella orario"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelected(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelected(null);
-                }
-              }}
-              className="grid h-6 w-6 place-items-center rounded-full text-[var(--em-text-3)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </span>
+            // Spacer: il bottone Cancella vero è un SIBLING del trigger
+            // (interattivo dentro <button> = albero ARIA invalido, run-13).
+            <span aria-hidden="true" className="h-6 w-6" />
           ) : null}
           <ClockIcon />
         </span>
       </button>
+      {clearable && selected && !disabled ? (
+        <button
+          type="button"
+          aria-label="Cancella orario"
+          onClick={() => setSelected(null)}
+          className="absolute right-9 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] hover:text-[var(--em-text)]"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      ) : null}
 
       {name ? (
         <input type="hidden" name={name} value={selected ?? ""} />
@@ -233,10 +227,32 @@ function TimeColumn({
         ref={ref}
         role="listbox"
         aria-label={label}
+        onKeyDown={(e) => {
+          // Contratto tastiera del listbox (run-13): un tab-stop per
+          // colonna, frecce ↑/↓ e Home/End spostano valore e focus.
+          const idx = items.indexOf(current);
+          let next: string | undefined;
+          if (e.key === "ArrowDown")
+            next = items[Math.min(idx + 1, items.length - 1)];
+          if (e.key === "ArrowUp") next = items[Math.max(idx - 1, 0)];
+          if (e.key === "Home") next = items[0];
+          if (e.key === "End") next = items[items.length - 1];
+          if (next !== undefined && next !== current) {
+            e.preventDefault();
+            onPick(next);
+            e.currentTarget
+              .querySelector<HTMLElement>(`[data-value="${next}"]`)
+              ?.focus();
+          }
+        }}
         className="h-44 overflow-y-auto overscroll-contain rounded-[var(--em-r-sm)] bg-[var(--em-surface)] p-1"
       >
-        {items.map((v) => {
+        {items.map((v, i) => {
           const isCurrent = v === current;
+          // Roving: tab-stop sul corrente; se il corrente non è in lista
+          // (nessuna selezione), il primo item tiene il tab-stop.
+          const isStop =
+            isCurrent || (!items.includes(current) && i === 0);
           return (
             <button
               key={v}
@@ -244,6 +260,8 @@ function TimeColumn({
               role="option"
               aria-selected={isCurrent}
               data-current={isCurrent || undefined}
+              data-value={v}
+              tabIndex={isStop ? 0 : -1}
               onClick={() => onPick(v)}
               className={cx(
                 "em-body em-num block w-full rounded-[var(--em-r-sm)] py-2 text-center",

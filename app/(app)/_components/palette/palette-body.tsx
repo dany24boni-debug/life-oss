@@ -39,7 +39,7 @@ function readRecents(): string[] {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter((x): x is string => typeof x === "string" && x.length <= 40)
+      .filter((x): x is string => typeof x === "string" && x.length <= 64)
       .slice(0, RECENT_MAX);
   } catch {
     return [];

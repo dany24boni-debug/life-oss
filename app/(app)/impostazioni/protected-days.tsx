@@ -101,7 +101,7 @@ function ProtectedDaysInner() {
                   type="button"
                   onClick={() => remove(day)}
                   aria-label={`Rimuovi protezione: ${formatDayShort(day)}`}
-                  className="em-body-sm rounded-[var(--em-r-sm)] px-2.5 py-1.5 text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_8%,transparent)] hover:text-[var(--em-text)]"
+                  className="em-body-sm min-h-[var(--em-tap-min)] rounded-[var(--em-r-sm)] px-2.5 text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_8%,transparent)] hover:text-[var(--em-text)]"
                 >
                   Rimuovi
                 </button>

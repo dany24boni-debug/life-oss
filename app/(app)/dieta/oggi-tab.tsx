@@ -178,6 +178,14 @@ function TotalsHeader({
             : `${formatGramsFromDg(totals.protein_dg)} g proteine`}
         </p>
       </div>
+      {settings === undefined || latest === undefined ? (
+        // Gate run-13 (audit F4): mentre profilo/pesata caricano, spazio
+        // riservato invece dell'hint "senza profilo" che poi si smentisce.
+        <div aria-busy="true" className="flex flex-col gap-2.5">
+          <Skeleton className="h-2.5 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      ) : null}
       {vs.kcal ? (
         <ProgressBar
           value={vs.kcal.consumed}
@@ -215,7 +223,7 @@ function TotalsHeader({
             .join(" · ")}
         </p>
       ) : null}
-      {!vs.kcal && !vs.protein_dg ? (
+      {settings !== undefined && latest !== undefined && !vs.kcal && !vs.protein_dg ? (
         <p className="em-body-sm text-[var(--em-text-3)]">
           Con profilo e pesata (Impostazioni, Corpo) qui compaiono gli
           obiettivi.
@@ -330,7 +338,7 @@ function MealCard({
           <button
             type="button"
             onClick={() => void applyProposta(proposta.id, proposta.name)}
-            className="em-body-sm min-h-9 shrink-0 font-medium text-[var(--em-text)] transition-opacity duration-[var(--em-dur-tap)] hover:opacity-80"
+            className="em-body-sm min-h-11 shrink-0 font-medium text-[var(--em-text)] transition-opacity duration-[var(--em-dur-tap)] hover:opacity-80"
           >
             Applica
           </button>
@@ -455,7 +463,7 @@ function VariantChooser({
             >
               <span className="em-body flex min-w-0 items-center gap-2 font-medium">
                 {selected ? (
-                  <IconCheck className="h-4 w-4 shrink-0 text-[var(--em-ember)]" />
+                  <IconCheck className="h-4 w-4 shrink-0 text-[var(--em-ember-text)]" />
                 ) : null}
                 <span className="truncate">{o.name}</span>
               </span>
@@ -688,7 +696,7 @@ function ExtraSheetBody({
                 size="sm"
                 onClick={() => setPicked(null)}
               >
-                cambia
+                Cambia
               </Button>
             </div>
             <QtyStepper

@@ -133,7 +133,7 @@ function TodayTasksInner() {
       {!loading && open.length > 0 && doneCount > 0 ? (
         <p className="em-body-sm mt-3 text-[var(--em-text-3)]">
           <span className="em-num">{doneCount}</span>{" "}
-          {doneCount === 1 ? "fatta oggi" : "fatte oggi"}
+          {doneCount === 1 ? "fatto oggi" : "fatti oggi"}
         </p>
       ) : null}
 

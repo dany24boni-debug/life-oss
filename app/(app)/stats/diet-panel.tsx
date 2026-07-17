@@ -23,6 +23,7 @@ import { weekBounds } from "./logic";
 const KG_DELTA = new Intl.NumberFormat("it-IT", {
   maximumFractionDigits: 1,
   signDisplay: "exceptZero",
+  useGrouping: "always",
 } as Intl.NumberFormatOptions);
 
 export function DietPanel({ today }: { today: IsoDay }) {
@@ -90,7 +91,7 @@ export function DietPanel({ today }: { today: IsoDay }) {
       caption={
         kcalTarget === null
           ? "Senza profilo (peso, altezza, età, attività) niente target: qui compaiono solo i giorni loggati."
-          : "Settimana in corso (lun -> dom); target kcal e proteine dal profilo, come in /dieta."
+          : "Settimana in corso (lun → dom); target kcal e proteine dal profilo, come in /dieta."
       }
     >
       <dl className="grid grid-cols-3 gap-3">

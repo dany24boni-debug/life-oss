@@ -266,7 +266,7 @@ function TileLink({
     <Link
       href={href}
       aria-label={label}
-      className="rounded-[var(--em-r-lg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--em-ember)]"
+      className="rounded-[var(--em-r-lg)]"
     >
       {children}
     </Link>

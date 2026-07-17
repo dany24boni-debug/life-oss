@@ -42,7 +42,9 @@ export function EsamiImportButton({ compact }: { compact?: boolean }) {
         message:
           summary.exams === 0
             ? "Già tutto importato: nessun esame nuovo."
-            : `Importati ${summary.exams} esami dal vecchio modulo.`,
+            : summary.exams === 1
+              ? "Importato 1 esame dal vecchio modulo."
+              : `Importati ${summary.exams} esami dal vecchio modulo.`,
         tone: summary.exams === 0 ? "neutral" : "success",
         durationMs: 7000,
       });

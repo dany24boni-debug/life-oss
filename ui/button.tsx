@@ -77,7 +77,8 @@ export function Button({
       <span
         className={cx(
           "inline-flex items-center justify-center gap-[inherit]",
-          loading && "invisible",
+          // opacity (non visibility): il nome accessibile resta nell'albero
+          loading && "opacity-0",
         )}
       >
         {icon ? (

@@ -145,7 +145,7 @@ export default async function ImpostazioniPage() {
             </div>
             <Link
               href="/login"
-              className="inline-flex h-[var(--em-control-h-md)] w-fit items-center justify-center rounded-[var(--em-r-md)] bg-[var(--em-ember)] px-4 text-[length:var(--em-fs-body)] font-semibold text-[var(--em-on-ember)] transition-[background] duration-[var(--em-dur-control)] hover:bg-[color-mix(in_srgb,var(--em-ember)_88%,var(--em-text))]"
+              className="inline-flex h-[var(--em-control-h-md)] w-fit items-center justify-center rounded-[var(--em-r-md)] bg-[var(--em-ember)] px-4 text-[length:var(--em-fs-body)] font-semibold text-[var(--em-on-ember)] transition-[background] duration-[var(--em-dur-control)] hover:bg-[color-mix(in_srgb,var(--em-ember)_88%,var(--em-text))] active:bg-[color-mix(in_srgb,var(--em-ember)_80%,var(--em-ink))]"
             >
               Crea un account per sincronizzare
             </Link>

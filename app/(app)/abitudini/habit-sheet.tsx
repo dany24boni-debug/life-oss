@@ -140,7 +140,7 @@ function HabitSheetBody({
             className={cx(
               "h-4 w-4",
               streak.todayCounts
-                ? "text-[var(--em-ember)]"
+                ? "text-[var(--em-ember-text)]"
                 : "text-[var(--em-text-3)]",
             )}
           />

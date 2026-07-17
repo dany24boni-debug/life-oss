@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Button, Input, cx, useToast } from "@/ui";
+import { Button, Input, Skeleton, cx, useToast } from "@/ui";
 import { appRepos, useFoods } from "@/data/hooks";
 import type { Food, FoodBasis } from "@/data/schemas";
 import { formatInt, parseKcalInput, parseMacroInput } from "./logic";
@@ -89,7 +89,11 @@ export function FoodPickerInline({
             </button>
           </li>
         ) : null}
-        {filtered.length === 0 && query.trim() === "" ? (
+        {foods === undefined ? (
+          <li aria-busy="true" className="py-2">
+            <Skeleton className="h-9 w-full" />
+          </li>
+        ) : filtered.length === 0 && query.trim() === "" ? (
           <li className="em-body-sm py-4 text-[var(--em-text-3)]">
             La libreria è vuota: scrivi un nome per creare il primo alimento.
           </li>
@@ -102,7 +106,7 @@ export function FoodPickerInline({
         className="self-start"
         onClick={onCancel}
       >
-        annulla
+        Annulla
       </Button>
     </div>
   );
@@ -222,7 +226,7 @@ function FoodQuickCreate({
       </div>
       <div className="flex items-center justify-between gap-3">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          ‹ ricerca
+          ‹ Ricerca
         </Button>
         <Button
           type="button"

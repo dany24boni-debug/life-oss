@@ -53,7 +53,7 @@ export function SyncStatusLine() {
         account in automatico. {line}
       </p>
       {info?.lastError ? (
-        <p className="em-body-sm mt-1 text-[var(--em-segnale)]">
+        <p className="em-body-sm mt-1 text-[var(--em-segnale-text)]">
           {info.lastError}
         </p>
       ) : null}
@@ -66,10 +66,10 @@ export function SyncStatusLine() {
 export function DataButtons() {
   const { show } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | "export" | "import">(null);
 
   const onExport = async () => {
-    setBusy(true);
+    setBusy("export");
     try {
       const envelope = await exportAll(getDb());
       const blob = new Blob([JSON.stringify(envelope, null, 2)], {
@@ -87,12 +87,12 @@ export function DataButtons() {
         tone: "error",
       });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const onImportFile = async (file: File) => {
-    setBusy(true);
+    setBusy("import");
     try {
       let parsed: unknown;
       try {
@@ -111,31 +111,41 @@ export function DataButtons() {
       }
       const { applied, skipped, invalid } = result.data;
       const extra =
-        invalid > 0 ? ` ${invalid} righe non valide sono state ignorate.` : "";
+        invalid > 0
+          ? invalid === 1
+            ? " 1 riga non valida è stata ignorata."
+            : ` ${invalid} righe non valide sono state ignorate.`
+          : "";
       show({
         message:
           applied === 0
-            ? `Niente da importare: avevi già tutto (${skipped} righe uguali o più nuove).${extra}`
-            : `Importate ${applied} righe. ${skipped} erano già aggiornate qui.${extra}`,
+            ? `Niente da importare: avevi già tutto (${skipped === 1 ? "1 riga uguale o più nuova" : `${skipped} righe uguali o più nuove`}).${extra}`
+            : `${applied === 1 ? "Importata 1 riga" : `Importate ${applied} righe`}. ${skipped === 1 ? "1 era già aggiornata qui" : `${skipped} erano già aggiornate qui`}.${extra}`,
         tone: applied === 0 ? "neutral" : "success",
         durationMs: 7000,
       });
     } finally {
-      setBusy(false);
+      setBusy(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button type="button" onClick={onExport} disabled={busy}>
+      <Button
+        type="button"
+        onClick={onExport}
+        disabled={busy !== null}
+        loading={busy === "export"}
+      >
         Esporta backup JSON
       </Button>
       <Button
         type="button"
         variant="ghost"
         onClick={() => fileRef.current?.click()}
-        disabled={busy}
+        disabled={busy !== null}
+        loading={busy === "import"}
       >
         Importa backup
       </Button>
@@ -157,20 +167,20 @@ export function DataButtons() {
 
 export function SignOutControl() {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | "keep" | "wipe">(null);
   const { show } = useToast();
 
   const leaveKeeping = async () => {
-    setBusy(true);
+    setBusy("keep");
     try {
       await signOut();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const leaveWiping = async () => {
-    setBusy(true);
+    setBusy("wipe");
     try {
       await wipeLocalDevice(getDb());
       await signOut();
@@ -179,7 +189,7 @@ export function SignOutControl() {
         message: "Non ho potuto svuotare il dispositivo. Riprova.",
         tone: "error",
       });
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -195,14 +205,20 @@ export function SignOutControl() {
         description="I tuoi dati sono già sincronizzati con l'account. Cosa faccio con la copia su questo dispositivo?"
         footer={
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" onClick={leaveKeeping} disabled={busy}>
+            <Button
+              type="button"
+              onClick={leaveKeeping}
+              disabled={busy !== null}
+              loading={busy === "keep"}
+            >
               Mantieni i dati su questo dispositivo
             </Button>
             <Button
               type="button"
               variant="destructive"
               onClick={leaveWiping}
-              disabled={busy}
+              disabled={busy !== null}
+              loading={busy === "wipe"}
             >
               Svuota questo dispositivo
             </Button>

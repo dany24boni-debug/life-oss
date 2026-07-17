@@ -171,6 +171,16 @@ const STATUS_TONE: Record<PacingStatus, string> = {
   past: "var(--em-segnale)",
 };
 
+/** Variante -text (theme-adattiva) per il TESTO del badge: il tono crudo
+ * resta a tinta e barra — come DeltaChip (stat-card). */
+const STATUS_TEXT: Record<PacingStatus, string> = {
+  done: "var(--em-salvia-text)",
+  over_achieving: "var(--em-salvia-text)",
+  in_line: "var(--em-ember-text)",
+  under_pace: "var(--em-segnale-text)",
+  past: "var(--em-segnale-text)",
+};
+
 function countdownLabel(days: number): string {
   if (days < 0) return `${Math.abs(days)}g fa`;
   if (days === 0) return "oggi";
@@ -264,7 +274,7 @@ function ExamRow({
         <span
           className="em-eyebrow shrink-0 rounded-[var(--em-r-full)] px-2 py-1"
           style={{
-            color: tone,
+            color: STATUS_TEXT[pacing.status],
             backgroundColor: `color-mix(in srgb, ${tone} 12%, transparent)`,
           }}
         >
@@ -290,7 +300,7 @@ function ExamRow({
             ) : null}
           </div>
           <div
-            className="mt-2 h-1.5 w-full overflow-hidden rounded-[var(--em-r-full)] bg-[var(--em-surface-2)]"
+            className="mt-2 h-1.5 w-full overflow-hidden rounded-[var(--em-r-full)] bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)]"
             aria-hidden="true"
           >
             <div

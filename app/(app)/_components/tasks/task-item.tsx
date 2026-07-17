@@ -191,7 +191,7 @@ export function TaskItem({
         <div aria-hidden="true" className="absolute inset-0 flex">
           <div
             className={cx(
-              "flex flex-1 items-center gap-2 bg-[var(--em-salvia-tint)] pl-5 text-[var(--em-salvia-text)]",
+              "flex flex-1 items-center gap-2 bg-[var(--em-salvia-tint)] pl-5 text-[var(--em-salvia-text)] transition-opacity duration-[var(--em-dur-tap)]",
               dx > 0 ? "opacity-100" : "opacity-0",
             )}
           >
@@ -200,7 +200,7 @@ export function TaskItem({
           </div>
           <div
             className={cx(
-              "flex flex-1 items-center justify-end gap-2 bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] pr-5 text-[var(--em-text-2)]",
+              "flex flex-1 items-center justify-end gap-2 bg-[color-mix(in_srgb,var(--em-text)_10%,transparent)] pr-5 text-[var(--em-text-2)] transition-opacity duration-[var(--em-dur-tap)]",
               dx < 0 ? "opacity-100" : "opacity-0",
             )}
           >
@@ -230,6 +230,7 @@ export function TaskItem({
           data-no-swipe
           onClick={() => void toggleDone()}
           aria-label={done ? `Riapri: ${task.title}` : `Completa: ${task.title}`}
+          aria-pressed={done}
           className="grid h-11 w-11 shrink-0 place-items-center"
         >
           <span
@@ -361,6 +362,7 @@ function RowMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -368,7 +370,11 @@ function RowMenu({
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      // Esc: chiudi E restituisci il focus al trigger (contratto menu).
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
     document.addEventListener("pointerdown", onDocPointerDown);
     document.addEventListener("keydown", onKey);
@@ -396,6 +402,7 @@ function RowMenu({
   return (
     <span ref={rootRef} data-no-swipe className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={`Altre azioni: ${task.title}`}
         aria-haspopup="menu"
@@ -410,6 +417,25 @@ function RowMenu({
           ref={menuRef}
           role="menu"
           aria-label="Azioni task"
+          onKeyDown={(e) => {
+            // Frecce ↑/↓ ciclano tra i menuitem (contratto role=menu).
+            if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+            e.preventDefault();
+            const btns = Array.from(
+              menuRef.current?.querySelectorAll<HTMLButtonElement>(
+                '[role="menuitem"]',
+              ) ?? [],
+            );
+            if (btns.length === 0) return;
+            const idx = btns.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
+            const next =
+              e.key === "ArrowDown"
+                ? btns[(idx + 1) % btns.length]
+                : btns[(idx - 1 + btns.length) % btns.length];
+            next?.focus();
+          }}
           className="absolute right-0 top-full z-50 mt-1 w-48 rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] p-1 shadow-[var(--em-e3)] animate-[em-pop-in_var(--em-dur-control)_var(--em-ease-out)]"
         >
           {items.map((item) => (
@@ -419,6 +445,7 @@ function RowMenu({
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                triggerRef.current?.focus();
                 item.run();
               }}
               className={cx(

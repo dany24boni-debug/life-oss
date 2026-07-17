@@ -101,7 +101,7 @@ function Screen() {
         focusToken={focusToken}
       />
 
-      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
+      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} label="Viste dei task">
         {(active) =>
           active === "oggi" ? (
             <ViewOggi ctx={ctx} />
@@ -153,7 +153,7 @@ function ViewOggi({ ctx }: { ctx: ViewCtx }) {
               size="sm"
               onClick={() => void ctx.actions.moveAllToToday(overdue, ctx.today)}
             >
-              Sposta tutte a oggi
+              Sposta tutti a oggi
             </Button>
           </div>
           <TaskList
@@ -192,8 +192,8 @@ function ViewOggi({ ctx }: { ctx: ViewCtx }) {
       ) : null}
 
       {done.length > 0 ? (
-        <section aria-label="Fatte oggi" className="em-card overflow-hidden px-2 pb-1 pt-2">
-          <p className="em-eyebrow px-2 pb-1">Fatte · {done.length}</p>
+        <section aria-label="Fatti oggi" className="em-card overflow-hidden px-2 pb-1 pt-2">
+          <p className="em-eyebrow px-2 pb-1">Fatti · {done.length}</p>
           <TaskList
             tasks={done}
             today={ctx.today}

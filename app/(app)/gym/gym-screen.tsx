@@ -22,7 +22,7 @@
  * solo agli autenticati.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Button,
@@ -54,8 +54,18 @@ import type { GymExercise, GymSession } from "@/data/schemas";
 import { monthBounds } from "../stats/logic";
 import { MonthHeat } from "../stats/month-heat";
 import { WeightQuickEntry } from "../corpo/corpo-screen";
+import { LazyBoundary } from "../_components/lazy-boundary";
 import { useToday } from "../_components/tasks/screen-hooks";
-import { ExerciseDetailSheet } from "./exercise-detail";
+// Split run-13 P5a: la scheda esercizio (grafico + ProgressTable + form)
+// si carica alla PRIMA apertura — React.lazy, mai next/dynamic nel
+// gruppo (app) (legge run-12 P4). Una volta caricata resta montata:
+// le aperture successive sono istantanee e le animazioni di uscita
+// (P2) sopravvivono alla chiusura.
+const LazyExerciseDetailSheet = lazy(() =>
+  import("./exercise-detail").then((m) => ({
+    default: m.ExerciseDetailSheet,
+  })),
+);
 import { groupLabel } from "./exercise-picker";
 import { GymImportButton } from "./import-button";
 import {
@@ -110,6 +120,11 @@ export function GymScreen({ authed }: { authed: boolean }) {
   const [finish, setFinish] = useState<FinishSummary | null>(null);
   const [detailExercise, setDetailExercise] = useState<GymExercise | null>(null);
   const [createExercise, setCreateExercise] = useState(false);
+  // Gate del lazy-mount (P5a): monta al primo bisogno, poi resta.
+  const [detailMounted, setDetailMounted] = useState(false);
+  if ((detailExercise !== null || createExercise) && !detailMounted) {
+    setDetailMounted(true);
+  }
   const [historySessionId, setHistorySessionId] = useState<string | null>(null);
 
   // Navigazione della tab Scheda, DERIVATA: il deep link (?scheda=) vale
@@ -285,9 +300,10 @@ export function GymScreen({ authed }: { authed: boolean }) {
         ]}
         value={tab}
         onChange={setTab}
+        label="Sezioni della palestra"
       >
         {(activeTab) => (
-          <div className="pt-4">
+          <div>
             {activeTab === "scheda" ? renderScheda() : null}
 
             {activeTab === "storico" ? (
@@ -310,14 +326,20 @@ export function GymScreen({ authed }: { authed: boolean }) {
         )}
       </Tabs>
 
-      <ExerciseDetailSheet
-        exercise={detailExercise}
-        createOpen={createExercise}
-        onClose={() => {
-          setDetailExercise(null);
-          setCreateExercise(false);
-        }}
-      />
+      {detailMounted ? (
+        <LazyBoundary>
+          <Suspense fallback={null}>
+            <LazyExerciseDetailSheet
+              exercise={detailExercise}
+              createOpen={createExercise}
+              onClose={() => {
+                setDetailExercise(null);
+                setCreateExercise(false);
+              }}
+            />
+          </Suspense>
+        </LazyBoundary>
+      ) : null}
       <HistorySessionSheet
         sessionId={historySessionId}
         onClose={() => setHistorySessionId(null)}
@@ -426,7 +448,7 @@ function FinishBody({ finish }: { finish: FinishSummary }) {
               onClick={() => void rate(v)}
               className={
                 session?.rating_1_10 === v
-                  ? "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-ember-tint)] font-semibold text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+                  ? "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-ember-tint)] font-semibold text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)] transition-colors duration-[var(--em-dur-tap)]"
                   : "em-body-sm em-num grid h-11 w-9 place-items-center rounded-[var(--em-r-sm)] bg-[var(--em-surface-2)] font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
               }
             >
@@ -623,8 +645,8 @@ function LibraryPanel({
             onClick={() => setGroup((cur) => (cur === g ? null : g))}
             className={
               group === g
-                ? "em-body-sm h-8 rounded-full bg-[var(--em-ember-tint)] px-3 font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
-                : "em-body-sm h-8 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+                ? "em-body-sm h-11 rounded-full bg-[var(--em-ember-tint)] px-3 font-medium text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)] transition-colors duration-[var(--em-dur-tap)]"
+                : "em-body-sm h-11 rounded-full bg-[var(--em-surface-2)] px-3 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
             }
           >
             {groupLabel(g)}

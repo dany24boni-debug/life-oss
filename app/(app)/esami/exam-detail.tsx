@@ -16,6 +16,7 @@ import {
   Field,
   Input,
   Modal,
+  Skeleton,
   Textarea,
   useToast,
 } from "@/ui";
@@ -36,7 +37,13 @@ export function ExamDetailSheet({
   const open = examId !== null;
 
   const body =
-    exam === undefined ? null : exam === null ? (
+    exam === undefined ? (
+      <div className="flex flex-col gap-3 pb-4" aria-busy="true">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-2/3" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    ) : exam === null ? (
       <p className="em-body-sm py-4 text-[var(--em-text-3)]">
         Questo esame non c&apos;è più.
       </p>
@@ -171,7 +178,6 @@ function ExamForm({ exam, onDeleted }: { exam: Exam; onDeleted: () => void }) {
           <Button
             type="button"
             variant="secondary"
-            size="sm"
             aria-label="Un capitolo in meno"
             disabled={exam.completed_chapters <= 0}
             onClick={() => void stepCompleted(-1)}
@@ -184,7 +190,6 @@ function ExamForm({ exam, onDeleted }: { exam: Exam; onDeleted: () => void }) {
           <Button
             type="button"
             variant="secondary"
-            size="sm"
             aria-label="Un capitolo in più"
             disabled={exam.completed_chapters >= exam.total_chapters}
             onClick={() => void stepCompleted(1)}

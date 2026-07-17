@@ -281,7 +281,7 @@ function RolloverAction({
     <button
       type="button"
       onClick={onClick}
-      className="em-body-sm min-h-9 shrink-0 rounded-full bg-[var(--em-surface-2)] px-2.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+      className="em-body-sm min-h-11 shrink-0 rounded-full bg-[var(--em-surface-2)] px-2.5 font-medium text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
     >
       {label}
     </button>
@@ -335,7 +335,7 @@ function ListaStep({
                       });
                     }}
                     className={cx(
-                      "em-body-sm h-9 rounded-full px-3 font-medium transition-colors duration-[var(--em-dur-tap)]",
+                      "em-body-sm h-11 rounded-full px-3 font-medium transition-colors duration-[var(--em-dur-tap)]",
                       active
                         ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
                         : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",

@@ -42,7 +42,7 @@ const TAB_ITEMS = [
 export function SettimanaScreen() {
   const [tab, setTab] = useState("board");
   return (
-    <Tabs items={TAB_ITEMS} value={tab} onChange={setTab}>
+    <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} label="Sezioni della settimana">
       {(active) =>
         active === "board" ? (
           <BoardTab onGoToPlans={() => setTab("piani")} />
@@ -179,7 +179,7 @@ function BoardTab({ onGoToPlans }: { onGoToPlans: () => void }) {
         />
       )}
       <p className="em-body-sm text-[var(--em-text-3)]">
-        Tocca il cerchio per &quot;fatto&quot;; tienilo premuto per
+        Tocca il cerchio per &quot;fatto&quot;; tienilo premuto (o premi S) per
         &quot;saltato&quot;.
       </p>
     </div>

@@ -113,7 +113,7 @@ function DayNav({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="em-body-sm text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
+            className="em-body-sm inline-flex min-h-11 items-center text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-control)] hover:text-[var(--em-text)]"
           >
             Torna a oggi
           </button>
@@ -308,7 +308,7 @@ function ManageCard({
                   {habit.name}
                 </span>
                 {habit.archived_at !== null ? (
-                  <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-3)]">
+                  <span className="em-eyebrow shrink-0 rounded-full bg-[var(--em-surface-2)] px-2 py-0.5 text-[var(--em-text-2)]">
                     archiviata
                   </span>
                 ) : null}

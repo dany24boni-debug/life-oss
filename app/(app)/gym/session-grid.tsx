@@ -16,6 +16,8 @@
  */
 
 import {
+  Suspense,
+  lazy,
   useEffect,
   useMemo,
   useRef,
@@ -42,8 +44,8 @@ import {
   useSettings,
 } from "@/data/hooks";
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
+import { LazyBoundary } from "../_components/lazy-boundary";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
-import { EquipmentEditor } from "./equipment-editor";
 import { ExercisePicker } from "./exercise-picker";
 import { nowInstant, stepReps, stepWeight } from "./logic";
 import {
@@ -70,6 +72,13 @@ import {
   type GridRow,
   type Verdict,
 } from "./progression";
+
+// Split run-13 P5a: l'editor attrezzatura si carica alla PRIMA apertura
+// (React.lazy — mai next/dynamic nel gruppo (app), la legge run-12 P4).
+// Gesto raro e settings-like: i suoi byte non pagano il route chunk.
+const LazyEquipmentEditor = lazy(() =>
+  import("./equipment-editor").then((m) => ({ default: m.EquipmentEditor })),
+);
 
 /**
  * Impostazione per-dispositivo del chime (default SPENTO), fuori da
@@ -351,7 +360,7 @@ export function SessionGrid({
                             "em-eyebrow shrink-0 rounded-full px-2 py-0.5",
                             verdict === "aumenta"
                               ? "bg-[var(--em-ember-tint)] text-[var(--em-ember-text)]"
-                              : "bg-[var(--em-surface-2)] text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)]",
+                              : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)]",
                           )}
                         >
                           {verdictLabel(verdict, row.slot?.bodyweight ?? false)}
@@ -377,7 +386,7 @@ export function SessionGrid({
                             "em-body-sm em-num h-11 rounded-[var(--em-r-md)] px-3 font-medium transition-colors duration-[var(--em-dur-tap)]",
                             cell.kind === "done"
                               ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
-                              : "bg-[var(--em-surface-2)] text-[var(--em-text-3)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
+                              : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
                           )}
                           aria-label={
                             cell.kind === "done"
@@ -554,7 +563,7 @@ function RestChip({
         aria-label={`Recupero: ${formatElapsed(elapsedS)} trascorsi${targetS !== null ? ` su ${formatRestShort(targetS)} di obiettivo` : ""}`}
         className={cx(
           "em-body-sm em-num font-medium",
-          over ? "text-[var(--em-salvia)]" : "text-[var(--em-text-2)]",
+          over ? "text-[var(--em-salvia-text)]" : "text-[var(--em-text-2)]",
         )}
       >
         {formatElapsed(elapsedS)}
@@ -572,7 +581,7 @@ function RestChip({
         }
         onClick={toggleChime}
         className={cx(
-          "grid h-9 w-9 place-items-center rounded-full transition-colors duration-[var(--em-dur-tap)]",
+          "grid h-11 w-11 place-items-center rounded-full transition-colors duration-[var(--em-dur-tap)]",
           chime
             ? "bg-[var(--em-ember-tint)] text-[var(--em-text)]"
             : "text-[var(--em-text-3)] hover:text-[var(--em-text)]",
@@ -807,10 +816,27 @@ function SetEditorForm({
   // form sopravvivono alla deviazione. Dopo tutti gli hook, per contratto.
   if (equipOpen && settings !== undefined) {
     return (
-      <EquipmentEditor
-        settings={settings}
-        onDone={() => setEquipOpen(false)}
-      />
+      <LazyBoundary
+        fallback={
+          <p className="em-body-sm py-4 text-[var(--em-text-3)]">
+            Editor non disponibile ora (rete?). Chiudi e riprova.
+          </p>
+        }
+      >
+        <Suspense
+          fallback={
+            <div aria-busy="true" className="flex flex-col gap-3">
+              <Skeleton className="h-11 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          }
+        >
+          <LazyEquipmentEditor
+            settings={settings}
+            onDone={() => setEquipOpen(false)}
+          />
+        </Suspense>
+      </LazyBoundary>
     );
   }
 

@@ -55,7 +55,7 @@ export default async function CalendarPage(props: {
       {google_connected === "1" ? (
         <p
           role="status"
-          className="em-body-sm rounded-[var(--em-r-md)] border border-[color-mix(in_srgb,var(--em-salvia)_40%,transparent)] bg-[color-mix(in_srgb,var(--em-salvia)_8%,transparent)] px-3 py-2 text-[var(--em-salvia)]"
+          className="em-body-sm rounded-[var(--em-r-md)] border border-[color-mix(in_srgb,var(--em-salvia)_40%,transparent)] bg-[color-mix(in_srgb,var(--em-salvia)_8%,transparent)] px-3 py-2 text-[var(--em-salvia-text)]"
         >
           Account Google collegato. Premi &ldquo;Sincronizza&rdquo; per
           importare gli eventi.
@@ -64,7 +64,7 @@ export default async function CalendarPage(props: {
       {typeof google_error === "string" && google_error !== "" ? (
         <p
           role="alert"
-          className="em-body-sm rounded-[var(--em-r-md)] border border-[color-mix(in_srgb,var(--em-segnale)_40%,transparent)] bg-[color-mix(in_srgb,var(--em-segnale)_8%,transparent)] px-3 py-2 text-[var(--em-segnale)]"
+          className="em-body-sm rounded-[var(--em-r-md)] border border-[color-mix(in_srgb,var(--em-segnale)_40%,transparent)] bg-[color-mix(in_srgb,var(--em-segnale)_8%,transparent)] px-3 py-2 text-[var(--em-segnale-text)]"
         >
           {GOOGLE_ERROR_LABELS[google_error] ?? GOOGLE_ERROR_FALLBACK}
         </p>

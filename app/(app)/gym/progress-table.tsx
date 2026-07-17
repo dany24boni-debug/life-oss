@@ -59,7 +59,7 @@ export function ProgressTable({
       <table className="w-max border-separate border-spacing-0">
         <thead>
           <tr>
-            <th className="em-eyebrow sticky left-0 bg-[var(--em-surface)] py-1.5 pr-3 text-left font-medium text-[var(--em-text-3)]">
+            <th className="em-eyebrow sticky left-0 bg-[var(--em-surface-2)] py-1.5 pr-3 text-left font-medium text-[var(--em-text-3)]">
               Seduta
             </th>
             {table.columns.map((col) => (
@@ -150,7 +150,7 @@ function RowLabel({ label }: { label: string }) {
   return (
     <th
       scope="row"
-      className="em-eyebrow sticky left-0 bg-[var(--em-surface)] py-1 pr-3 text-left font-medium text-[var(--em-text-3)]"
+      className="em-eyebrow sticky left-0 bg-[var(--em-surface-2)] py-1 pr-3 text-left font-medium text-[var(--em-text-3)]"
     >
       {label}
     </th>
@@ -186,8 +186,8 @@ function DeltaBadge({ deltaKg }: { deltaKg: number | null }) {
         flat
           ? "text-[var(--em-text-3)]"
           : up
-            ? "text-[var(--em-salvia)]"
-            : "text-[var(--em-segnale)]",
+            ? "text-[var(--em-salvia-text)]"
+            : "text-[var(--em-segnale-text)]",
       )}
     >
       {flat ? "=" : up ? "▲" : "▼"}

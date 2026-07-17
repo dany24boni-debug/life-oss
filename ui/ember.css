@@ -82,6 +82,7 @@
   --em-r-md: 12px;
   --em-r-lg: 16px;
   --em-r-xl: 24px;
+  --em-r-full: 9999px; /* pill/circle — run-13: era referenziato in 8 siti ma mai definito */
 
   /* ── Motion ───────────────────────────────────────────────────────── */
   --em-dur-tap: 120ms;
@@ -90,6 +91,7 @@
   --em-dur-screen: 320ms;
   --em-dur-glow: 2400ms;
   --em-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --em-ease-in: cubic-bezier(0.4, 0, 1, 1); /* run-13: exits accelerate away */
   --em-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── Control metrics ──────────────────────────────────────────────── */
@@ -300,6 +302,32 @@
   }
 }
 
+/* ── Press feedback (run-13) — chip-scale elements only; rows keep the
+ * bg-tint idiom. Pair with active: classes, never on large surfaces.  */
+.em-pressable {
+  transition: transform var(--em-dur-tap) var(--em-ease-out);
+}
+.em-pressable:active {
+  transform: scale(0.97);
+}
+
+/* ── Tap-target extension (run-13) — grows the HIT AREA to --em-tap-min
+ * without moving a pixel: the pseudo-element participates in hit testing
+ * for its parent. For controls whose compact visual is part of the design.
+ * Don't apply to elements that already use ::after.                     */
+.em-hit {
+  position: relative;
+}
+.em-hit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--em-tap-min));
+  height: max(100%, var(--em-tap-min));
+  transform: translate(-50%, -50%);
+}
+
 /* ── Entry animations (used by popovers, sheets, toasts, modals) ─────── */
 @keyframes em-fade-in {
   from {
@@ -335,6 +363,48 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+/* ── Exit animations (run-13) — the missing half: every overlay entered
+ * animated and unmounted in one frame. Exits are SHORTER than enters
+ * (control vs card/screen) and accelerate away (--em-ease-in). The
+ * components hold a "closing" phase and unmount on animationend, with a
+ * timeout fallback; under prefers-reduced-motion the gate clamps these to
+ * 0.01ms and the unmount is effectively instant, as before.             */
+@keyframes em-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes em-pop-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes em-sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes em-toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
   }
 }
 @keyframes em-spin {

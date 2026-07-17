@@ -17,6 +17,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Modal } from "@/ui";
+import { onPaletteRequest } from "./palette-bus";
 import { requestQuickAdd } from "./quick-add-bus";
 import { bootTheme } from "./theme";
 
@@ -29,7 +30,14 @@ const CHORD_TIMEOUT_MS = 900;
  * chunk della home (+78 B sul congelato — misurato al P4). Il corpo
  * rende solo su gesto client (⌘K): l'SSR non lo incontra mai.
  */
-const PaletteBody = lazy(() => import("./palette/palette-body"));
+// Il .catch è l'hardening P5c (run-13): un chunk che non arriva (offline
+// al primo ⌘K) degrada a null invece di abbattere la shell su error.tsx.
+const PaletteBody = lazy(() =>
+  import("./palette/palette-body").catch(() => ({
+    default: (() =>
+      null) as unknown as (typeof import("./palette/palette-body"))["default"],
+  })),
+);
 
 /** Le go-to della tastiera: `g` poi questa lettera. */
 const GO_KEYS: Record<string, string> = {
@@ -53,6 +61,10 @@ export function ComfortHost() {
   const pathname = usePathname();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Il bottone ⌘K sul rail (run-13 P4b) chiede l'apertura via bus — lo
+  // stato e il corpo lazy restano qui.
+  useEffect(() => onPaletteRequest(() => setPaletteOpen(true)), []);
 
   // Tema per-dispositivo: boot una volta (lo script inline del layout ha
   // già stampato l'attributo prima del paint; qui parte il listener).
