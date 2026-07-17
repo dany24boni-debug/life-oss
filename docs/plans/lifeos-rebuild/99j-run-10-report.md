@@ -94,3 +94,44 @@ Diff su: `app/(app)/gym/{card-history.ts,card-history.test.ts,scheda-view.tsx}` 
 3. **Chunk /gym: 86.172 → 96.163 B raw** (23,8 kB gzip) — +10 kB per la vista nuova; /gym non ha budget formale, registrato per onestà. **Oggi: 53.327 → 53.798 B (+471 B)** — solo lo swap bottone→Link nel tile (budget P4/P5 intatto).
 
 **Commit:** `run-10/P2: gym card-centric IA`
+
+---
+
+## P3 · Desktop width pass (MANDATORY)
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · build ✓ · sentinels ✓ · test **963/963, 76 file** (nessun test nuovo: pure classi/token, zero logica). **Verifica servita (produzione, da ospite):** ogni rotta passa da `em-main`; SOLO `/settimana`, `/gym`, `/stats` dichiarano `data-page-width="wide"` (`/`, `/tasks`, `/dieta` restano lettura — quotato dal curl nel run log).
+
+### Il meccanismo (un token, zero magic number sparsi)
+
+La radice del sintomo era la shell: `max-w-2xl → md:max-w-3xl` su OGNI superficie (`layout.tsx:44`). Ora la colonna è la recipe **`.em-main`** in `ui/ember.css` (FLAGGED — token nuovi):
+
+- `--em-page-max: 48rem` (la larghezza di lettura storica) · `--em-page-wide: 88rem` (board/tabelle);
+- `.em-main { max-width: 42rem }` — parità BYTE col mobile pre-P3; da `md` sale a `--em-page-max`; **`.em-main:has([data-page-width="wide"])` sale a `--em-page-wide`** — la pagina dichiara la propria natura con un data-attribute sull'elemento radice, SSR, zero flash. `:has()` è nei browser target dal 2022-23 (Safari 15.4+/Chrome 105+); dove mancasse si degrada alla larghezza di lettura (comportamento pre-P3): fallback onesto, commentato nel CSS.
+
+### Le superfici
+
+1. **Settimana** — `data-page-width="wide"`: la board `md:grid-cols-7` già esistente ora respira (~180 px/colonna a 1440p invece di ~96): piani orari leggibili, check visibili senza scroll orizzontale. Mobile INTATTO (lo snap-scroll è un ramo separato).
+2. **Palestra** — wide: la griglia storica del P2 mostra più colonne-data, la tabella Progressi idem; le card a 2 colonne da lg (già nel P2).
+3. **Statistiche** — wide + la larghezza SPESA: da lg i riquadri vanno a **due colonne** (`lg:grid lg:grid-cols-2`, header a piena riga, tile Streak/Record nella prima cella accanto al grafico Settimana); `WeekBars` alza il tetto `max-w-md → lg:max-w-xl` (l'SVG scala col viewBox: oltre diventerebbe gonfio, non più leggibile).
+
+### surface → container before → after (a ogni breakpoint)
+
+| Superficie | < md (mobile) | md (prima → dopo) | lg/xl (prima → dopo) |
+| --- | --- | --- | --- |
+| Settimana | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** (board 7 col piene) |
+| Palestra | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** (griglia storica + progressi) |
+| Statistiche | 42rem → 42rem (=) | 48rem → 88rem* | 48rem → **88rem** + riquadri a 2 colonne |
+| Oggi, Task, Calendario, Dieta, Abitudini, Focus, Esami, Spese, Sera, Corpo, Impostazioni | 42rem (=) | 48rem (=) | 48rem (=, lettura) |
+
+\* a md il cap non morde quasi mai (viewport −224 px di rail < 48rem): l'effetto pratico parte da ~1040 px di viewport, esattamente dove il deserto cominciava.
+
+### Delta dichiarati (il brief elencava anche Dieta/Calendario/Spese/Esami)
+
+L'audit P1 (classNames quotati) mostra che quelle superfici NON sono tabellari oggi — allargarle ora peggiorerebbe la lettura, e il criterio del brief è "widen where the content is tabular/board-like":
+1. **Dieta**: il builder del piano è a chip-giorno a colonna singola (non una griglia); wide oggi = card stirate a 1400 px. La griglia settimanale desktop è PROP-diet-05 (run-11): larghezza e layout arrivano insieme.
+2. **Calendario**: il mese è a celle intrinseche 44 px (`h-11 w-11`) — wide produce solo gap, non un calendario desktop; il layout a due pannelli è PROP-cal-02 (run-11).
+3. **Spese/Esami**: liste impilate (righe descrizione+importo / card), non tabelle; a 88rem le righe diventano illeggibili (160+ caratteri di corsa visiva). Restano a lettura; se run-11 li tabellizza, il token è pronto (`data-page-width="wide"` è una riga).
+
+Nessuna regressione mobile: sotto md `.em-main` è byte-identica al pre-P3 (42rem) e nessuna classe mobile è stata toccata; gli snapshot logici (963 test) restano verdi.
+
+**Commit:** `run-10/P3: desktop width pass`

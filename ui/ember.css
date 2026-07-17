@@ -97,6 +97,12 @@
   --em-control-h-sm: 36px;
   --em-control-h-md: 44px;
   --em-control-h-lg: 52px;
+
+  /* ── Page width (run-10 P3) ───────────────────────────────────────────
+   * La colonna della shell: lettura (default) vs superfici tabellari.
+   * Un solo posto per i numeri — mai magic number sparsi nelle pagine. */
+  --em-page-max: 48rem; /* = max-w-3xl, la larghezza di lettura storica */
+  --em-page-wide: 88rem; /* board/tabelle (settimana, gym, stats) */
 }
 
 /* ── Light theme ──────────────────────────────────────────────────────
@@ -203,6 +209,25 @@
 }
 .em-num {
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Main column of the app shell (run-10 P3) ─────────────────────────
+ * Default = reading width (identica alla storia: 42rem, 48rem da md).
+ * Una pagina "larga" dichiara data-page-width="wide" sul suo elemento
+ * radice e la colonna si apre al token wide DA md IN SU — il mobile non
+ * cambia mai. Il selettore :has() è supportato da ogni browser target
+ * (Safari 15.4+/Chrome 105+); dove mancasse, la pagina resta semplice-
+ * mente alla larghezza di lettura: degradazione onesta. */
+.em-main {
+  max-width: 42rem; /* = max-w-2xl: parità byte con la shell pre-P3 */
+}
+@media (min-width: 768px) {
+  .em-main {
+    max-width: var(--em-page-max);
+  }
+  .em-main:has([data-page-width="wide"]) {
+    max-width: var(--em-page-wide);
+  }
 }
 
 /* ── Surfaces ─────────────────────────────────────────────────────────── */

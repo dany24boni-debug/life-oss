@@ -13,7 +13,9 @@ export const metadata = { title: "Settimana — LifeOS" };
 
 export default function SettimanaPage() {
   return (
-    <div className="flex flex-col gap-6">
+    // Superficie "wide" (run-10 P3): la board a 7 colonne merita la
+    // colonna larga della shell (em-main + token --em-page-wide).
+    <div className="flex flex-col gap-6" data-page-width="wide">
       <header className="pt-2">
         <p className="em-eyebrow">Modulo</p>
         <h1 className="em-title-lg mt-1 text-[var(--em-text)]">Settimana</h1>

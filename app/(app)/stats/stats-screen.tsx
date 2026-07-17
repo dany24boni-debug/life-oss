@@ -49,8 +49,13 @@ export function StatsScreen() {
   const weekHasTasks = (weekFilled ?? []).some((d) => d.total > 0);
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="flex items-end justify-between gap-3 pt-2">
+    // Superficie "wide" (run-10 P3): da lg i riquadri vanno a due
+    // colonne — la larghezza si spende, non si lascia vuota.
+    <div
+      className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start"
+      data-page-width="wide"
+    >
+      <header className="flex items-end justify-between gap-3 pt-2 lg:col-span-2">
         <div>
           <p className="em-eyebrow">Modulo</p>
           <h1 className="em-title-lg mt-1 text-[var(--em-text)]">
@@ -65,7 +70,7 @@ export function StatsScreen() {
         </Link>
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:self-stretch">
         <StatCard
           label="Streak"
           loading={streak === undefined}

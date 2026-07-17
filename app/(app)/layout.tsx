@@ -41,7 +41,10 @@ export default function AppShellLayout({
         <Rail />
         <MobileHeader />
         <div className="md:pl-56">
-          <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-2 md:max-w-3xl md:px-6 md:pb-10 md:pt-10">
+          {/* Larghezza della colonna: em-main (ui/ember.css, run-10 P3) —
+              lettura di default, "wide" quando la pagina lo dichiara con
+              data-page-width="wide" (settimana, gym, stats). */}
+          <main className="em-main mx-auto w-full px-5 pb-28 pt-2 md:px-6 md:pb-10 md:pt-10">
             {children}
           </main>
         </div>
