@@ -42,7 +42,8 @@ export function useTodayPlanSlots(): {
   };
 }
 
-function useNowHhmm(): string {
+/** Orologio al minuto della home (condiviso col rituale, run-11 P2). */
+export function useNowHhmm(): string {
   const [now, setNow] = useState(() => hhmmInZone(new Date(), APP_TIME_ZONE));
   useEffect(() => {
     const tick = () => setNow(hhmmInZone(new Date(), APP_TIME_ZONE));

@@ -69,3 +69,38 @@ Esattamente il cerimoniale preferito dal brief — **colonne nullable su tabelle
 Fence dichiarata: `data/**`, `supabase/migrations/**`, loro test. **Estensione mecanica dichiarata:** `app/(app)/calendar/agenda.test.ts` (factory `task()` tipata su `Task`: una riga `estimate_min: null` — fix di fixture forzato dal tipo, zero comportamento). Prima stesura del commento in 0032 conteneva un nome proprio → BLOCCATA da `lint:sentinels` (il guard-rail di share-prep funziona); riformulato neutro.
 
 **Commit:** `run-11/P1: schema decision (+0032)`
+
+---
+
+## P2 · Il rituale del mattino — "Pianifica la giornata"
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **984/984, 77 file** (+19: `ritual-logic.test.ts`). **Smoke produzione:** `/` **200** da ospite; la card è ASSENTE dall'HTML SSR per costruzione (snapshot server = `undefined` → la shell rende null; la card appare post-idratazione solo nei giorni non pianificati/congedati — pattern InstallTodayCard).
+
+### Il flusso (un invito, mai un cancello)
+
+Card "Pianifica la giornata" PRIMA sezione di Oggi (sopra i tile), congedabile col "Non oggi" (memoria per-giorno), quattro passi tutti saltabili con "Avanti", chiusa a metà tiene ciò che è fatto — ogni azione è una mutazione reale immediata, non un wizard con submit:
+
+- **a · Da ieri (rollover).** I task arretrati (`useOverdueTasks`, il set candidato È la lista In ritardo — nessuna verità nuova) con tre azioni per riga: **"Oggi"** e **"Più avanti"** = `actions.snooze(t, {day})` (riuso: toast "Spostato a … · Annulla"); "Più avanti" punta a `laterRange(today).from` (+8, la finestra run-10). **"Lascia"** non tocca i dati: il task resta In ritardo su /tasks, solo il rituale smette di chiederlo (Set locale di sessione). Con 2+ righe compare **"Porta tutte a oggi"** (`moveAllToToday`, undo cumulativo esistente). Deciso l'ultimo arretrato il passo SPARISCE e si scivola avanti da soli.
+- **b · La lista di oggi (stime).** I task aperti di oggi con chip 15'/30'/1h/1h30 (`RITUAL_ESTIMATE_CHOICES` = 15/30/60/90 del brief), `aria-pressed`, tint ember da selezionato (il calco del picker preset di /focus). Tap sul chip attivo = toglierla. Facoltative per contratto; in coda "Stimati: 1h45" quando ce n'è.
+- **c · In che ordine (playlist).** Riordino dei task aperti di oggi: drag dalla maniglia (`useRowDrag` di casa), **frecce su/giù visibili** (pattern ArrowButton) E **tastiera sulla maniglia** (ArrowUp/Down con `aria-label` che dichiara il gesto — la maniglia nasce onesta, a differenza della bugia abitudini che il P6 sanerà). Persiste con `actions.reorder` → `sort_order` (semantica esistente).
+- **d · Capacità.** `capacityLine(somma stime, minuti liberi)`: i minuti liberi = finestra [adesso → 23:00] meno gli eventi con orario del giorno (locali + Google, `buildDayAgenda` con `tasks: []` — i task NON sono blocchi, sono l'altra metà dell'equazione), sovrapposizioni fuse, default 60' per eventi senza fine. Sopra: **"Hai pianificato 5h30 su ~4h libere."** + "Qualcosa può aspettare domani." — riga gentile, MAI bloccante; dentro: stessa forma senza allarme; zero stime: "il conto resta a task", onesto.
+
+**Lo stamp.** "Fatto" (ultimo passo) → `planned_at` + numeri del piano (task/stime/libere) in localStorage per-giorno + toast "Giornata pianificata · Annulla" (l'undo riapre la card). "Non oggi" DOPO aver toccato dati = piano parziale: stampa comunque (il brief P5c lo dirà); senza aver toccato nulla è solo congedo. Domani è un giorno nuovo (chiavi potate alla scrittura, pattern brief-cache).
+
+### Il budget di Oggi: la lezione del primo colpo
+
+Prima stesura monolitica: chunk **59.976 B** (+12,1 kB, a 24 byte dal tetto di FINE RUN — inaccettabile col P3 in arrivo). Rimedio da brief ("dynamically imported segments"), due tagli:
+1. **Shell + corpo lazy**: `today-ritual.tsx` (shell: SOLO gate di visibilità — idratazione/congedo/pianificato) + `ritual-body.tsx` caricato con `next/dynamic` SOLO quando la card va mostrata. Una giornata già pianificata o congedata non paga i byte dei quattro passi.
+2. **`ritual-state.ts` separato da `ritual-logic.ts`**: lo store sempre-caricato importa solo parse/chiavi/potatura; la matematica di capacità e i passi restano nel modulo importato SOLO dal corpo (webpack non tree-shakava tra i due — misurato: "Hai pianificato" era nel chunk della home, ora non più).
+
+**Misure finali:** Oggi **52.423 B raw (16.306 gzip)** = +4.578 raw sul baseline (shell+store+state+runtime di lazy-load); corpo del rituale in chunk on-demand da **10.966 B raw (3.921 gzip)**. Headroom al tetto 60.000: **7.577 B** per P3+P5.
+
+### Fence e delta
+
+Fence: `_components/ritual/**` (nuovi: shell, body, store, state, logic, test) + montaggio in `page.tsx` + UNA riga in `today-adesso.tsx`. Anchored edits sui pre-esistenti:
+- `page.tsx`: import + `<TodayRitual google={googleEvents} />` tra `</header>` e `<TodayTiles />` (prima: `{/* Tile reali … */}\n<TodayTiles />` subito dopo l'header).
+- `today-adesso.tsx`: `function useNowHhmm(…)` → `export function useNowHhmm(…)` (una parola + docstring: l'orologio al minuto della home si condivide col rituale invece di duplicarlo).
+
+Delta dichiarati: (1) niente pulsante "Salta" separato — con azioni istantanee per passo, "Avanti" senza aver agito È saltare (un bottone in meno, stessa semantica del brief); (2) i chip stima non hanno toast-undo: il chip selezionato è visibile e ri-tappabile (il pattern EnergyPicker di Sera — l'undo a toast resta per le mutazioni il cui effetto sparisce dalla vista, come gli spostamenti); (3) "Lascia" non marca `touched` (nessun dato toccato → da solo non vale lo stamp).
+
+**Commit:** `run-11/P2: morning ritual`

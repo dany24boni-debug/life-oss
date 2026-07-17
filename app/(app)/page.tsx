@@ -8,6 +8,7 @@ import {
   WhileAwayCard,
 } from "./_components/reminders-cards";
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
+import { TodayRitual } from "./_components/ritual/today-ritual";
 import { TodayAdesso } from "./_components/today-adesso";
 import { TodayBrief } from "./_components/today-brief";
 import { TodayAgenda } from "./_components/today-agenda";
@@ -87,6 +88,11 @@ export default async function TodayPage() {
           </p>
         ) : null}
       </header>
+
+      {/* Il rituale del mattino (run-11 P2): un invito, mai un cancello —
+          congedabile per il giorno, ogni passo saltabile, Oggi resta
+          identico per chi lo ignora. */}
+      <TodayRitual google={googleEvents} />
 
       {/* Tile reali (run-03 prompt 4): task oggi, streak, settimana. */}
       <TodayTiles />
