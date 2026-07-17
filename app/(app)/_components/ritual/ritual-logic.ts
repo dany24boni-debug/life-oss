@@ -8,6 +8,7 @@
 
 import type { Task } from "@/data/schemas";
 import type { AgendaItem } from "../../calendar/agenda";
+import { formatMin } from "../format-min";
 
 /* ── Passi del flusso ────────────────────────────────────────────────── */
 
@@ -126,15 +127,6 @@ export function freeMinutes(
     }
   }
   return Math.max(0, dayEndMin - from - busy);
-}
-
-/** Minuti in forma umana: "45'", "4h", "5h30". */
-export function formatMin(min: number): string {
-  const safe = Math.max(0, Math.round(min));
-  if (safe < 60) return `${safe}'`;
-  const h = Math.floor(safe / 60);
-  const rest = safe % 60;
-  return rest === 0 ? `${h}h` : `${h}h${String(rest).padStart(2, "0")}`;
 }
 
 export type CapacityLine = { over: boolean; text: string };

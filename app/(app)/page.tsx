@@ -9,9 +9,8 @@ import {
 } from "./_components/reminders-cards";
 import { APP_TIME_ZONE } from "./_components/tasks/logic";
 import { TodayRitual } from "./_components/ritual/today-ritual";
-import { TodayAdesso } from "./_components/today-adesso";
 import { TodayBrief } from "./_components/today-brief";
-import { TodayAgenda } from "./_components/today-agenda";
+import { TodayTimeline } from "./_components/today-timeline";
 import { TodayFocus } from "./_components/today-focus";
 import { TodayGym } from "./_components/today-gym";
 import { TodayHabits } from "./_components/today-habits";
@@ -100,8 +99,9 @@ export default async function TodayPage() {
       {/* Strip abitudini (run-08 prompt 2): anelli, un tocco per loggare. */}
       <TodayHabits />
 
-      {/* "Adesso" (run-08 prompt 4): lo slot corrente del piano attivo. */}
-      <TodayAdesso />
+      {/* La timeline unica (run-11 P3, CROSS-05): Agenda + "Adesso"
+          convergono qui — slot, eventi, task e focus in una colonna. */}
+      <TodayTimeline google={googleEvents} />
 
       {/* Mini-launcher del pomodoro (run-08 prompt 5). */}
       <TodayFocus />
@@ -111,10 +111,6 @@ export default async function TodayPage() {
 
       {/* Sezione Task reale (run-03 prompt 1): port locale, FAB, undo. */}
       <TodayTasks />
-
-      {/* Agenda reale (run-04 prompt 09): strip settimana + merge del
-          giorno — eventi locali, task con orario, Google read-only. */}
-      <TodayAgenda google={googleEvents} />
 
       {/* Palestra reale (run-04 prompt 10): stato di oggi + CTA. */}
       <TodayGym />

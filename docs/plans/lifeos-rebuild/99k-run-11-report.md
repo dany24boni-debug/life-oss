@@ -104,3 +104,40 @@ Fence: `_components/ritual/**` (nuovi: shell, body, store, state, logic, test) +
 Delta dichiarati: (1) niente pulsante "Salta" separato — con azioni istantanee per passo, "Avanti" senza aver agito È saltare (un bottone in meno, stessa semantica del brief); (2) i chip stima non hanno toast-undo: il chip selezionato è visibile e ri-tappabile (il pattern EnergyPicker di Sera — l'undo a toast resta per le mutazioni il cui effetto sparisce dalla vista, come gli spostamenti); (3) "Lascia" non marca `touched` (nessun dato toccato → da solo non vale lo stamp).
 
 **Commit:** `run-11/P2: morning ritual`
+
+---
+
+## P3 · La timeline di oggi — "La tua giornata"
+
+**Checkpoint: VERDE.** lint ✓ · tsc ✓ · sentinels ✓ · build ✓ · test **991/991, 78 file** (+7: `timeline-logic.test.ts`). **Smoke produzione (porta pulita):** `/` **200**, la sezione "La tua giornata" è nell'HTML SSR, la vecchia sezione "Adesso" non esiste più.
+
+### La risoluzione CROSS-05: Agenda + Adesso CONVERGONO (non coesistono)
+
+Come da PROP ("la sezione Agenda + Adesso di Oggi convergono in un componente solo"), la scelta è **sostituzione**: `TodayTimeline` prende il posto di ENTRAMBE — niente stato duplicato perché lo stato vive negli stessi hook condivisi di prima (`useTodayPlanSlots` resta l'unica verità del piano di oggi, ora consumata da timeline+brief+tile). Una colonna in ordine d'ora, ogni voce col SUO gesto nativo:
+
+- **Fascia senza orario in testa** (la convenzione buildDayAgenda), arricchita: **marker Palestra** (in corso → "riprendi" / fatta / suggerita col nome del giorno-scheda, sempre deep-link `gymCardHref` — run-10 P2), **marker Pasti** ("2 di 4" → /dieta), eventi all-day, e i task senza orario **nell'ordine playlist del rituale** (`orderBandTasks`: i task per `sort_order`, non più alfabetici; eventi dove stavano), con la **stima quieta** ("30'") quando c'è.
+- **Flusso con orario**: slot del piano (il `SlotRow` VERO di settimana: tap = fatto, 450ms = saltato, "s" da tastiera, evidenza del corrente via `findNowSlot`) · eventi locali e Google (righe AgendaRow: scheda al tap, badge Google read-only) · task con orario (check inline con undo run-10) · **fasi focus concluse** all'ora del loro `created_at` ("Focus · 25'", attenuate). Ordinamento in `buildTimedStream` (puro): minuto, poi slot < voce < focus, stabile.
+- **Cursore "adesso"**: punto ember + filo tra l'ultima voce passata e la prima futura (le voci del minuto corrente restano sopra: sono "in corso"), `aria-hidden` (l'informazione vera sono gli orari), aggiornato dal `useNowHhmm` condiviso.
+- WeekStrip + densità + deep-link a /calendar + le schede dettaglio evento/task: TUTTO riuso dall'Agenda di prima. Empty state onesto ("Giornata libera") solo quando non c'è NIENTE, marker compresi.
+
+### Cancellazioni grep-gated
+
+```
+$ grep -rn "TodayAgenda|today-agenda" app lib components ui data   → SOLO app/(app)/page.tsx (il mount)
+$ grep -rn "TodayAdesso" app                                       → SOLO app/(app)/page.tsx (il mount)
+```
+→ `today-agenda.tsx` ELIMINATO (assorbito per intero); in `today-adesso.tsx` è rimosso il componente `TodayAdesso` ma il FILE VIVE coi due hook condivisi (`useTodayPlanSlots`, `useNowHhmm` — consumati da brief, tile, rituale e timeline), docstring riscritto onesto. `AgendaList` resta (la usa /calendar); la sua `AgendaRow` ora è esportata e rende l'annotazione opzionale `meta` (additiva: /calendar non la imposta e resta com'era).
+
+### Budget Oggi
+
+**55.776 B raw (17.456 gzip)** = +3.353 sul post-P2 (la timeline al netto delle due sezioni assorbite). Headroom al tetto 60.000: **4.224 B** per P5c/P5d — basta per le righe del brief e il widget esami; se il P5d non ci sta, andrà collassato o rimandato con delta (regola del brief).
+
+### Fence e delta
+
+Fence: `today-timeline.tsx` + `timeline-logic.ts`(+test) nuovi; `page.tsx` (swap mount); estensioni dichiarate — `data/hooks.ts` (+`useFocusSessions`, selettore read-only sancito dalla fence "read-only selectors"), `calendar/agenda.ts` (campo opzionale `meta` su AgendaItem), `agenda-list.tsx` (export AgendaRow + rendering `meta`), `today-adesso.tsx` (rimozione componente assorbito), `format-min.ts` estratto da ritual-logic (il modulo minuscolo condiviso: la timeline non trascina la matematica di capacità nel chunk della home).
+
+Delta: (1) il marker dieta è "Pasti · N di M" (stato del giorno) — la "variante del giorno" come concetto per-giorno NON esiste nel modello (le varianti sono per-pasto): il P5b porterà la proposta variante-allenamento DENTRO la card pasto di /dieta, dov'è il gesto; (2) i marker palestra/pasti DUPLICANO di proposito una riga di contesto con le sezioni sotto (sono il "posto nel flusso", le sezioni restano i pannelli coi numeri) — se in uso il doppione pesasse, si ritira il pannello in run-12, non il marker; (3) PROP-oggi-02 (ordine per fascia oraria delle sezioni) assorbita in gran parte dalla timeline stessa (la giornata ORA è consapevole dell'ora per costruzione): la promozione/retrocessione delle sezioni resta aperta, delta al P7.
+
+**Nota di processo:** il primo smoke sembrava mostrare la timeline assente dall'SSR — era un server `next start` SOPRAVVISSUTO dallo smoke P2 sulla porta 3000 che serviva la build vecchia (il `pkill` non l'aveva preso). Da qui in poi gli smoke chiudono la porta per PID. Nessun bug nel codice: sulla porta pulita l'SSR è corretto al primo colpo.
+
+**Commit:** `run-11/P3: today timeline`

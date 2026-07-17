@@ -4,13 +4,13 @@ import {
   busyBlocksFromAgenda,
   capacityLine,
   DAY_END_MIN,
-  formatMin,
   freeMinutes,
   RITUAL_ESTIMATE_CHOICES,
   ritualSteps,
   sumEstimates,
   visibleRollover,
 } from "./ritual-logic";
+import { formatMin } from "../format-min";
 import { parseRitualDay, ritualKey, staleRitualKeys } from "./ritual-state";
 
 const AUDIT = {

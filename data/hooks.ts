@@ -30,6 +30,7 @@ import type {
   EveningCheckin,
   Exam,
   Expense,
+  FocusSession,
   Food,
   GymExercise,
   GymPlan,
@@ -269,6 +270,11 @@ export function useFocusMinutesByDay(
     () => appRepos().focus.minutesByDay(from, to),
     [from, to],
   );
+}
+
+/** Le fasi concluse di UN giorno (timeline di Oggi, run-11 P3). */
+export function useFocusSessions(day: IsoDay): FocusSession[] | undefined {
+  return useLiveQuery(() => appRepos().focus.listRange(day, day), [day]);
 }
 
 /* ── Planner settimanale (run-08 prompt 3) ───────────────────────────── */

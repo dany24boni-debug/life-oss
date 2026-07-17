@@ -23,10 +23,10 @@ import { moveIndex, useRowDrag } from "../../gym/use-row-drag";
 import { useTaskActions } from "../tasks/actions";
 import { dayHeading, laterRange } from "../tasks/logic";
 import { useNowHhmm } from "../today-adesso";
+import { formatMin } from "../format-min";
 import {
   busyBlocksFromAgenda,
   capacityLine,
-  formatMin,
   freeMinutes,
   RITUAL_ESTIMATE_CHOICES,
   ritualSteps,
