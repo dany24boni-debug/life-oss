@@ -135,3 +135,22 @@ L'audit P1 (classNames quotati) mostra che quelle superfici NON sono tabellari o
 Nessuna regressione mobile: sotto md `.em-main` è byte-identica al pre-P3 (42rem) e nessuna classe mobile è stata toccata; gli snapshot logici (963 test) restano verdi.
 
 **Commit:** `run-10/P3: desktop width pass`
+
+---
+
+## P4 · Quick wins — selezione e fence dichiarate PRIMA di editare
+
+Criteri del brief rispettati: tutti S, zero `[schema]`, zero `[primitive]`, zero ambiguità di design (ognuno specifica la modifica per intero in v3-proposals). Cap 8. Fence per-item (SOLO questi file + v3-proposals.md per il marchio DONE + report):
+
+| # | PROP | File in fence |
+| --- | --- | --- |
+| 1 | PROP-hab-01/oggi-03 — undo sui log abitudini | `app/(app)/abitudini/habit-card.tsx` · `app/(app)/_components/today-habits.tsx` |
+| 2 | PROP-task-02 — undo sul check inline in agenda | `app/(app)/_components/agenda-list.tsx` |
+| 3 | PROP-spese-01 — undo sull'aggiunta spesa | `app/(app)/spese/spese-screen.tsx` |
+| 4 | PROP-esami-01 — toast+undo su "Capitolo fatto" | `app/(app)/esami/esami-screen.tsx` |
+| 5 | PROP-gym-02 — "L'ultima volta" nel micro-editor | `app/(app)/gym/session-grid.tsx` |
+| 6 | PROP-task-01 — "Più avanti" oltre i 7 giorni | `app/(app)/tasks/tasks-screen.tsx` (+ `_components/tasks/logic.ts` SOLO se serve una pura) |
+| 7 | PROP-oggi-01 — tile di Oggi tappabili | `app/(app)/_components/today-tiles.tsx` |
+| 8 | PROP-imp-01 — skeleton su Impostazioni | `app/(app)/impostazioni/{profile-section,protected-days,push-section}.tsx` |
+
+Riserve dichiarate (entrano SOLO se un titolare si rivela ambiguo alla lettura del codice): PROP-focus-03 spacebar · PROP-stats-01 delta · PROP-diet-01 numero rimanente. Checkpoint completo a fine batch (per-item: lint+typecheck mirati).
