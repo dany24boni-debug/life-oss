@@ -16,10 +16,12 @@ import {
   useCompletionByDay,
   useDayDiet,
   useDayExtras,
+  useEsami,
   useGymVolume,
   useStreak,
   useTasksSummary,
 } from "@/data/hooks";
+import { computePacing, STATUS_BADGE_IT } from "@/lib/esami/pacing";
 import { formatBodyDelta, formatBodyKg } from "../corpo/logic";
 import { formatInt } from "../dieta/logic";
 import { formatKg } from "../gym/logic";
@@ -61,6 +63,24 @@ export function TodayTiles() {
     dayDiet !== undefined && dayExtras !== undefined
       ? dayTotals(dayDiet, dayExtras).kcal
       : null;
+
+  // Esami (run-11 P5d, PROP-oggi-04): il prossimo entro 14 giorni — il
+  // widget promesso dal docstring di pacing.ts, finalmente vero.
+  const esami = useEsami();
+  const nextExam = (esami ?? []).find((e) => e.date >= today) ?? null;
+  const pacing =
+    nextExam !== null
+      ? computePacing(
+          {
+            exam_date: nextExam.date,
+            total_chapters: nextExam.total_chapters,
+            completed_chapters: nextExam.completed_chapters,
+          },
+          today,
+        )
+      : null;
+  const showExam =
+    nextExam !== null && pacing !== null && pacing.daysRemaining <= 14;
 
   // Peso corporeo (run-07 P4): tile compatto SOLO quando esistono dati.
   const weights = useBodyRecent(today, 2);
@@ -204,6 +224,26 @@ export function TodayTiles() {
                 ? undefined
                 : `${formatInt(dietKcal)} kcal finora.`
             }
+            className="h-full"
+          />
+        </TileLink>
+      ) : null}
+      {showExam && nextExam !== null && pacing !== null ? (
+        <TileLink href="/esami" label="Prossimo esame: apri Esami">
+          <StatCard
+            label="Esame"
+            value={
+              pacing.daysRemaining === 0
+                ? "oggi"
+                : pacing.daysRemaining === 1
+                  ? "domani"
+                  : `fra ${pacing.daysRemaining} g`
+            }
+            hint={`${nextExam.title} · ${
+              pacing.chaptersRemaining > 0
+                ? `${pacing.chaptersPerDayNeeded} cap/dì · `
+                : ""
+            }${STATUS_BADGE_IT[pacing.status].label.toLowerCase()}`}
             className="h-full"
           />
         </TileLink>

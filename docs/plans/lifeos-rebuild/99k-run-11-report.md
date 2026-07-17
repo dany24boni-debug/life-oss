@@ -187,3 +187,21 @@ Delta: (1) il marker dieta è "Pasti · N di M" (stato del giorno) — la "varia
 | d · Esami su Oggi (PROP-oggi-04/CROSS-08) | `_components/today-tiles.tsx` (tile condizionale "Esami" ≤14 giorni, riuso `computePacing`) — S-effort come da conferma PROP |
 
 Misura del chunk Oggi dopo c e d (regola del brief).
+
+### Esito — 4/4, un commit per item
+
+**a · Settimana → Palestra (CROSS-01 fase 1).** `gymDayForSlot` pura (+3 test): titolo slot che matcha `\b(palestra|gym|allenamento|workout)\b/i` → il giorno-scheda col **weekday dello slot** se impostato, altrimenti il **suggerito della rotazione**; niente match o niente giorni → null, lo slot resta slot. In board: link quieto col NOME della scheda accanto al titolo, deep-link `gymCardHref` — il check resta il check (prop opzionali `gymForSlot`/`gymLink` su WeekBoard/SlotRow: la timeline di Oggi, che non le passa, è byte-intatta). Test 994 ✓. *(commit `65b3309`)*
+
+**b · Dieta × giorni di allenamento (CROSS-02 fase 1+2).** `isTrainingDay` (weekday con giorno-scheda mappato O sessione già esistente oggi: il fatto vince) + `trainingVariantFor` (la prima variante marcata; MAI se la selezione corrente è già una variante-allenamento) — pure, +2 test con gli edge. UI: chip "Giorno di allenamento" in testa a /dieta (una volta, non per-card); nella card pasto la **proposta** "Giorno di allenamento: variante «X»? · Applica" (solo finché il pasto non è fatto) — un tap = `setVariant` con toast **"· Annulla"** che ripristina la selezione di prima; nel builder Piano il toggle **"Variante da giorno di allenamento"** (`Switch`, → `updateVariant({training})`, il campo P1). Proposta, mai imposta. Test 996 ✓. *(commit `d26d5f5`)*
+
+**c · Brief più intelligente (CROSS-03).** `BriefSnapshot` guadagna `plan` (stamp del rituale: task/stima-formattata/over — il client passa `estimatedLabel` già formattato, il data-layer resta senza formatter) e `dietVariant`; `composeBrief`: la frase SI APRE col piano quando esiste ("**Giornata pianificata: 5 task (~3h30)**", over → "**Giornata piena**"), gli arretrati diventano "**N task da ieri**" (il rollover ha un nome), la variante entra come "variante X" prima dei pasti. La scheda suggerita c'era già dal run-09 ("palestra: Torso A") — dichiarato, non rifatto. `/api/brief` valida con lo STESSO schema (import condiviso): zero drift. Fixture e casi nuovi in `brief.test.ts` (998 ✓). *(commit `c0f0709`)*
+
+**d · Esami su Oggi (PROP-oggi-04/CROSS-08).** Il widget promesso dal docstring di `pacing.ts` esiste: tile condizionale "Esame" nei TileLink di Oggi quando il prossimo esame è **≤14 giorni** — "fra 9 g / domani / oggi" + hint "titolo · 2 cap/dì · in linea" (`computePacing` + `STATUS_BADGE_IT`, la stessa tassonomia di /esami), link a /esami. S-effort confermato dalla PROP.
+
+### Budget Oggi a fine P5 — e un risultato negativo che vale il report
+
+**59.743 B raw (18.696 gzip)** — sotto il tetto 60.000 di **257 B**. Progressione: 56.574 (P4) → 58.297 (P5c: fonti del brief) → 59.743 (P5d: tile esami + pacing).
+
+**Esperimento lazy-sheets, BOCCIATO dai numeri:** per guadagnare margine ho provato a rendere `TaskDetailSheet`/`EventDetailSheet` `next/dynamic` nei consumer della home — il chunk è SALITO a 65.155 B. Spiegazione misurata: quelle schede NON erano nel route chunk della home — vivono nei chunk COMMONS condivisi con /tasks e /calendar; spezzare la condivisione statica ha rimescolato i commons DENTRO `page-*.js`. Il metodo di misura run-08 (solo `page-*.js`) già non addebita alla home il codice condiviso dei dialoghi. Revert integrale (A/B: 59.743 byte-identico), lezione a verbale: **prima di lazy-izzare, verificare in QUALE chunk vive il modulo.**
+
+Guardia per P6: interventi home a costo ~zero (skeleton nella shell del rituale, transizioni via classi); il coalescing del toast acqua — opzionale da brief — diventa PROP-note se sfora.
