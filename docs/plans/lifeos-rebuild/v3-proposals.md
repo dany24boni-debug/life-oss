@@ -301,7 +301,8 @@ l'unica creazione one-shot del repo senza undo. (2) Nessun confronto col mese sc
 (3) Nessun budget per categoria. (4) Superficie statica ma onesta; skeleton ok.
 
 - **PROP-spese-01 — Undo sull'aggiunta.** Azione "Annulla" nel toast esistente
-  (softDelete della riga appena creata). Effort S · Valore M.
+  (softDelete della riga appena creata). Effort S · Valore M. **DONE-IN-RUN-10** (P4;
+  il toast passa alla durata standard 5s perché l'Annulla abbia il suo tempo).
 - **PROP-spese-02 — Delta mese-su-mese.** Sotto il totale: "−12% vs giugno" (query del
   mese precedente + DeltaChip). Effort S · Valore M.
 - **PROP-spese-03 — Budget per categoria.** Target mensile per categoria con barra
