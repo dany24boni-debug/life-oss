@@ -6,12 +6,13 @@
  */
 
 import type { LifeosDb } from "../db";
-import { effectiveTarget, habitDone } from "../habits";
-import type { IsoDay } from "../schemas";
+import { effectiveTarget, habitDone, isScheduledOn } from "../habits";
+import type { GymSet, IsoDay } from "../schemas";
 import type { StatsRepo } from "../ports";
 import {
   civilDayInZone,
   computeStreak,
+  dayRange,
   type StreakSummary,
 } from "../streak";
 import { alive } from "./util";
@@ -120,6 +121,117 @@ export class LocalStatsRepo implements StatsRepo {
       if (habitDone(habit.kind, log.value, target)) days.add(log.date);
     }
     return days;
+  }
+
+  /**
+   * Completamento abitudini per giorno (run-12). "Prevista il giorno D":
+   * viva, nata entro D (created_at → giorno civile), non ancora
+   * archiviata in D, e con D nello schedule. "Completata": stessa
+   * semantica di allActivityDays (obiettivo effettivo; l'acqua segue il
+   * profilo col peso più recente — semplificazione documentata: il
+   * target storico non viene ricostruito). Giorni senza previste: fuori.
+   */
+  async habitCompletionByDay(
+    from: IsoDay,
+    to: IsoDay,
+    timeZone: string,
+  ): Promise<Array<{ date: IsoDay; scheduled: number; done: number }>> {
+    const [habits, logs, bodyRows] = await Promise.all([
+      this.db.habits.filter(alive).toArray(),
+      this.db.habit_logs
+        .where("date")
+        .between(from, to, true, true)
+        .toArray(),
+      this.db.body.filter(alive).toArray(),
+    ]);
+    const latestWeight =
+      bodyRows.length > 0
+        ? bodyRows.sort((a, b) => b.date.localeCompare(a.date))[0].weight_kg
+        : null;
+    const valueByKey = new Map<string, number>();
+    for (const log of logs) {
+      if (alive(log)) valueByKey.set(`${log.habit_id}:${log.date}`, log.value);
+    }
+    const habitViews = habits.map((h) => ({
+      habit: h,
+      bornDay: civilDayInZone(h.created_at, timeZone),
+      archivedDay:
+        h.archived_at === null ? null : civilDayInZone(h.archived_at, timeZone),
+      target: effectiveTarget(h, latestWeight),
+    }));
+
+    const out: Array<{ date: IsoDay; scheduled: number; done: number }> = [];
+    for (const date of dayRange(from, to)) {
+      let scheduled = 0;
+      let done = 0;
+      for (const v of habitViews) {
+        if (v.bornDay > date) continue;
+        if (v.archivedDay !== null && v.archivedDay <= date) continue;
+        if (!isScheduledOn(v.habit, date)) continue;
+        scheduled += 1;
+        const value = valueByKey.get(`${v.habit.id}:${date}`) ?? 0;
+        if (habitDone(v.habit.kind, value, v.target)) done += 1;
+      }
+      if (scheduled > 0) out.push({ date, scheduled, done });
+    }
+    return out;
+  }
+
+  async trainedDays(from: IsoDay, to: IsoDay): Promise<IsoDay[]> {
+    const sessions = await this.db.gym_sessions
+      .where("date")
+      .between(from, to, true, true)
+      .toArray();
+    return [
+      ...new Set(
+        sessions
+          .filter((s) => alive(s) && s.finished_at !== null)
+          .map((s) => s.date),
+      ),
+    ].sort();
+  }
+
+  /**
+   * PR di peso caduti nel range (run-12, "Il tuo mese") — il gemello
+   * dichiarato di weightPrSetIds (app/(app)/gym/pr.ts), ricalcolato
+   * sulle tabelle come gymVolumeInRange (la convenzione di questo
+   * repo). Cronologia per esercizio su TUTTA la storia: giorno della
+   * sessione, poi done_at (null legacy in testa), poi id.
+   */
+  async gymPrCountInRange(from: IsoDay, to: IsoDay): Promise<number> {
+    const [sessions, sets] = await Promise.all([
+      this.db.gym_sessions.filter(alive).toArray(),
+      this.db.gym_sets.filter(alive).toArray(),
+    ]);
+    const dayOf = new Map(sessions.map((s) => [s.id, s.date] as const));
+    const byExercise = new Map<string, GymSet[]>();
+    for (const s of sets) {
+      if (!dayOf.has(s.session_id)) continue;
+      const list = byExercise.get(s.exercise_id) ?? [];
+      list.push(s);
+      byExercise.set(s.exercise_id, list);
+    }
+    let count = 0;
+    for (const list of byExercise.values()) {
+      list.sort(
+        (a, b) =>
+          (dayOf.get(a.session_id) as IsoDay).localeCompare(
+            dayOf.get(b.session_id) as IsoDay,
+          ) ||
+          (a.done_at ?? "").localeCompare(b.done_at ?? "") ||
+          a.id.localeCompare(b.id),
+      );
+      let maxKg: number | null = null;
+      for (const s of list) {
+        if (s.weight_kg === null || s.weight_kg <= 0) continue;
+        const day = dayOf.get(s.session_id) as IsoDay;
+        if (maxKg !== null && s.weight_kg > maxKg && day >= from && day <= to) {
+          count += 1;
+        }
+        if (maxKg === null || s.weight_kg > maxKg) maxKg = s.weight_kg;
+      }
+    }
+    return count;
   }
 
   async gymVolumeInRange(

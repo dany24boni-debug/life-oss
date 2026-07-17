@@ -194,6 +194,27 @@ function TotalsHeader({
           label="Proteine di oggi"
         />
       ) : null}
+      {/* Run-12 P5c (PROP-diet-01): il numero che manca, FINALMENTE
+          renderizzato anche qui — stessa derivazione e formatter della
+          riga di Sera (remainingVsTarget), accanto alle barre. */}
+      {vs.kcal || vs.protein_dg ? (
+        <p className="em-body-sm em-num text-[var(--em-text-2)]">
+          {[
+            vs.kcal
+              ? vs.kcal.remaining >= 0
+                ? `Restano ${formatInt(vs.kcal.remaining)} kcal`
+                : `${formatInt(-vs.kcal.remaining)} kcal oltre`
+              : null,
+            vs.protein_dg
+              ? vs.protein_dg.remaining >= 0
+                ? `${vs.kcal ? "" : "Restano "}${formatGramsFromDg(vs.protein_dg.remaining)} g proteine`
+                : "proteine a obiettivo"
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      ) : null}
       {!vs.kcal && !vs.protein_dg ? (
         <p className="em-body-sm text-[var(--em-text-3)]">
           Con profilo e pesata (Impostazioni, Corpo) qui compaiono gli

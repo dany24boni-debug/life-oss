@@ -270,3 +270,97 @@ describe("LocalStatsRepo — abitudini nella streak globale (run-08)", () => {
     ).toEqual([]);
   });
 });
+
+describe("LocalStatsRepo — selettori run-12 (correlazioni, Il tuo mese)", () => {
+  it("habitCompletionByDay: schedule, nascita, archivio, obiettivi", async () => {
+    // Finestra nel FUTURO: le abitudini nascono "adesso" (created_at
+    // reale) e devono risultare già nate in ogni giorno della finestra.
+    const daily = await must(
+      repos.habits.create({ name: "Lettura", kind: "boolean" }),
+    );
+    const monday = await must(
+      repos.habits.create({ name: "Corsa", kind: "boolean", weekdays: [1] }),
+    );
+    const archived = await must(
+      repos.habits.create({ name: "Vecchia", kind: "boolean" }),
+    );
+    await must(repos.habits.archive(archived.id));
+
+    // 2027-01-04 è lunedì.
+    await must(repos.habits.logDay(daily.id, "2027-01-04", 1));
+    await must(repos.habits.logDay(monday.id, "2027-01-04", 1));
+    await must(repos.habits.logDay(daily.id, "2027-01-05", 0));
+
+    const days = await repos.stats.habitCompletionByDay(
+      "2027-01-04",
+      "2027-01-06",
+      "Europe/Rome",
+    );
+    expect(days).toEqual([
+      { date: "2027-01-04", scheduled: 2, done: 2 },
+      { date: "2027-01-05", scheduled: 1, done: 0 },
+      { date: "2027-01-06", scheduled: 1, done: 0 },
+    ]);
+  });
+
+  it("trainedDays: solo sessioni concluse, giorni unici e ordinati", async () => {
+    await must(
+      repos.gym.createSession({
+        date: "2026-07-02",
+        finished_at: "2026-07-02T10:30:00.000Z",
+      }),
+    );
+    await must(
+      repos.gym.createSession({
+        date: "2026-07-02",
+        finished_at: "2026-07-02T18:00:00.000Z",
+      }),
+    );
+    await must(
+      repos.gym.createSession({
+        date: "2026-07-01",
+        finished_at: "2026-07-01T10:00:00.000Z",
+      }),
+    );
+    await must(repos.gym.createSession({ date: "2026-07-03" })); // mai conclusa
+
+    expect(await repos.stats.trainedDays("2026-07-01", "2026-07-31")).toEqual([
+      "2026-07-01",
+      "2026-07-02",
+    ]);
+  });
+
+  it("gymPrCountInRange: la semantica del marcatore storico, contata nel range", async () => {
+    const squat = await must(
+      repos.gym.createExercise({ name: "Squat", muscle_group: "gambe" }),
+    );
+    const june = await must(repos.gym.createSession({ date: "2026-06-10" }));
+    const july = await must(repos.gym.createSession({ date: "2026-07-08" }));
+    // Giugno: 90 (primo di sempre: NON è record).
+    await must(
+      repos.gym.addSet({
+        session_id: june.id,
+        exercise_id: squat.id,
+        weight_kg: 90,
+        reps: 5,
+      }),
+    );
+    // Luglio: 100 (PR), 95 (no), 102,5 (PR).
+    for (const kg of [100, 95, 102.5]) {
+      await must(
+        repos.gym.addSet({
+          session_id: july.id,
+          exercise_id: squat.id,
+          weight_kg: kg,
+          reps: 3,
+        }),
+      );
+    }
+    expect(
+      await repos.stats.gymPrCountInRange("2026-06-01", "2026-06-30"),
+    ).toBe(0);
+    expect(
+      await repos.stats.gymPrCountInRange("2026-07-01", "2026-07-31"),
+    ).toBe(2);
+  });
+});

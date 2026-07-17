@@ -19,6 +19,7 @@
 import type { LifeosDb } from "../db";
 import {
   composeDayMeals,
+  dayTotals,
   extraView,
   type DayDiet,
   type DietExtraView,
@@ -27,6 +28,7 @@ import { weekdayOfDay } from "../habits";
 import { deriveUuidV8, uuidv7 } from "../ids";
 import type { DietRepo } from "../ports";
 import { attempt, err, ok, type Result } from "../result";
+import { dayRange } from "../streak";
 import {
   DietExtraCreateSchema,
   DietExtraPatchSchema,
@@ -1455,6 +1457,31 @@ export class LocalDietRepo implements DietRepo {
         foods,
       }),
     };
+  }
+
+  /**
+   * Totali consumati per giorno nel range (run-12, /stats): il loop di
+   * dayDiet + dayExtras — le STESSE regole di composizione, zero drift.
+   * Sola lettura; a scala personale (range 7–31 giorni) il giro di
+   * query indicizzate è la scelta documentata. Tenuti solo i giorni con
+   * un pasto mangiato o un extra.
+   */
+  async consumedByDay(
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<Array<{ date: IsoDay; kcal: number; protein_dg: number }>> {
+    const out: Array<{ date: IsoDay; kcal: number; protein_dg: number }> = [];
+    for (const date of dayRange(from, to)) {
+      const [day, extras] = await Promise.all([
+        this.dayDiet(date),
+        this.dayExtras(date),
+      ]);
+      const anyEaten = day.meals.some((m) => m.eaten);
+      if (!anyEaten && extras.length === 0) continue;
+      const totals = dayTotals(day, extras);
+      out.push({ date, kcal: totals.kcal, protein_dg: totals.protein_dg });
+    }
+    return out;
   }
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>> {

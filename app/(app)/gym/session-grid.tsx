@@ -39,11 +39,19 @@ import {
   useSessionsByProgramDay,
   useSetsByExercise,
   useSetsBySession,
+  useSettings,
 } from "@/data/hooks";
 import type { GymExercise, GymSession, GymSet } from "@/data/schemas";
 import { useIsDesktop } from "../_components/tasks/screen-hooks";
+import { EquipmentEditor } from "./equipment-editor";
 import { ExercisePicker } from "./exercise-picker";
 import { nowInstant, stepReps, stepWeight } from "./logic";
+import {
+  plateBreakdown,
+  type PlateBreakdown,
+  type PlateCount,
+} from "./plate-math";
+import { weightPrCheck } from "./pr";
 import { formatRestShort } from "./program-parse";
 import {
   buildGridRows,
@@ -122,6 +130,12 @@ export function SessionGrid({
   const [pending, setPending] = useState<string[]>([]);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Il momento PR (run-12): i set che in QUESTA sessione hanno battuto il
+  // massimo storico, id → massimo battuto. Stato effimero del log — il
+  // marcatore permanente vive nella griglia storica (weightPrSetIds).
+  const [prCells, setPrCells] = useState<ReadonlyMap<string, number>>(
+    new Map(),
+  );
 
   // Verdetto per slot: l'ultima seduta COMPLETATA di questo giorno
   // (mai quella in corso).
@@ -184,6 +198,8 @@ export function SessionGrid({
     rirDone: number | null;
     feeling: number | null;
     restActualS: number | null;
+    /** Massimo storico battuto da questo carico; null = niente PR. */
+    prBeaten: number | null;
   }) {
     const repo = appRepos().gym;
     const r = input.existing
@@ -208,6 +224,20 @@ export function SessionGrid({
     if (!r.ok) {
       toast.show({ message: r.error.message, tone: "error" });
       return;
+    }
+    // PROP-gym-04: il PR si celebra AL SET — chip ember sulla cella +
+    // toast col numero battuto. Sobrio, deterministico, zero coriandoli.
+    setPrCells((prev) => {
+      const next = new Map(prev);
+      if (input.prBeaten !== null) next.set(r.data.id, input.prBeaten);
+      else next.delete(r.data.id);
+      return next;
+    });
+    if (input.prBeaten !== null && input.weightKg !== null) {
+      toast.show({
+        message: `PR: ${formatKgShort(input.weightKg)} kg su ${nameOf(input.row.exerciseId)} · prima ${formatKgShort(input.prBeaten)}`,
+        tone: "success",
+      });
     }
     setEditor(null);
   }
@@ -351,13 +381,25 @@ export function SessionGrid({
                           )}
                           aria-label={
                             cell.kind === "done"
-                              ? `Serie ${cell.setIndex + 1} di ${nameOf(row.exerciseId)}: ${doneCellLabel(cell.set)} — modifica`
+                              ? `Serie ${cell.setIndex + 1} di ${nameOf(row.exerciseId)}: ${doneCellLabel(cell.set)}${prCells.has(cell.set.id) ? " — record personale" : ""} — modifica`
                               : `Registra la serie ${cell.setIndex + 1} di ${nameOf(row.exerciseId)} (obiettivo ${cell.label})`
                           }
                         >
                           {cell.kind === "done"
                             ? doneCellLabel(cell.set)
                             : cell.label}
+                          {cell.kind === "done" &&
+                          prCells.has(cell.set.id) ? (
+                            <span className="ml-1.5 inline-flex items-baseline gap-1">
+                              <span
+                                className="em-dot em-dot--live"
+                                aria-hidden="true"
+                              />
+                              <span className="em-eyebrow text-[var(--em-ember-text)]">
+                                PR
+                              </span>
+                            </span>
+                          ) : null}
                         </button>
                       ))}
                       <button
@@ -413,6 +455,28 @@ export function SessionGrid({
       />
     </div>
   );
+}
+
+/** "2×20 + 5 + 2,5" — i dischi di un lato, tagli decrescenti. */
+function perSideLabel(perSide: readonly PlateCount[]): string {
+  return perSide
+    .map((p) =>
+      p.count > 1
+        ? `${p.count}×${formatKgShort(p.kg)}`
+        : formatKgShort(p.kg),
+    )
+    .join(" + ");
+}
+
+/** La riga del calcolatore: esatto, solo bilanciere, o il più vicino. */
+function plateLineLabel(b: PlateBreakdown): string {
+  if (b.kind === "bar-only") return "Per lato: solo bilanciere";
+  if (b.kind === "exact") return `Per lato: ${perSideLabel(b.perSide)}`;
+  return `Più vicino: ${formatKgShort(b.totalKg)} kg${
+    b.perSide.length > 0
+      ? ` (${perSideLabel(b.perSide)} per lato)`
+      : " (solo bilanciere)"
+  }`;
 }
 
 /** Gruppi di sezione sulle righe (consecutivi, come nel builder). */
@@ -574,6 +638,7 @@ function SetEditorSheet({
     rirDone: number | null;
     feeling: number | null;
     restActualS: number | null;
+    prBeaten: number | null;
   }) => Promise<void>;
   onRemove: (existing: GymSet) => Promise<void>;
 }) {
@@ -611,7 +676,9 @@ function SetEditorSheet({
 /**
  * Il caricatore del form: aspetta la storia dell'esercizio (prefill
  * "dall'ultima volta") PRIMA di montare gli stati del form — così il
- * prefill è giusto, non una corsa con la live query.
+ * prefill è giusto, non una corsa con la live query. Limite 500 (come la
+ * griglia storica): al check PR serve il massimo di TUTTA la storia,
+ * non degli ultimi 25 set (run-12).
  */
 function SetEditorBody({
   editor,
@@ -629,10 +696,11 @@ function SetEditorBody({
     rirDone: number | null;
     feeling: number | null;
     restActualS: number | null;
+    prBeaten: number | null;
   }) => Promise<void>;
   onRemove: (existing: GymSet) => Promise<void>;
 }) {
-  const history = useSetsByExercise(editor.row.exerciseId, 25);
+  const history = useSetsByExercise(editor.row.exerciseId, 500);
   if (history === undefined) return <Skeleton className="h-24 w-full" />;
   return (
     <SetEditorForm
@@ -663,11 +731,16 @@ function SetEditorForm({
     rirDone: number | null;
     feeling: number | null;
     restActualS: number | null;
+    prBeaten: number | null;
   }) => Promise<void>;
   onRemove: (existing: GymSet) => Promise<void>;
 }) {
   const { row, existing, setIndex } = editor;
   const bodyweight = row.slot?.bodyweight ?? false;
+  // Profilo attrezzatura (P1): alimenta il plate calculator. La riga
+  // settings è una live query da una riga sola — costa nulla.
+  const settings = useSettings();
+  const [equipOpen, setEquipOpen] = useState(false);
 
   // Prefill del peso: la serie che si modifica → la cella precedente
   // della riga → l'ultima volta in assoluto (storia dell'esercizio).
@@ -711,6 +784,12 @@ function SetEditorForm({
     : null;
 
   function confirm() {
+    // Il momento PR (run-12): la storia MENO il set che si sta
+    // modificando è il "prima"; si celebra solo il battuto stretto.
+    const pr = weightPrCheck(
+      weightKg,
+      history.filter((s) => s.id !== existing?.id),
+    );
     void onConfirm({
       row,
       existing,
@@ -719,12 +798,36 @@ function SetEditorForm({
       rirDone,
       feeling,
       restActualS,
+      prBeaten: pr.isPr ? pr.previousKg : null,
     });
   }
 
+  // Deviazione attrezzatura: l'editor del profilo si apre DENTRO lo
+  // sheet (swap di contenuto, mai sheet sopra sheet); gli stati del
+  // form sopravvivono alla deviazione. Dopo tutti gli hook, per contratto.
+  if (equipOpen && settings !== undefined) {
+    return (
+      <EquipmentEditor
+        settings={settings}
+        onDone={() => setEquipOpen(false)}
+      />
+    );
+  }
+
+  const plates = (() => {
+    if (bodyweight || settings === undefined) return null;
+    const bar = settings.gym_bar_kg;
+    const owned = settings.gym_plates;
+    if (bar === null || owned === null || owned.length === 0) {
+      return "setup" as const;
+    }
+    if (weightKg === null || weightKg <= 0) return null;
+    return plateBreakdown(weightKg, bar, owned);
+  })();
+
   return (
     <div className="flex flex-col gap-4">
-      {ghost !== null || lastTime !== undefined ? (
+      {ghost !== null || lastTime !== undefined || plates !== null ? (
         <div className="flex flex-col gap-0.5">
           {ghost ? (
             <p className="em-body-sm text-[var(--em-text-3)]">
@@ -744,6 +847,27 @@ function SetEditorForm({
                 <span className="em-num"> @RIR{lastTime.rir_done}</span>
               ) : null}
             </p>
+          ) : null}
+          {/* Plate calculator (run-12, PROP-gym-03): i dischi per lato,
+              vivi sul peso corrente; tap = modifica del profilo. Senza
+              profilo: solo il link quieto. */}
+          {plates === "setup" ? (
+            <button
+              type="button"
+              onClick={() => setEquipOpen(true)}
+              className="em-body-sm min-h-11 text-left text-[var(--em-text-3)] underline decoration-[var(--em-hairline-strong)] underline-offset-4 transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+            >
+              Dischi per lato? Imposta bilanciere e dischi
+            </button>
+          ) : plates !== null ? (
+            <button
+              type="button"
+              onClick={() => setEquipOpen(true)}
+              aria-label={`${plateLineLabel(plates)} — modifica bilanciere e dischi`}
+              className="em-body-sm min-h-11 text-left text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:text-[var(--em-text)]"
+            >
+              <span className="em-num">{plateLineLabel(plates)}</span>
+            </button>
           ) : null}
         </div>
       ) : null}

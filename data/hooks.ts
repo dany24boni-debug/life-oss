@@ -561,6 +561,53 @@ export function useSettings(): Settings | undefined {
   return useLiveQuery(() => appRepos().settings.get(), []);
 }
 
+/* ── Selettori read-only run-12 (/stats: correlazioni, Il tuo mese) ──── */
+
+/** Completamento abitudini per giorno nel range (solo giorni previsti). */
+export function useHabitCompletionByDay(
+  from: IsoDay,
+  to: IsoDay,
+  timeZone: string,
+): Array<{ date: IsoDay; scheduled: number; done: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.habitCompletionByDay(from, to, timeZone),
+    [from, to, timeZone],
+  );
+}
+
+/** Giorni civili con una sessione palestra conclusa nel range. */
+export function useTrainedDays(
+  from: IsoDay,
+  to: IsoDay,
+): IsoDay[] | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.trainedDays(from, to),
+    [from, to],
+  );
+}
+
+/** PR di peso caduti nel range (semantica del marcatore storico). */
+export function useGymPrCount(
+  from: IsoDay,
+  to: IsoDay,
+): number | undefined {
+  return useLiveQuery(
+    () => appRepos().stats.gymPrCountInRange(from, to),
+    [from, to],
+  );
+}
+
+/** Totali dieta consumati per giorno (solo giorni con dati). */
+export function useDietConsumedByDay(
+  from: IsoDay,
+  to: IsoDay,
+): Array<{ date: IsoDay; kcal: number; protein_dg: number }> | undefined {
+  return useLiveQuery(
+    () => appRepos().diet.consumedByDay(from, to),
+    [from, to],
+  );
+}
+
 /* ── Stats (B2.5, run-03): tile e schermata Statistiche ─────────────── */
 
 /** Conteggio task del giorno per il tile "oggi". */

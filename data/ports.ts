@@ -573,6 +573,15 @@ export interface DietRepo {
    * pasto e per selezione (matematica pura in data/diet.ts).
    */
   dayDiet(date: IsoDay): Promise<DayDiet>;
+  /**
+   * Totali CONSUMATI per giorno nel range (run-12, /stats): la stessa
+   * composizione di dayDiet + dayExtras giorno per giorno — zero drift
+   * di regole. Solo i giorni con un pasto mangiato o un extra.
+   */
+  consumedByDay(
+    from: IsoDay,
+    to: IsoDay,
+  ): Promise<Array<{ date: IsoDay; kcal: number; protein_dg: number }>>;
 
   purgeTombstones(olderThan: IsoInstant): Promise<Result<number>>;
 }
@@ -757,6 +766,27 @@ export interface StatsRepo {
     from: IsoDay,
     to: IsoDay,
   ): Promise<Array<{ date: IsoDay; total: number; done: number }>>;
+  /**
+   * Completamento abitudini per giorno nel range (run-12: correlazioni,
+   * "Il tuo mese"): abitudini PREVISTE quel giorno (schedule del
+   * weekday, nate prima del giorno e non ancora archiviate allora) e
+   * COMPLETATE (obiettivo effettivo, semantica di activityDays). Solo i
+   * giorni con almeno un'abitudine prevista.
+   */
+  habitCompletionByDay(
+    from: IsoDay,
+    to: IsoDay,
+    timeZone: string,
+  ): Promise<Array<{ date: IsoDay; scheduled: number; done: number }>>;
+  /** Giorni civili con una sessione palestra CONCLUSA nel range. */
+  trainedDays(from: IsoDay, to: IsoDay): Promise<IsoDay[]>;
+  /**
+   * Quanti set nel range erano PR di peso QUANDO furono fatti (run-12,
+   * "Il tuo mese") — la semantica del marcatore della griglia storica:
+   * strettamente sopra il massimo di tutta la storia precedente, la
+   * prima volta non è un record, corpo-libero fuori.
+   */
+  gymPrCountInRange(from: IsoDay, to: IsoDay): Promise<number>;
   /** Sessioni e volume (somma peso x reps) nel range. */
   gymVolumeInRange(
     from: IsoDay,

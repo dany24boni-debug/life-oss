@@ -206,10 +206,10 @@ function PlanEditor({ plan, onBack }: { plan: DietPlan; onBack: () => void }) {
     });
   }
 
-  async function addMeal() {
+  async function addMeal(day: number) {
     const r = await appRepos().diet.createMeal({
       plan_id: plan.id,
-      weekday,
+      weekday: day,
       name: "Nuovo pasto",
     });
     if (!r.ok) toast.show({ message: r.error.message, tone: "error" });
@@ -268,75 +268,93 @@ function PlanEditor({ plan, onBack }: { plan: DietPlan; onBack: () => void }) {
         )}
       </div>
 
-      {/* Giorni a chips col conteggio pasti. */}
-      <div role="group" aria-label="Giorno" className="flex flex-wrap gap-1.5">
-        {WEEKDAYS_IT.map((label, i) => {
-          const day = i + 1;
-          const count = (meals ?? []).filter((m) => m.weekday === day).length;
-          return (
-            <button
-              key={day}
-              type="button"
-              aria-pressed={weekday === day}
-              onClick={() => setWeekday(day)}
-              className={cx(
-                "em-body-sm h-11 min-w-11 rounded-[var(--em-r-sm)] px-2 font-medium transition-colors duration-[var(--em-dur-tap)]",
-                weekday === day
-                  ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
-                  : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
-              )}
-            >
-              {label}
-              {count > 0 ? (
-                <span className="em-num ml-1 text-[var(--em-text-3)]">
-                  {count}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Pasti del giorno selezionato, coi totali live. */}
-      {meals === undefined || foods === undefined ? (
-        <div aria-busy="true">
-          <Skeleton className="h-16 w-full" />
+      {/* Mobile: giorno a chips + lista del giorno (byte-intatto,
+          nascosto da lg dove comanda la griglia — PROP-diet-05). */}
+      <div className="flex flex-col gap-4 lg:hidden">
+        <div role="group" aria-label="Giorno" className="flex flex-wrap gap-1.5">
+          {WEEKDAYS_IT.map((label, i) => {
+            const day = i + 1;
+            const count = (meals ?? []).filter((m) => m.weekday === day).length;
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={weekday === day}
+                onClick={() => setWeekday(day)}
+                className={cx(
+                  "em-body-sm h-11 min-w-11 rounded-[var(--em-r-sm)] px-2 font-medium transition-colors duration-[var(--em-dur-tap)]",
+                  weekday === day
+                    ? "bg-[var(--em-ember-tint)] text-[var(--em-text)] shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+                    : "bg-[var(--em-surface-2)] text-[var(--em-text-2)] shadow-[0_0_0_1px_var(--em-hairline)] hover:text-[var(--em-text)]",
+                )}
+              >
+                {label}
+                {count > 0 ? (
+                  <span className="em-num ml-1 text-[var(--em-text-3)]">
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
-      ) : dayMeals.length === 0 ? (
-        <EmptyState
-          compact
-          heading={`Niente di ${WEEKDAY_FULL[weekday - 1]}`}
-          text="Aggiungi il primo pasto: un nome e due alimenti bastano."
-        />
-      ) : (
-        <>
-          <ul className="flex flex-col">
-            {dayMeals.map((meal) => (
-              <MealRow
-                key={meal.id}
-                meal={meal}
-                foodById={foodById}
-                onOpen={() => setEditingMealId(meal.id)}
-              />
-            ))}
-          </ul>
-          <DayTotalsLine dayMeals={dayMeals} foodById={foodById} />
-        </>
-      )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => void addMeal()}
-        >
-          <IconPlus className="h-4 w-4" /> Pasto di {WEEKDAY_FULL[weekday - 1]}
-        </Button>
-        {dayMeals.length > 0 ? (
-          <CopyDayControl weekday={weekday} onCopy={copyDayTo} />
-        ) : null}
+        {/* Pasti del giorno selezionato, coi totali live. */}
+        {meals === undefined || foods === undefined ? (
+          <div aria-busy="true">
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : dayMeals.length === 0 ? (
+          <EmptyState
+            compact
+            heading={`Niente di ${WEEKDAY_FULL[weekday - 1]}`}
+            text="Aggiungi il primo pasto: un nome e due alimenti bastano."
+          />
+        ) : (
+          <>
+            <ul className="flex flex-col">
+              {dayMeals.map((meal) => (
+                <MealRow
+                  key={meal.id}
+                  meal={meal}
+                  foodById={foodById}
+                  onOpen={() => setEditingMealId(meal.id)}
+                />
+              ))}
+            </ul>
+            <DayTotalsLine dayMeals={dayMeals} foodById={foodById} />
+          </>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void addMeal(weekday)}
+          >
+            <IconPlus className="h-4 w-4" /> Pasto di {WEEKDAY_FULL[weekday - 1]}
+          </Button>
+          {dayMeals.length > 0 ? (
+            <CopyDayControl weekday={weekday} onCopy={copyDayTo} />
+          ) : null}
+        </div>
       </div>
+
+      {/* Da lg: la settimana VERA, 7 giorni affiancati (PROP-diet-05) —
+          la larghezza del P3 run-10 finalmente spesa nel builder. */}
+      {meals === undefined || foods === undefined ? (
+        <div aria-busy="true" className="hidden lg:block">
+          <Skeleton className="h-40 w-full" />
+        </div>
+      ) : (
+        <WeekGrid
+          meals={meals}
+          foodById={foodById}
+          onOpenMeal={setEditingMealId}
+          onAddMeal={(day) => void addMeal(day)}
+        />
+      )}
 
       <div className="flex items-center justify-between gap-3 border-t border-[var(--em-hairline)] pt-3">
         <Button type="button" variant="ghost" size="sm" onClick={() => void duplicate()}>
@@ -353,6 +371,157 @@ function PlanEditor({ plan, onBack }: { plan: DietPlan; onBack: () => void }) {
         onClose={() => setEditingMealId(null)}
       />
     </div>
+  );
+}
+
+/* ── La griglia settimanale (run-12 P5a, PROP-diet-05, solo lg+) ─────── */
+
+function WeekGrid({
+  meals,
+  foodById,
+  onOpenMeal,
+  onAddMeal,
+}: {
+  meals: DietMeal[];
+  foodById: ReadonlyMap<string, Food>;
+  onOpenMeal: (id: string) => void;
+  onAddMeal: (day: number) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Piano della settimana"
+      className="hidden gap-2 lg:grid lg:grid-cols-7"
+    >
+      {WEEKDAYS_IT.map((label, i) => {
+        const day = i + 1;
+        const dayMeals = meals.filter((m) => m.weekday === day);
+        return (
+          <section
+            key={day}
+            aria-label={WEEKDAY_FULL[i]}
+            className="flex min-w-0 flex-col gap-2 rounded-[var(--em-r-md)] bg-[var(--em-surface-2)] p-2 shadow-[0_0_0_1px_var(--em-hairline)]"
+          >
+            <p className="em-eyebrow flex items-baseline justify-between gap-1">
+              <span>{label}</span>
+              {dayMeals.length > 0 ? (
+                <span className="em-num text-[var(--em-text-3)]">
+                  {dayMeals.length}
+                </span>
+              ) : null}
+            </p>
+            <ul className="flex min-w-0 flex-1 flex-col gap-1">
+              {dayMeals.map((meal) => (
+                <GridMealCell
+                  key={meal.id}
+                  meal={meal}
+                  foodById={foodById}
+                  onOpen={() => onOpenMeal(meal.id)}
+                />
+              ))}
+            </ul>
+            {dayMeals.length > 0 ? (
+              <GridDayKcal dayMeals={dayMeals} foodById={foodById} />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => onAddMeal(day)}
+              aria-label={`Aggiungi un pasto di ${WEEKDAY_FULL[i]}`}
+              className="em-body grid h-9 place-items-center rounded-[var(--em-r-sm)] font-semibold text-[var(--em-text-3)] transition-colors duration-[var(--em-dur-tap)] hover:bg-[color-mix(in_srgb,var(--em-text)_5%,transparent)] hover:text-[var(--em-text)]"
+            >
+              +
+            </button>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Cella pasto della griglia: nome + kcal base, tap = scheda pasto. */
+function GridMealCell({
+  meal,
+  foodById,
+  onOpen,
+}: {
+  meal: DietMeal;
+  foodById: ReadonlyMap<string, Food>;
+  onOpen: () => void;
+}) {
+  const items = useMealItems(meal.id);
+  const baseTotals = sumItemTotals(
+    (items ?? []).filter((i) => i.variant_id === null),
+    foodById,
+  );
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full rounded-[var(--em-r-sm)] bg-[var(--em-surface)] px-2 py-1.5 text-left shadow-[0_0_0_1px_var(--em-hairline)] transition-colors duration-[var(--em-dur-tap)] hover:shadow-[0_0_0_1px_var(--em-hairline-strong)]"
+      >
+        <span className="em-body-sm block truncate font-medium text-[var(--em-text)]">
+          {meal.name}
+        </span>
+        <span className="em-eyebrow em-num block text-[var(--em-text-3)]">
+          {formatInt(baseTotals.kcal)} kcal
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** Somma kcal del giorno in fondo alla colonna (ricorsione di hook come
+ *  DayTotalsLine, resa compatta per la colonna stretta). */
+function GridDayKcal({
+  dayMeals,
+  foodById,
+  acc = ZERO_TOTALS,
+}: {
+  dayMeals: DietMeal[];
+  foodById: ReadonlyMap<string, Food>;
+  acc?: MacroTotals;
+}) {
+  if (dayMeals.length === 0) {
+    return (
+      <p className="em-eyebrow em-num text-right text-[var(--em-text-2)]">
+        {formatInt(acc.kcal)} kcal
+      </p>
+    );
+  }
+  return (
+    <GridDayKcalStep
+      key={dayMeals[0].id}
+      meal={dayMeals[0]}
+      rest={dayMeals.slice(1)}
+      foodById={foodById}
+      acc={acc}
+    />
+  );
+}
+
+function GridDayKcalStep({
+  meal,
+  rest,
+  foodById,
+  acc,
+}: {
+  meal: DietMeal;
+  rest: DietMeal[];
+  foodById: ReadonlyMap<string, Food>;
+  acc: MacroTotals;
+}) {
+  const items = useMealItems(meal.id);
+  const totals = sumItemTotals(
+    (items ?? []).filter((i) => i.variant_id === null),
+    foodById,
+  );
+  return (
+    <GridDayKcal
+      dayMeals={rest}
+      foodById={foodById}
+      acc={addTotals(acc, totals)}
+    />
   );
 }
 

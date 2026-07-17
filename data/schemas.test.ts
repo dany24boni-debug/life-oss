@@ -282,6 +282,47 @@ describe("Eventi e Settings", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("settings pre run-12 (senza attrezzatura): parse coi default, domini chiusi", () => {
+    const now = new Date().toISOString();
+    const base = {
+      id: "local",
+      display_name: null,
+      theme: "dark",
+      protected_days: [],
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    };
+    const parsed = SettingsSchema.safeParse(base);
+    expect(parsed.success && parsed.data.gym_bar_kg).toBeNull();
+    expect(parsed.success && parsed.data.gym_plates).toBeNull();
+    // Tagli duplicati e conteggi non interi/nulli: fuori.
+    expect(
+      SettingsSchema.safeParse({
+        ...base,
+        gym_plates: [
+          { kg: 20, n: 2 },
+          { kg: 20, n: 4 },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      SettingsSchema.safeParse({ ...base, gym_plates: [{ kg: 20, n: 0 }] })
+        .success,
+    ).toBe(false);
+    expect(
+      SettingsSchema.safeParse({ ...base, gym_plates: [{ kg: 20, n: 2.5 }] })
+        .success,
+    ).toBe(false);
+    // Il bilanciere sta in [1, 100].
+    expect(
+      SettingsSchema.safeParse({ ...base, gym_bar_kg: 0 }).success,
+    ).toBe(false);
+    expect(
+      SettingsSchema.safeParse({ ...base, gym_bar_kg: 20 }).success,
+    ).toBe(true);
+  });
 });
 
 describe("abitudini (run-08)", () => {
