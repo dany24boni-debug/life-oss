@@ -354,7 +354,8 @@ gruppo (app) SENZA skeleton: le sezioni appaiono a scatti quando i dati arrivano
 condiviso vero (altezza/sesso/attività → derived) e funziona.
 
 - **PROP-imp-01 — Skeleton sulle sezioni.** Profilo, Giorni protetti, Push, Sync: shimmer
-  invece del pop-in. Effort S · Valore M.
+  invece del pop-in. Effort S · Valore M. **DONE-IN-RUN-10** (P4: Profilo, Giorni
+  protetti e Push; la riga Sync aveva già una copy di fallback onesta — lasciata).
 - **PROP-imp-02 — Una card "Importa dal vecchio LifeOS".** Le cinque card di import
   diventano una card con cinque righe (stesso pattern riga+bottone), in fondo. Tema e
   Giorni protetti risalgono. Effort M · Valore M.

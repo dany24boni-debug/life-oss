@@ -7,7 +7,7 @@
  * di formula, non prescrizioni. Sincronizza con Settings (lo_settings).
  */
 
-import { Input, cx, useToast } from "@/ui";
+import { Input, Skeleton, cx, useToast } from "@/ui";
 import { appRepos, useLatestBody, useSettings } from "@/data/hooks";
 import {
   calorieTargetKcal,
@@ -70,7 +70,13 @@ export function ProfileSection() {
         di formula, non prescrizioni.
       </p>
 
-      {settings === undefined ? null : (
+      {/* Skeleton invece del pop-in (run-10 P4, PROP-imp-01). */}
+      {settings === undefined ? (
+        <div className="mt-4 flex flex-col gap-3" aria-busy="true">
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-2/3" />
+        </div>
+      ) : (
         <div className="mt-4 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">

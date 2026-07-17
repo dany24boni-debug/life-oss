@@ -9,7 +9,7 @@
  */
 
 import { useState } from "react";
-import { DatePicker, EmptyState, useToast } from "@/ui";
+import { DatePicker, EmptyState, Skeleton, useToast } from "@/ui";
 import { formatDayShort, type DayString } from "@/ui/calendar-core";
 import { appRepos, useSettings } from "@/data/hooks";
 import { useToday } from "../_components/tasks/screen-hooks";
@@ -66,7 +66,12 @@ function ProtectedDaysInner() {
         />
       </div>
 
-      {settings === undefined ? null : upcoming.length === 0 &&
+      {/* Skeleton invece del pop-in (run-10 P4, PROP-imp-01). */}
+      {settings === undefined ? (
+        <div className="mt-3" aria-busy="true">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : upcoming.length === 0 &&
         past.length === 0 ? (
         <EmptyState
           compact

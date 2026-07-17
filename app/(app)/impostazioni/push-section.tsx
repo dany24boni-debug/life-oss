@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Button, Switch, useToast } from "@/ui";
+import { Button, Skeleton, Switch, useToast } from "@/ui";
 import {
   DEFAULT_PUSH_CATEGORIES,
   PUSH_CATEGORY_LABELS,
@@ -134,7 +134,12 @@ export function PushSection() {
         &ldquo;Aggiungi alla schermata Home&rdquo;).
       </p>
 
-      {state.kind === "loading" ? null : state.kind === "unsupported" ? (
+      {/* Skeleton invece del pop-in (run-10 P4, PROP-imp-01). */}
+      {state.kind === "loading" ? (
+        <div className="mt-3" aria-busy="true">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : state.kind === "unsupported" ? (
         <p className="em-body-sm mt-3 text-[var(--em-text-3)]">
           Questo browser non supporta le notifiche push.
         </p>
